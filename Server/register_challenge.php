@@ -18,15 +18,38 @@
     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
     CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+
+/**
+This is called (via GET) to prepare some basic arguments for the next step in the registration.
+
+The registration is a two-step process, both of which need to be done in the same HTTP session.
+
+This is the first step, where the credentials are created, and returned to the app.
+
+The app must then return the credentials, along with the generated challenge string.
+
+The file is called with two GET arguments that must be supplied:
+
+- `user_id`: This will have a URL-encoded string, with the unique (to this server) user ID that identifies this user.
+
+- `display_name`: This is a URL-encoded readable name for the user. It does not need to be unique. 
+
+*/
+
 require 'vendor/autoload.php';
 require_once "./Config.php";
+
+// We will be using a shared HTTP session.
 session_start();
 
+// We rely on the WebAuthn library.
 use lbuchs\WebAuthn\WebAuthn;
 
+// We will be extracting a User ID, and a display name, from what the app sends in, for the challenge query. Default is nothing.
 $userId = "";
 $displayName = "";
 
+// We pick through each of the supplied arguments, and get the user ID and the display name. We don't care about anything else.
 $auth = explode('&', $_SERVER['QUERY_STRING']);
 foreach ($auth as $query) {
     $exp = explode('=', $query);
@@ -37,24 +60,30 @@ foreach ($auth as $query) {
     }
 }
 
+// WE must have BOTH a user ID AND a display name.
 if (empty($userId) || empty($displayName)) {
-    header('HTTP/1.1 400 Bad Arguments');
-    echo '&#128169;';
+    http_response_code(400);
+    echo '&#128169;';   // Oh, poo.
 } else {
+    // Create a new WebAuthn instance, using our organization name, and the serving host.
     $webAuthn = new WebAuthn(ConfigW::$g_relying_party_name, $_SERVER['HTTP_HOST']);
    
+    // We will use the function to create a registration object, which will need to be presented in a subsequent call.
     $args = $webAuthn->getCreateArgs($userId, $displayName, $userId);
     
-    $rawChallenge = $webAuthn->getChallenge()->getBinaryString();
-    $base64urlChallenge = base64url_encode($rawChallenge);
+    // We encode the challenge data as a Base64 URL-encoded string.
+    $base64urlChallenge = base64url_encode($webAuthn->getChallenge()->getBinaryString());
+    // We do the same for the binary unique user ID.
     $userIdEncoded = base64url_encode($args->publicKey->user->id->getBinaryString());
       
-    // Patch the object before encoding
+    // We replace the ones given by the function (basic Base64), with the Base64 URL-encoded strings.
     $args->publicKey->challenge = $base64urlChallenge;
     $args->publicKey->user->id = $userIdEncoded;
     
+    // We will save these in the session, which must be preserved for the next step.
     $_SESSION['registerChallenge'] = $base64urlChallenge;
     $_SESSION['registerUserID'] = $userId;
+    $_SESSION['registerDisplayName'] = $displayName;
 
     header('Content-Type: application/json');
     echo json_encode($args);

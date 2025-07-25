@@ -18,41 +18,66 @@
     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
     CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+
+/**
+This is the second step in the registration process.
+
+This is called via POST, and contains two JSON arguments in the POST body:
+
+- clientDataJSON: This is the client data that was supplied in the first step, processed by the app.
+- attestationObject: This is the app-supplied registration attestation.
+*/
+
 require 'vendor/autoload.php';
 require_once "./Config.php";
+
+// We will be using a shared HTTP session.
 session_start();
 
+// We rely on the WebAuthn library.
 use lbuchs\WebAuthn\WebAuthn;
 
-$rawPostData = file_get_contents("php://input");
-$input = json_decode($rawPostData, true);
-
-$userId = $_SESSION['registerUserID'];
-
-$webAuthn = new WebAuthn(ConfigW::$g_relying_party_name, $_SERVER['HTTP_HOST']);
-
-$challengeStr = base64url_decode($_SESSION['registerChallenge']);
+// This is how we extract the supplied arguments from the POST (they may not show up in the $_POST environment variable).
+$input = json_decode(file_get_contents("php://input"), true);
 $clientDataJSON = base64_decode($input['clientDataJSON']);
 $attestationObject = base64_decode($input['attestationObject']);
 
-try {
-    $data = $webAuthn->processCreate($clientDataJSON, $attestationObject, $challengeStr);
+// We also fetch the three session-transmitted properties.
+$userId = $_SESSION['registerUserID'];
+$displayName = $_SESSION['registerDisplayName'];
+$challenge = base64url_decode($_SESSION['registerChallenge']);
 
-    $signCount = $signCount = intval($data->signCount);
-    
-    $params = [
-        $userId,
-        $data->credentialId,
-        $data->credentialPublicKey
-    ];
-    
-    // Store in DB
-    $pdo = new PDO(ConfigW::$g_db_type.':host='.ConfigW::$g_db_host.';dbname='.ConfigW::$g_db_name, ConfigW::$g_db_login, ConfigW::$g_db_password);
-    $stmt = $pdo->prepare('INSERT INTO webauthn_credentials (user_id, credential_id, public_key) VALUES (?, ?, ?)');
-    $stmt->execute($params);
-
-    echo json_encode(['success' => true]);
-} catch (Exception $e) {
+// We need all the information from the first step, plus the information supplied by the app.
+if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientDataJSON) || empty($attestationObject)) {
     http_response_code(400);
-    echo json_encode(['error' => $e->getMessage()]);
+    echo '&#128169;';   // Oh, poo.
+} else {
+    // Create a new WebAuthn instance, using our organization name, and the serving host.
+    $webAuthn = new WebAuthn(ConfigW::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+    
+    try {
+        // This is where the data to be stored for the subsequent logins is generated.
+        $data = $webAuthn->processCreate($clientDataJSON, $attestationObject, $challenge);
+        
+        // We will be storing all this into the database.
+        $params = [
+            $userId,
+            $data->credentialId,
+            $displayName,
+            $data->credentialPublicKey
+        ];
+        
+        // Store in the database webauthn table (WE use PDO, for safety).
+        $pdo = new PDO( ConfigW::$g_db_type.':host='.ConfigW::$g_db_host.';dbname='.ConfigW::$g_db_name,
+                        ConfigW::$g_db_login,
+                        ConfigW::$g_db_password);
+                        
+        $stmt = $pdo->prepare('INSERT INTO webauthn_credentials (user_id, credential_id, display_name, public_key) VALUES (?, ?, ?)');
+        $stmt->execute($params);
+    
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
 }

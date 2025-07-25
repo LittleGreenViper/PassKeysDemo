@@ -1,5 +1,11 @@
 # Passkeys Demo Project
 
+## DEPENDENCIES
+
+The server side of this project relies on the well-established [WebAuthn PHP Library](https://github.com/lbuchs/WebAuthn).
+
+The app side requires iOS 17 or greater.
+
 ## LICENSE:
 
 ### MIT License
