@@ -16,8 +16,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "D499A5A72E33ACF4001593B7"
-               BuildableName = "PassKeysDemo.app"
-               BlueprintName = "PassKeysDemo"
+               BuildableName = "PassKeysDemoUIKit.app"
+               BlueprintName = "PassKeysDemoUIKit"
                ReferencedContainer = "container:PassKeysDemo.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -45,8 +45,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "D499A5A72E33ACF4001593B7"
-            BuildableName = "PassKeysDemo.app"
-            BlueprintName = "PassKeysDemo"
+            BuildableName = "PassKeysDemoUIKit.app"
+            BlueprintName = "PassKeysDemoUIKit"
             ReferencedContainer = "container:PassKeysDemo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -62,8 +62,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "D499A5A72E33ACF4001593B7"
-            BuildableName = "PassKeysDemo.app"
-            BlueprintName = "PassKeysDemo"
+            BuildableName = "PassKeysDemoUIKit.app"
+            BlueprintName = "PassKeysDemoUIKit"
             ReferencedContainer = "container:PassKeysDemo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
