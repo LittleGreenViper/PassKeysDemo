@@ -72,7 +72,7 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
                         ConfigW::$g_db_login,
                         ConfigW::$g_db_password);
                         
-        $stmt = $pdo->prepare('INSERT INTO webauthn_credentials (user_id, credential_id, display_name, public_key) VALUES (?, ?, ?)');
+        $stmt = $pdo->prepare('INSERT INTO webauthn_credentials (user_id, credential_id, display_name, public_key) VALUES (?, ?, ?, ?)');
         $stmt->execute($params);
     
         echo json_encode(['success' => true]);
