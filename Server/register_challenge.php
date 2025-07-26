@@ -49,7 +49,7 @@ use lbuchs\WebAuthn\WebAuthn;
 $userId = "";
 $displayName = "";
 
-// We pick through each of the supplied arguments, and get the user ID and the display name. We don't care about anything else.
+// We pick through each of the supplied GET arguments, and get the user ID and the display name. We don't care about anything else.
 $auth = explode('&', $_SERVER['QUERY_STRING']);
 foreach ($auth as $query) {
     $exp = explode('=', $query);
