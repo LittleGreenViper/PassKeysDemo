@@ -30,7 +30,22 @@ class PKD_ConnectViewController: UIViewController {
     /* ###################################################################### */
     /**
      */
-    let relyingParty = "littlegreenviper.com"
+    static let relyingParty = Bundle.main.defaultRelyingPartyString
+    
+    /* ###################################################################### */
+    /**
+     */
+    static let baseURLString = Bundle.main.defaultBaseURIString
+    
+    /* ###################################################################### */
+    /**
+     */
+    static let userIDString = Bundle.main.defaultUserIDString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    
+    /* ###################################################################### */
+    /**
+     */
+    static let userNameString = Bundle.main.defaultUserNameString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
 
     /* ###################################################################### */
     /**
@@ -78,7 +93,7 @@ class PKD_ConnectViewController: UIViewController {
     /**
      */
     @objc func registerPasskey() {
-        fetchRegistrationOptions(from: "https://littlegreenviper.com/PassKeysDemo/register_challenge.php?user_id=test@example.com&display_name=Chris%20M.") { InResponse in
+        fetchRegistrationOptions(from: "\(Self.baseURLString)/register_challenge.php?user_id=\(Self.userIDString)&display_name=\(Self.userNameString)") { InResponse in
             guard let publicKey = InResponse?.publicKey,
                   let challengeData = publicKey.challenge.base64urlDecodedData,
                   let userIDData = publicKey.user.id.base64urlDecodedData
@@ -108,7 +123,7 @@ class PKD_ConnectViewController: UIViewController {
     /**
      */
     @objc func loginWithPasskey() {
-        fetchChallenge(from: "https://littlegreenviper.com/PassKeysDemo/login_challenge.php") { inResult in
+        fetchChallenge(from: "\(Self.baseURLString)/login_challenge.php") { inResult in
             switch inResult {
             case .success(let challengeDict):
                 guard let publicKey = challengeDict["publicKey"] as? [String: Any],
@@ -118,7 +133,7 @@ class PKD_ConnectViewController: UIViewController {
                     return
                 }
                 
-                let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self.relyingParty)
+                let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: Self.relyingParty)
                 let request = provider.createCredentialAssertionRequest(challenge: challengeData)
                 
                 let controller = ASAuthorizationController(authorizationRequests: [request])
@@ -226,7 +241,7 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
                 "attestationObject": credential.rawAttestationObject?.base64EncodedString() ?? ""
             ]
 
-            postResponse(to: "https://littlegreenviper.com/PassKeysDemo/register_response.php", payload: payload)
+            postResponse(to: "\(Self.baseURLString)/register_response.php", payload: payload)
         } else if let assertion = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
             struct AssertionJSON: Codable {
                 var type: String = ""
@@ -247,7 +262,7 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
                 print("From Us: " + decodedString)
             }
 
-            postResponse(to: "https://littlegreenviper.com/PassKeysDemo/login_response.php", payload: payload)
+            postResponse(to: "\(Self.baseURLString)/login_response.php", payload: payload)
         }
     }
 

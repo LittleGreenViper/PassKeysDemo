@@ -41,7 +41,7 @@ extension String {
 }
 
 /* ###################################################################################################################################### */
-// MARK:
+// MARK: - Data Extension -
 /* ###################################################################################################################################### */
 extension Data {
     /* ###################################################################### */
@@ -53,4 +53,36 @@ extension Data {
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
     }
+}
+
+/* ###################################################################################################################################### */
+// MARK: - Bundle Extension -
+/* ###################################################################################################################################### */
+/**
+ This extension adds a few simple accessors for some of the more common bundle items.
+ */
+public extension Bundle {
+    /* ################################################################## */
+    /**
+     This returns the bundle-provided relying party string.
+     */
+    var defaultRelyingPartyString: String { object(forInfoDictionaryKey: "PKDDefaultRelyingParty") as? String ?? "" }
+    
+    /* ################################################################## */
+    /**
+     This returns the bundle-provided base URL string.
+     */
+    var defaultBaseURIString: String { object(forInfoDictionaryKey: "PKDDefaultBaseURI") as? String ?? "" }
+    
+    /* ################################################################## */
+    /**
+     This returns the bundle-provided default user ID string.
+     */
+    var defaultUserIDString: String { object(forInfoDictionaryKey: "PKDDefaultUserID") as? String ?? "" }
+    
+    /* ################################################################## */
+    /**
+     This returns the bundle-provided default display name string.
+     */
+    var defaultUserNameString: String { object(forInfoDictionaryKey: "PKDDefaultUserName") as? String ?? "" }
 }

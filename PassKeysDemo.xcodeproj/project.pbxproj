@@ -85,8 +85,8 @@
 		D499A5CA2E33AD1A001593B7 /* UIKit */ = {
 			isa = PBXGroup;
 			children = (
-				D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */,
 				D441D8C82E33B0C80073A1D4 /* App */,
+				D49D0F6B2E3578A100D7EAE8 /* View Controllers */,
 				D499A5D32E33AE20001593B7 /* Resources */,
 				D499A5D22E33AD1F001593B7 /* Meta */,
 			);
@@ -118,6 +118,14 @@
 				D499A5CA2E33AD1A001593B7 /* UIKit */,
 			);
 			path = PassKeysDemo;
+			sourceTree = "<group>";
+		};
+		D49D0F6B2E3578A100D7EAE8 /* View Controllers */ = {
+			isa = PBXGroup;
+			children = (
+				D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */,
+			);
+			path = "View Controllers";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

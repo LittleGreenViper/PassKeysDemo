@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>PKDDefaultBaseURI</key>
+	<string>https://littlegreenviper.com/PassKeysDemo</string>
+	<key>PKDDefaultRelyingParty</key>
+	<string>littlegreenviper.com</string>
+	<key>PKDDefaultUserID</key>
+	<string>test@example.com</string>
+	<key>PKDDefaultUserName</key>
+	<string>Test User</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
