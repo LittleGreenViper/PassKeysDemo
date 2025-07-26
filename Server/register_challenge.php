@@ -66,7 +66,7 @@ if (empty($userId) || empty($displayName)) {
     echo '&#128169;';   // Oh, poo.
 } else {
     // Create a new WebAuthn instance, using our organization name, and the serving host.
-    $webAuthn = new WebAuthn(ConfigW::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+    $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
    
     // We will use the function to create a registration object, which will need to be presented in a subsequent call.
     $args = $webAuthn->getCreateArgs($userId, $displayName, $userId);

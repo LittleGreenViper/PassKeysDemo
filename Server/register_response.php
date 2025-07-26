@@ -53,7 +53,7 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
     echo '&#128169;';   // Oh, poo.
 } else {
     // Create a new WebAuthn instance, using our organization name, and the serving host.
-    $webAuthn = new WebAuthn(ConfigW::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+    $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
     
     try {
         // This is where the data to be stored for the subsequent logins is generated.
@@ -68,9 +68,9 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
         ];
         
         // Store in the database webauthn table (WE use PDO, for safety).
-        $pdo = new PDO( ConfigW::$g_db_type.':host='.ConfigW::$g_db_host.';dbname='.ConfigW::$g_db_name,
-                        ConfigW::$g_db_login,
-                        ConfigW::$g_db_password);
+        $pdo = new PDO( Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name,
+                        Config::$g_db_login,
+                        Config::$g_db_password);
                         
         $stmt = $pdo->prepare('INSERT INTO webauthn_credentials (user_id, credential_id, display_name, public_key) VALUES (?, ?, ?, ?)');
         $stmt->execute($params);

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */; };
 		D499A5CB2E33AD1A001593B7 /* PKD_AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C12E33AD1A001593B7 /* PKD_AppDelegate.swift */; };
 		D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C82E33AD1A001593B7 /* PKD_SceneDelegate.swift */; };
 		D499A5CD2E33AD1A001593B7 /* PKD_ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C92E33AD1A001593B7 /* PKD_ViewController.swift */; };
@@ -16,6 +17,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_ConnectViewController.swift; sourceTree = "<group>"; };
+		D40941472E34FDE8001431EB /* PassKeysDemoUIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PassKeysDemoUIKit.entitlements; sourceTree = "<group>"; };
 		D499A5A82E33ACF4001593B7 /* PassKeysDemoUIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PassKeysDemoUIKit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D499A5C12E33AD1A001593B7 /* PKD_AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_AppDelegate.swift; sourceTree = "<group>"; };
 		D499A5C22E33AD1A001593B7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -49,6 +52,7 @@
 		D499A59F2E33ACF4001593B7 = {
 			isa = PBXGroup;
 			children = (
+				D40941472E34FDE8001431EB /* PassKeysDemoUIKit.entitlements */,
 				D499A5C02E33ACFD001593B7 /* Sources */,
 				D499A5A92E33ACF4001593B7 /* Products */,
 			);
@@ -74,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				D499A5C92E33AD1A001593B7 /* PKD_ViewController.swift */,
+				D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */,
 				D441D8C82E33B0C80073A1D4 /* App */,
 				D499A5D32E33AE20001593B7 /* Resources */,
 				D499A5D22E33AD1F001593B7 /* Meta */,
@@ -182,6 +187,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D499A5CB2E33AD1A001593B7 /* PKD_AppDelegate.swift in Sources */,
+				D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */,
 				D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */,
 				D499A5CD2E33AD1A001593B7 /* PKD_ViewController.swift in Sources */,
 			);
@@ -214,6 +220,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PassKeysDemoUIKit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = P53V4JS928;
@@ -244,6 +251,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PassKeysDemoUIKit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = P53V4JS928;
