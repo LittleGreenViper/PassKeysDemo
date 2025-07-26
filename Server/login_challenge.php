@@ -26,7 +26,7 @@ use lbuchs\WebAuthn\WebAuthn;
 
 try {
     // Load credentials from DB
-    $pdo = new PDO(ConfigW::$g_db_type.':host='.ConfigW::$g_db_host.';dbname='.ConfigW::$g_db_name, ConfigW::$g_db_login, ConfigW::$g_db_password);
+    $pdo = new PDO(Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name, Config::$g_db_login, Config::$g_db_password);
     $stmt = $pdo->prepare('SELECT credential_id FROM webauthn_credentials WHERE user_id = ?');
     $stmt->execute([$userId]);
     
@@ -38,7 +38,7 @@ try {
     $challenge = random_bytes(32);
     $_SESSION['loginChallenge'] = $challenge;
     
-    $webAuthn = new WebAuthn(ConfigW::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+    $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
     $args = $webAuthn->getGetArgs($credentials);
     $args->publicKey->challenge = base64url_encode($challenge);
 

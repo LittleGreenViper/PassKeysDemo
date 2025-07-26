@@ -18,23 +18,39 @@
     CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-import UIKit
+import Foundation
 
 /* ###################################################################################################################################### */
-// MARK: - Main View Controller Class -
+// MARK: - String Extension -
 /* ###################################################################################################################################### */
-/**
- */
-class PKD_ViewController: UIViewController { }
+extension String {
+    /* ###################################################################### */
+    /**
+     This treats the string as Base64 URL-encoded, and returns a Data instance that represents the encoded contents.
+     */
+    var base64urlDecodedData: Data? {
+        var base64 = self
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let paddingLength = 4 - (base64.count % 4)
+        if paddingLength < 4 {
+            base64 += String(repeating: "=", count: paddingLength)
+        }
+        return Data(base64Encoded: base64)
+    }
+}
 
 /* ###################################################################################################################################### */
-// MARK: Base Class Overrides
+// MARK:
 /* ###################################################################################################################################### */
-extension PKD_ViewController {
+extension Data {
     /* ###################################################################### */
     /**
      */
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    func base64urlEncodedString() -> String {
+        return self.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }

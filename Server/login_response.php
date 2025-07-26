@@ -33,7 +33,7 @@ $authenticatorData = base64_decode($input['authenticatorData']);
 $signature = base64_decode($input['signature']);
 $credentialId = base64url_decode($input['credentialId']);
 $challenge = $_SESSION['loginChallenge'];
-$pdo = new PDO(ConfigW::$g_db_type.':host='.ConfigW::$g_db_host.';dbname='.ConfigW::$g_db_name, ConfigW::$g_db_login, ConfigW::$g_db_password);
+$pdo = new PDO(Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name, Config::$g_db_login, Config::$g_db_password);
 $stmt = $pdo->prepare('SELECT user_id, public_key FROM webauthn_credentials WHERE credential_id = ?');
 $stmt->execute([$credentialId]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -44,7 +44,7 @@ if (!$row) {
     exit;
 }
 
-$webAuthn = new WebAuthn(ConfigW::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+$webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
 
 try {
     $data = $webAuthn->processGet(

@@ -8,9 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */; };
+		D44C206A2E35502C000C8BD0 /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
 		D499A5CB2E33AD1A001593B7 /* PKD_AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C12E33AD1A001593B7 /* PKD_AppDelegate.swift */; };
 		D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C82E33AD1A001593B7 /* PKD_SceneDelegate.swift */; };
-		D499A5CD2E33AD1A001593B7 /* PKD_ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C92E33AD1A001593B7 /* PKD_ViewController.swift */; };
 		D499A5CE2E33AD1A001593B7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C22E33AD1A001593B7 /* Assets.xcassets */; };
 		D499A5D02E33AD1A001593B7 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C52E33AD1A001593B7 /* LaunchScreen.storyboard */; };
 		D499A5D12E33AD1A001593B7 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C72E33AD1A001593B7 /* Main.storyboard */; };
@@ -19,6 +19,7 @@
 /* Begin PBXFileReference section */
 		D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_ConnectViewController.swift; sourceTree = "<group>"; };
 		D40941472E34FDE8001431EB /* PassKeysDemoUIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PassKeysDemoUIKit.entitlements; sourceTree = "<group>"; };
+		D44C20692E355029000C8BD0 /* PKD_Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_Extensions.swift; sourceTree = "<group>"; };
 		D499A5A82E33ACF4001593B7 /* PassKeysDemoUIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PassKeysDemoUIKit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D499A5C12E33AD1A001593B7 /* PKD_AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_AppDelegate.swift; sourceTree = "<group>"; };
 		D499A5C22E33AD1A001593B7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -26,7 +27,6 @@
 		D499A5C42E33AD1A001593B7 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		D499A5C62E33AD1A001593B7 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		D499A5C82E33AD1A001593B7 /* PKD_SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_SceneDelegate.swift; sourceTree = "<group>"; };
-		D499A5C92E33AD1A001593B7 /* PKD_ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_ViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +47,14 @@
 				D499A5C82E33AD1A001593B7 /* PKD_SceneDelegate.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		D44C206B2E3550F8000C8BD0 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				D44C20692E355029000C8BD0 /* PKD_Extensions.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		D499A59F2E33ACF4001593B7 = {
@@ -77,7 +85,6 @@
 		D499A5CA2E33AD1A001593B7 /* UIKit */ = {
 			isa = PBXGroup;
 			children = (
-				D499A5C92E33AD1A001593B7 /* PKD_ViewController.swift */,
 				D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */,
 				D441D8C82E33B0C80073A1D4 /* App */,
 				D499A5D32E33AE20001593B7 /* Resources */,
@@ -107,6 +114,7 @@
 		D499A5D42E33AE58001593B7 /* PassKeysDemo */ = {
 			isa = PBXGroup;
 			children = (
+				D44C206B2E3550F8000C8BD0 /* Shared */,
 				D499A5CA2E33AD1A001593B7 /* UIKit */,
 			);
 			path = PassKeysDemo;
@@ -187,9 +195,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				D499A5CB2E33AD1A001593B7 /* PKD_AppDelegate.swift in Sources */,
+				D44C206A2E35502C000C8BD0 /* PKD_Extensions.swift in Sources */,
 				D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */,
 				D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */,
-				D499A5CD2E33AD1A001593B7 /* PKD_ViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

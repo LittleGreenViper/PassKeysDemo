@@ -27,9 +27,19 @@ import AuthenticationServices
 /**
  */
 class PKD_ConnectViewController: UIViewController {
+    /* ###################################################################### */
+    /**
+     */
     let relyingParty = "littlegreenviper.com"
+
+    /* ###################################################################### */
+    /**
+     */
     var challenge: Data?
     
+    /* ###################################################################### */
+    /**
+     */
     let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.httpCookieStorage = HTTPCookieStorage.shared
@@ -37,6 +47,9 @@ class PKD_ConnectViewController: UIViewController {
         return URLSession(configuration: config)
     }()
     
+    /* ###################################################################### */
+    /**
+     */
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
@@ -61,11 +74,14 @@ class PKD_ConnectViewController: UIViewController {
         ])
     }
     
+    /* ###################################################################### */
+    /**
+     */
     @objc func registerPasskey() {
         fetchRegistrationOptions(from: "https://littlegreenviper.com/PassKeysDemo/register_challenge.php?user_id=test@example.com&display_name=Chris%20M.") { InResponse in
             guard let publicKey = InResponse?.publicKey,
-                  let challengeData = publicKey.challenge.base64urlDecodedData(),
-                  let userIDData = publicKey.user.id.base64urlDecodedData()
+                  let challengeData = publicKey.challenge.base64urlDecodedData,
+                  let userIDData = publicKey.user.id.base64urlDecodedData
             else {
                 print("Invalid Base64URL in server response")
                 return
@@ -88,12 +104,15 @@ class PKD_ConnectViewController: UIViewController {
         }
     }
     
+    /* ###################################################################### */
+    /**
+     */
     @objc func loginWithPasskey() {
         fetchChallenge(from: "https://littlegreenviper.com/PassKeysDemo/login_challenge.php") { inResult in
             switch inResult {
             case .success(let challengeDict):
                 guard let publicKey = challengeDict["publicKey"] as? [String: Any],
-                      let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData()
+                      let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData
                 else {
                     print("Invalid challenge format")
                     return
@@ -112,6 +131,9 @@ class PKD_ConnectViewController: UIViewController {
         }
     }
     
+    /* ###################################################################### */
+    /**
+     */
     struct PublicKeyCredentialCreationOptions: Decodable {
         struct PublicKey: Decodable {
             let challenge: String
@@ -132,6 +154,9 @@ class PKD_ConnectViewController: UIViewController {
         let publicKey: PublicKey
     }
     
+    /* ###################################################################### */
+    /**
+     */
     func fetchRegistrationOptions(from inURLString: String, completion: @escaping (PublicKeyCredentialCreationOptions?) -> Void) {
         guard let url = URL(string: inURLString)
         else {
@@ -159,6 +184,9 @@ class PKD_ConnectViewController: UIViewController {
         task.resume()
     }
 
+    /* ###################################################################### */
+    /**
+     */
     func fetchChallenge(from urlString: String, completion: @escaping (Result<[String: Any], Error>) -> Void) {
         print("URL: \(urlString)")
         guard let url = URL(string: urlString) else { return }
@@ -171,7 +199,7 @@ class PKD_ConnectViewController: UIViewController {
             guard let data = inData,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let publicKey = json["publicKey"] as? [String: Any],
-                  let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData()
+                  let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData
             else {
                 completion(.failure(NSError(domain: "json", code: 1)))
                 return
@@ -184,7 +212,13 @@ class PKD_ConnectViewController: UIViewController {
     }
 }
 
+/* ###################################################################################################################################### */
+// MARK:
+/* ###################################################################################################################################### */
 extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
+    /* ###################################################################### */
+    /**
+     */
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
         if let credential = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration {
             let payload: [String: String] = [
@@ -198,14 +232,6 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
                 var type: String = ""
                 var challenge: String = ""
                 var origin: String = ""
-            }
-
-            if let decoded = try? JSONSerialization.jsonObject(with: assertion.rawClientDataJSON),
-               let json = decoded as? [String: Any],
-               let clientChallenge = json["challenge"] as? String {
-
-                print("ClientDataJSON challenge: \(clientChallenge)")
-                print("Server-issued challenge: \(self.challenge?.base64urlEncodedString() ?? "")")
             }
             
             let payload: [String: String] = [
@@ -225,6 +251,9 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
         }
     }
 
+    /* ###################################################################### */
+    /**
+     */
     func postResponse(to urlString: String, payload: [String: String]) {
         guard let url = URL(string: urlString),
               let responseData = try? JSONSerialization.data(withJSONObject: payload),
@@ -246,33 +275,20 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
         task.resume()
     }
 
+    /* ###################################################################### */
+    /**
+     */
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError inError: Error) {
         print("Authorization error: \(inError)")
     }
 }
 
+/* ###################################################################################################################################### */
+// MARK:
+/* ###################################################################################################################################### */
 extension PKD_ConnectViewController: ASAuthorizationControllerPresentationContextProviding {
+    /* ###################################################################### */
+    /**
+     */
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor { self.view?.window ?? UIWindow() }
-}
-
-extension String {
-    func base64urlDecodedData() -> Data? {
-        var base64 = self
-            .replacingOccurrences(of: "-", with: "+")
-            .replacingOccurrences(of: "_", with: "/")
-        let paddingLength = 4 - (base64.count % 4)
-        if paddingLength < 4 {
-            base64 += String(repeating: "=", count: paddingLength)
-        }
-        return Data(base64Encoded: base64)
-    }
-}
-
-extension Data {
-    func base64urlEncodedString() -> String {
-        return self.base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "=", with: "")
-    }
 }
