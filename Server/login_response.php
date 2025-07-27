@@ -39,25 +39,24 @@ $stmt->execute([$credentialId]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$row) {
-    http_response_code(400);
+    http_response_code(404);
     echo json_encode(['error' => 'Credential not found']);
-    exit;
-}
-
-$webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
-
-try {
-    $data = $webAuthn->processGet(
-        $clientDataJSON,
-        $authenticatorData,
-        $signature,
-        $row['public_key'],
-        $challenge,
-        $credentialId
-    );
-
-    echo($row['user_id']);
-} catch (Exception $e) {
-    http_response_code(400);
-    echo json_encode(['error' => $e->getMessage()]);
+} else {
+    $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+    
+    try {
+        $data = $webAuthn->processGet(
+            $clientDataJSON,
+            $authenticatorData,
+            $signature,
+            $row['public_key'],
+            $challenge,
+            $credentialId
+        );
+    
+        echo($row['user_id']);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
 }

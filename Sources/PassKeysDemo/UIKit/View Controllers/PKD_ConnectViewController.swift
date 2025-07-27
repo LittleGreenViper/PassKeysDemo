@@ -25,8 +25,77 @@ import AuthenticationServices
 // MARK: - Passkeys Interaction View Controller -
 /* ###################################################################################################################################### */
 /**
+ This is the single view controller for the UIKit version of the PassKeys demo.
+ 
+ If the user has not registerd a passkey, they are presented with a register button.
  */
 class PKD_ConnectViewController: UIViewController {
+    /* ################################################################################################################################## */
+    // MARK: Used For Fetching Registration Data
+    /* ################################################################################################################################## */
+    /**
+     */
+    private struct _PublicKeyCredentialCreationOptions: Decodable {
+        /* ############################################################################################################################## */
+        // MARK:
+        /* ############################################################################################################################## */
+        /**
+         */
+        struct PublicKey: Decodable {
+            /* ############################################################## */
+            /**
+             */
+            let challenge: String
+
+            /* ############################################################## */
+            /**
+             */
+            let rp: RP
+
+            /* ############################################################## */
+            /**
+             */
+            let user: User
+
+            /* ############################################################## */
+            /**
+             */
+            struct RP: Decodable {
+                /* ########################################################## */
+                /**
+                 */
+                let id: String
+            }
+
+            /* ########################################################################################################################## */
+            // MARK:
+            /* ########################################################################################################################## */
+            /**
+             */
+            struct User: Decodable {
+                /* ########################################################## */
+                /**
+                 */
+                let id: String
+
+                /* ########################################################## */
+                /**
+                 */
+                let name: String
+            }
+        }
+
+        /* ################################################################## */
+        /**
+         */
+        let publicKey: PublicKey
+    }
+
+    /* ###################################################################### */
+    /**
+     */
+    static let errorResponseString = "Credential not found"
+    
     /* ###################################################################### */
     /**
      */
@@ -46,11 +115,6 @@ class PKD_ConnectViewController: UIViewController {
     /**
      */
     static let userNameString = Bundle.main.defaultUserNameString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-
-    /* ###################################################################### */
-    /**
-     */
-    var challenge: Data?
     
     /* ###################################################################### */
     /**
@@ -61,7 +125,79 @@ class PKD_ConnectViewController: UIViewController {
         config.httpCookieAcceptPolicy = .always
         return URLSession(configuration: config)
     }()
-    
+
+    /* ###################################################################### */
+    /**
+     */
+    var challenge: Data?
+}
+
+/* ###################################################################################################################################### */
+// MARK:
+/* ###################################################################################################################################### */
+extension PKD_ConnectViewController {
+    /* ###################################################################### */
+    /**
+     */
+    private func _fetchRegistrationOptions(from inURLString: String, completion: @escaping (_PublicKeyCredentialCreationOptions?) -> Void) {
+        guard let url = URL(string: inURLString)
+        else {
+            completion(nil)
+            return
+        }
+        
+        let task = session.dataTask(with: url) { inData, _, error in
+            guard let data = inData else {
+                print("Failed to fetch options: \(error?.localizedDescription ?? "Unknown error")")
+                completion(nil)
+                return
+            }
+            
+            do {
+                let decoder = JSONDecoder()
+                let options = try decoder.decode(_PublicKeyCredentialCreationOptions.self, from: data)
+                completion(options)
+            } catch {
+                print("JSON decoding error: \(error)")
+                completion(nil)
+            }
+        }
+        
+        task.resume()
+    }
+
+    /* ###################################################################### */
+    /**
+     */
+    private func _fetchChallenge(from urlString: String, completion: @escaping (Result<[String: Any], Error>) -> Void) {
+        print("URL: \(urlString)")
+        guard let url = URL(string: urlString) else { return }
+        let task = session.dataTask(with: url) { inData, _, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            
+            guard let data = inData,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let publicKey = json["publicKey"] as? [String: Any],
+                  let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData
+            else {
+                completion(.failure(NSError(domain: "json", code: 1)))
+                return
+            }
+            
+            self.challenge = challengeData
+            completion(.success(json))
+        }
+        task.resume()
+    }
+}
+
+/* ###################################################################################################################################### */
+// MARK:
+/* ###################################################################################################################################### */
+extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
      */
@@ -88,12 +224,17 @@ class PKD_ConnectViewController: UIViewController {
             stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
         ])
     }
-    
+}
+
+/* ###################################################################################################################################### */
+// MARK:
+/* ###################################################################################################################################### */
+extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
      */
     @objc func registerPasskey() {
-        fetchRegistrationOptions(from: "\(Self.baseURLString)/register_challenge.php?user_id=\(Self.userIDString)&display_name=\(Self.userNameString)") { InResponse in
+        _fetchRegistrationOptions(from: "\(Self.baseURLString)/register_challenge.php?user_id=\(Self.userIDString)&display_name=\(Self.userNameString)") { InResponse in
             guard let publicKey = InResponse?.publicKey,
                   let challengeData = publicKey.challenge.base64urlDecodedData,
                   let userIDData = publicKey.user.id.base64urlDecodedData
@@ -123,16 +264,17 @@ class PKD_ConnectViewController: UIViewController {
     /**
      */
     @objc func loginWithPasskey() {
-        fetchChallenge(from: "\(Self.baseURLString)/login_challenge.php") { inResult in
+        _fetchChallenge(from: "\(Self.baseURLString)/login_challenge.php") { inResult in
             switch inResult {
             case .success(let challengeDict):
                 guard let publicKey = challengeDict["publicKey"] as? [String: Any],
+                      nil == publicKey["allowedCredentials"],
                       let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData
                 else {
-                    print("Invalid challenge format")
+                    print("No allowed credentials. Aborting request.")
                     return
                 }
-                
+
                 let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: Self.relyingParty)
                 let request = provider.createCredentialAssertionRequest(challenge: challengeData)
                 
@@ -144,86 +286,6 @@ class PKD_ConnectViewController: UIViewController {
                 print("Failed to fetch challenge: \(error)")
             }
         }
-    }
-    
-    /* ###################################################################### */
-    /**
-     */
-    struct PublicKeyCredentialCreationOptions: Decodable {
-        struct PublicKey: Decodable {
-            let challenge: String
-            let rp: RP
-            let user: User
-            // other fields as needed
-
-            struct RP: Decodable {
-                let id: String
-            }
-
-            struct User: Decodable {
-                let id: String
-                let name: String
-            }
-        }
-
-        let publicKey: PublicKey
-    }
-    
-    /* ###################################################################### */
-    /**
-     */
-    func fetchRegistrationOptions(from inURLString: String, completion: @escaping (PublicKeyCredentialCreationOptions?) -> Void) {
-        guard let url = URL(string: inURLString)
-        else {
-            completion(nil)
-            return
-        }
-        
-        let task = session.dataTask(with: url) { inData, _, error in
-            guard let data = inData else {
-                print("Failed to fetch options: \(error?.localizedDescription ?? "Unknown error")")
-                completion(nil)
-                return
-            }
-            
-            do {
-                let decoder = JSONDecoder()
-                let options = try decoder.decode(PublicKeyCredentialCreationOptions.self, from: data)
-                completion(options)
-            } catch {
-                print("JSON decoding error: \(error)")
-                completion(nil)
-            }
-        }
-        
-        task.resume()
-    }
-
-    /* ###################################################################### */
-    /**
-     */
-    func fetchChallenge(from urlString: String, completion: @escaping (Result<[String: Any], Error>) -> Void) {
-        print("URL: \(urlString)")
-        guard let url = URL(string: urlString) else { return }
-        let task = session.dataTask(with: url) { inData, _, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
-            
-            guard let data = inData,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let publicKey = json["publicKey"] as? [String: Any],
-                  let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData
-            else {
-                completion(.failure(NSError(domain: "json", code: 1)))
-                return
-            }
-            
-            self.challenge = challengeData
-            completion(.success(json))
-        }
-        task.resume()
     }
 }
 
@@ -256,12 +318,6 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
                 "credentialId": assertion.credentialID.base64EncodedString()
             ]
 
-            if let payloadStr = payload["authenticatorData"],
-               let data = Data(base64Encoded: payloadStr),
-               let decodedString = String(data: data, encoding: .utf8) {
-                print("From Us: " + decodedString)
-            }
-
             postResponse(to: "\(Self.baseURLString)/login_response.php", payload: payload)
         }
     }
@@ -280,10 +336,17 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
         request.httpBody = responseData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
-        let task = session.dataTask(with: request) { inData, _, inError in
-            if let data = inData,
-               let response = String(data: data, encoding: .utf8) {
-                print("Server response: \(response)")
+        let task = session.dataTask(with: request) { inData, inResponse, inError in
+            guard let response = inResponse as? HTTPURLResponse else { return }
+            print("Status Code: \(response.statusCode)")
+            if 404 == response.statusCode,
+               let data = inData,
+               let errorResponse = try? JSONDecoder().decode([String: String].self, from: data),
+               Self.errorResponseString == errorResponse["error"] {
+                print("PassKey Not Registred")
+            } else if let data = inData,
+                      let stringData = String(data: data, encoding: .utf8) {
+                print("Server response: \(stringData)")
             }
         }
         
