@@ -32,7 +32,6 @@ $clientDataJSON = base64_decode($input['clientDataJSON']);
 $authenticatorData = base64_decode($input['authenticatorData']);
 $signature = base64_decode($input['signature']);
 $credentialId = base64url_decode($input['credentialId']);
-$challenge = $_SESSION['loginChallenge'];
 $pdo = new PDO(Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name, Config::$g_db_login, Config::$g_db_password);
 $stmt = $pdo->prepare('SELECT user_id, sign_count, public_key FROM webauthn_credentials WHERE credential_id = ?');
 $stmt->execute([$credentialId]);
@@ -52,7 +51,7 @@ if (!$row || empty($credentialPublicKey)) {
             $authenticatorData,
             $signature,
             $credentialPublicKey,
-            $challenge,
+            $_SESSION['loginChallenge'],
             $storedSignCount
         );
 

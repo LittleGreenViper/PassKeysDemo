@@ -44,17 +44,15 @@ try {
     
     $credentials = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $credentials[] = [  'id' => base64url_encode($row['credential_id']),
-                            'transports' => ['internal']
-                        ];
+        $credentials[] = $row['credential_id'];
     }
     
-    if (!empty($row)) {
+    if (!empty($credentials)) {
         $challenge = random_bytes(32);
         $_SESSION['loginChallenge'] = $challenge;
         
         $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
-        $args = $webAuthn->getGetArgs($credentials);
+        $args = $webAuthn->getGetArgs($credentials, 20, false, false, false, false, true);
         $args->publicKey->challenge = base64url_encode($challenge);
     
         header('Content-Type: application/json');
