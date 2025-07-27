@@ -27,22 +27,17 @@ use lbuchs\WebAuthn\Binary\ByteBuffer;
 
 $rawPostData = file_get_contents("php://input");
 $input = json_decode($rawPostData, true);
-$credo = "";
-
-// We pick through each of the supplied GET arguments, and get the credo (if supplied). We don't care about anything else.
-$auth = explode('&', $_SERVER['QUERY_STRING']);
-foreach ($auth as $query) {
-    $exp = explode('=', $query);
-    if ('credo' == $exp[0]) {
-        $credo = rawurldecode(trim($exp[1]));
-    }
-}
 
 $clientDataJSON = base64_decode($input['clientDataJSON']);
 $authenticatorData = base64_decode($input['authenticatorData']);
 $signature = base64_decode($input['signature']);
 $credentialId = base64url_decode($input['credentialId']);
-$challenge = $_SESSION['loginChallenge'];
+
+$challenge = $_SESSION['modifyChallenge'];
+$userId = $_SESSION['userId'];
+$displayName = $_SESSION['displayName'];
+$credo = $_SESSION['credo'];
+
 $pdo = new PDO(Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name, Config::$g_db_login, Config::$g_db_password);
 $stmt = $pdo->prepare('SELECT user_id, display_name, public_key FROM webauthn_credentials WHERE credential_id = ?');
 $stmt->execute([$credentialId]);

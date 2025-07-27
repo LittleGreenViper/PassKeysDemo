@@ -31,6 +31,28 @@ import AuthenticationServices
  */
 class PKD_ConnectViewController: UIViewController {
     /* ################################################################################################################################## */
+    // MARK: Used For Working With User Data
+    /* ################################################################################################################################## */
+    /**
+     */
+    private struct _UserDataStruct: Decodable {
+        /* ################################################################## */
+        /**
+         */
+        let userId: String
+
+        /* ################################################################## */
+        /**
+         */
+        let displayName: String
+
+        /* ################################################################## */
+        /**
+         */
+        let credo: String
+    }
+    
+    /* ################################################################################################################################## */
     // MARK: Used For Fetching Registration Data
     /* ################################################################################################################################## */
     /**
@@ -180,6 +202,48 @@ extension PKD_ConnectViewController {
                 let decoder = JSONDecoder()
                 let options = try decoder.decode(_PublicKeyCredentialCreationOptionsStruct.self, from: data)
                 inCompletion(options)
+            } catch {
+                print("JSON decoding error: \(error)")
+                inCompletion(nil)
+            }
+        }
+        
+        task.resume()
+    }
+    
+    /* ###################################################################### */
+    /**
+     */
+    private func _manageUserData(userData inUserData: _UserDataStruct?, completion inCompletion: @escaping (_UserDataStruct?) -> Void) {
+        var url: URL?
+        
+        if let userID = inUserData?.userId,
+           !userID.isEmpty,
+           let displayName = inUserData?.displayName,
+           !displayName.isEmpty,
+           let credo = inUserData?.credo {
+            url = URL(string: Self._baseURIString + "/modify_response.php?user_id=\(userID)&display_name=\(displayName)&credo=\(credo)")
+        } else {
+            url = URL(string: Self._baseURIString + "/modify_response.php")
+        }
+        
+        guard let url = url
+        else {
+            inCompletion(nil)
+            return
+        }
+        
+        let task = _session.dataTask(with: url) { inData, _, error in
+            guard let data = inData else {
+                print("Failed to fetch options: \(error?.localizedDescription ?? "Unknown error")")
+                inCompletion(nil)
+                return
+            }
+            
+            do {
+                let decoder = JSONDecoder()
+                let userData = try decoder.decode(_UserDataStruct.self, from: data)
+                inCompletion(userData)
             } catch {
                 print("JSON decoding error: \(error)")
                 inCompletion(nil)
