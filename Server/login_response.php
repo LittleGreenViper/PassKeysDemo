@@ -34,25 +34,30 @@ $signature = base64_decode($input['signature']);
 $credentialId = base64url_decode($input['credentialId']);
 $challenge = $_SESSION['loginChallenge'];
 $pdo = new PDO(Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name, Config::$g_db_login, Config::$g_db_password);
-$stmt = $pdo->prepare('SELECT user_id, public_key FROM webauthn_credentials WHERE credential_id = ?');
+$stmt = $pdo->prepare('SELECT user_id, sign_count, public_key FROM webauthn_credentials WHERE credential_id = ?');
 $stmt->execute([$credentialId]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
+$credentialPublicKey = $row['public_key'];
+$storedSignCount = intval($row['sign_count']);
 
-if (!$row) {
+if (!$row || empty($credentialPublicKey)) {
     http_response_code(404);
-    echo json_encode(['error' => 'Credential not found']);
+    echo json_encode(['error' => 'User not found']);
 } else {
     $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
-    
+
     try {
         $data = $webAuthn->processGet(
             $clientDataJSON,
             $authenticatorData,
             $signature,
-            $row['public_key'],
+            $credentialPublicKey,
             $challenge,
-            $credentialId
+            $storedSignCount
         );
+
+        $stmt = $pdo->prepare('UPDATE webauthn_credentials SET sign_count = ? WHERE credential_id = ?');
+        $stmt->execute([intval($data->signCount), $credentialId]);
     
         echo($row['user_id']);
     } catch (Exception $e) {
