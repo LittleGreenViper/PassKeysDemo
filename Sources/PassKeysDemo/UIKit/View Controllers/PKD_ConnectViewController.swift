@@ -188,7 +188,7 @@ extension PKD_ConnectViewController {
         
         task.resume()
     }
-
+    
     /* ###################################################################### */
     /**
      This fetches the login options, for logging in an existing user.
@@ -198,12 +198,21 @@ extension PKD_ConnectViewController {
      */
     private func _fetchChallenge(from inURLString: String, completion inCompletion: @escaping (Result<[String: Any], Error>) -> Void) {
         guard let url = URL(string: inURLString) else { return }
-        let task = _session.dataTask(with: url) { inData, _, error in
-            if let error = error {
+        let task = _session.dataTask(with: url) { inData, inResponse, inError in
+            if let error = inError {
                 inCompletion(.failure(error))
                 return
             }
             
+            if let response = inResponse as? HTTPURLResponse,
+               404 == response.statusCode,
+               let data = inData,
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errorString = json["error"] as? String,
+               Self._errorResponseString == errorString {
+                inCompletion(.failure(NSError(domain: "user", code: 2)))
+            }
+
             guard let data = inData,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   nil != json["publicKey"] as? [String: Any]
@@ -282,7 +291,29 @@ extension PKD_ConnectViewController {
     /**
      */
     @objc func loginWithPasskey() {
-        _fetchChallenge(from: "\(Self._baseURIString)/login_challenge.php") { inResult in
+        _fetchChallenge(from: "\(Self._baseURIString)/login_challenge.php?user_id=\(Self._userIDString)") { inResult in
+            /* ############################################################ */
+            /**
+             Called to tell the user they need to register, first.
+             */
+            func _alertAndRegister() {
+                DispatchQueue.main.async {
+                    if let presentedBy = PKD_SceneDelegate.currentWindow?.rootViewController {
+                        let style: UIAlertController.Style = .alert
+                        let alertController = UIAlertController(title: "Must Register", message: "Since you have not registered a passkey yet, you must register first.", preferredStyle: style)
+
+                        let okAction = UIAlertAction(title: "OK", style: .cancel) { _ in
+                            self._loginAfter = true
+                            self.registerPasskey()
+                        }
+                        
+                        alertController.addAction(okAction)
+                        
+                        presentedBy.present(alertController, animated: true, completion: nil)
+                    }
+                }
+            }
+
             self._loginAfter = false
             switch inResult {
             case .success(let challengeDict):
@@ -302,7 +333,11 @@ extension PKD_ConnectViewController {
                 controller.presentationContextProvider = self
                 controller.performRequests()
             case .failure(let error):
-                print("Failed to fetch challenge: \(error)")
+                if "user" == (error as NSError).domain {
+                    _alertAndRegister()
+                } else {
+                    print("Failed to fetch challenge: \(error)")
+                }
             }
         }
     }
@@ -358,15 +393,8 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
         let task = _session.dataTask(with: request) { inData, inResponse, inError in
             guard let response = inResponse as? HTTPURLResponse else { return }
             print("Status Code: \(response.statusCode)")
-            if 404 == response.statusCode,
-               let data = inData,
-               let errorResponse = try? JSONDecoder().decode([String: String].self, from: data),
-               Self._errorResponseString == errorResponse["error"] {
-                print("User does not exist, creating a new user...")
-                self._loginAfter = true
-                self.registerPasskey()
-            } else if let data = inData,
-                      let stringData = String(data: data, encoding: .utf8) {
+            if let data = inData,
+               let stringData = String(data: data, encoding: .utf8) {
                 if self._loginAfter {
                     print("Had to create a new user, logging in...")
                     self.loginWithPasskey()

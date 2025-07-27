@@ -24,26 +24,45 @@ session_start();
 
 use lbuchs\WebAuthn\WebAuthn;
 
+// We will be extracting a User ID from what the app sends in, for the challenge query. Default is nothing.
+$userId = "";
+
+// We pick through each of the supplied GET arguments, and get the user ID. We don't care about anything else.
+$auth = explode('&', $_SERVER['QUERY_STRING']);
+foreach ($auth as $query) {
+    $exp = explode('=', $query);
+    if ('user_id' == $exp[0]) {
+        $userId = rawurldecode(trim($exp[1]));
+    }
+}
+
 try {
     // Load credentials from DB
     $pdo = new PDO(Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name, Config::$g_db_login, Config::$g_db_password);
-    $stmt = $pdo->prepare('SELECT credential_id FROM webauthn_credentials WHERE user_id = ?');
+    $stmt = $pdo->prepare('SELECT credential_id, sign_count FROM webauthn_credentials WHERE user_id = ?');
     $stmt->execute([$userId]);
     
     $credentials = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $credentials[] = base64url_encode($row['credential_id']);
+        $credentials[] = [  'id' => base64url_encode($row['credential_id']),
+                            'transports' => ['internal']
+                        ];
     }
     
-    $challenge = random_bytes(32);
-    $_SESSION['loginChallenge'] = $challenge;
+    if (!empty($row)) {
+        $challenge = random_bytes(32);
+        $_SESSION['loginChallenge'] = $challenge;
+        
+        $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+        $args = $webAuthn->getGetArgs($credentials);
+        $args->publicKey->challenge = base64url_encode($challenge);
     
-    $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
-    $args = $webAuthn->getGetArgs($credentials);
-    $args->publicKey->challenge = base64url_encode($challenge);
-
-    header('Content-Type: application/json');
-    echo json_encode($args);
+        header('Content-Type: application/json');
+        echo json_encode($args);
+    } else {
+        http_response_code(404);
+        echo json_encode(['error' => 'User not found']);
+    }
 } catch (Exception $e) {
     http_response_code(400);
     echo json_encode(['error' => $e->getMessage()]);
