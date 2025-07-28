@@ -56,12 +56,15 @@ try {
     if (!empty($credentials)) {
         $challenge = random_bytes(32);
         $_SESSION['modifyChallenge'] = $challenge;
-        $_SESSION['userID'] = $userId;
         $_SESSION['displayName'] = $displayName;
         $_SESSION['credo'] = $credo;
         
+        $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+        $args = $webAuthn->getGetArgs($credentials, 20, false, false, false, false, true);
+        $args->publicKey->challenge = base64url_encode($challenge);
+        
         header('Content-Type: application/json');
-        echo json_encode(['success' => true, 'challenge' => base64url_encode($challenge)]);
+        echo json_encode($args);
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'User not found']);

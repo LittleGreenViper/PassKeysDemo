@@ -34,7 +34,6 @@ $signature = base64_decode($input['signature']);
 $credentialId = base64url_decode($input['credentialId']);
 
 $challenge = $_SESSION['modifyChallenge'];
-$userId = $_SESSION['userId'];
 $displayName = $_SESSION['displayName'];
 $credo = $_SESSION['credo'];
 
@@ -43,47 +42,62 @@ $stmt = $pdo->prepare('SELECT user_id, display_name, public_key FROM webauthn_cr
 $stmt->execute([$credentialId]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$row) {
-    http_response_code(400);
+if (empty($row) || empty($row['user_id'])) {
+    http_response_code(404);
     echo json_encode(['error' => 'Credential not found']);
-    exit;
-}
+} else {
+    $row = $row[0];
 
-$webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
-
-try {
-    $data = $webAuthn->processGet(
-        $clientDataJSON,
-        $authenticatorData,
-        $signature,
-        $row['public_key'],
-        $challenge,
-        $credentialId
-    );
-
-    $stmt = $pdo->prepare('SELECT display_name, credo FROM passkeys_demo_users WHERE user_id = ?');
-    $stmt->execute([$row['user_id']]);
-    $row2 = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (empty($row2)) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Credential not found']);
-        $stmt = $pdo->prepare('INSERT INTO passkeys_demo_users (user_id, display_name, credo) VALUES (?, ?, ?)');
-        $stmt->execute([$row['user_id'], $row['display_name'], ""]);
-        $row2 = ['display_name' => $row['display_name'], 'credo' => $credo];
-    } elseif (!empty($credo)) {
-        $stmt = $pdo->prepare('UPDATE passkeys_demo_users SET credo = (?) WHERE user_id = ?');
-        $stmt->execute([$credo, $row['user_id']]);
-        $row2 = ['display_name' => $row['display_name'], 'credo' => $credo];
+    if (empty($displayName)) {
+        $displayName = $row['display_name'];
     }
     
-    if (!empty($row2)) {
-        echo json_encode(['display_name' => $row2['display_name'], 'credo' => $row2['credo']]);
-    } else {
-        http_response_code(400);
-        echo json_encode(['error' => 'Unable to update']);
+    if (NULL == $credo) {
+        $credo = '';
     }
-} catch (Exception $e) {
-    http_response_code(400);
-    echo json_encode(['error' => $e->getMessage()]);
+    
+    $userID = $row['user_id'];
+    
+    $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+    
+    try {
+        $data = $webAuthn->processGet(
+            $clientDataJSON,
+            $authenticatorData,
+            $signature,
+            $row['public_key'],
+            $challenge,
+            $credentialId
+        );
+    
+        $stmt = $pdo->prepare('UPDATE webauthn_credentials SET sign_count = ? WHERE credential_id = ?');
+        $stmt->execute([intval($data->signCount), $credentialId]);
+    
+        $stmt = $pdo->prepare('SELECT display_name, credo FROM passkeys_demo_users WHERE user_id = ?');
+        $stmt->execute([$row['user_id']]);
+        $row2 = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if (empty($row2)) {
+            if (!empty($userId) && !empty($displayName)) {
+                $stmt = $pdo->prepare('INSERT INTO passkeys_demo_users (user_id, display_name, credo) VALUES (?, ?, ?)');
+                $stmt->execute([$row['user_id'], $displayName, ""]);
+                $row2 = ['display_name' => $displayName, 'credo' => $credo];
+            } else {
+                http_response_code(404);
+                echo json_encode(['error' => 'User not found']);
+                exit;
+            }
+        } elseif (!empty($userId) && !empty($displayName)) {
+        }
+        
+        if (!empty($row2)) {
+            echo json_encode(['display_name' => $row2['display_name'], 'credo' => $row2['credo']]);
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'Unable to update']);
+        }
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
 }

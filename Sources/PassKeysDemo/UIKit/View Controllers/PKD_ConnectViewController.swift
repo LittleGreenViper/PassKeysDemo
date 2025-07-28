@@ -213,48 +213,6 @@ extension PKD_ConnectViewController {
     
     /* ###################################################################### */
     /**
-     */
-    private func _manageUserData(userData inUserData: _UserDataStruct?, completion inCompletion: @escaping (_UserDataStruct?) -> Void) {
-        var url: URL?
-        
-        if let userID = inUserData?.userId,
-           !userID.isEmpty,
-           let displayName = inUserData?.displayName,
-           !displayName.isEmpty,
-           let credo = inUserData?.credo {
-            url = URL(string: Self._baseURIString + "/modify_response.php?user_id=\(userID)&display_name=\(displayName)&credo=\(credo)")
-        } else {
-            url = URL(string: Self._baseURIString + "/modify_response.php")
-        }
-        
-        guard let url = url
-        else {
-            inCompletion(nil)
-            return
-        }
-        
-        let task = _session.dataTask(with: url) { inData, _, error in
-            guard let data = inData else {
-                print("Failed to fetch options: \(error?.localizedDescription ?? "Unknown error")")
-                inCompletion(nil)
-                return
-            }
-            
-            do {
-                let decoder = JSONDecoder()
-                let userData = try decoder.decode(_UserDataStruct.self, from: data)
-                inCompletion(userData)
-            } catch {
-                print("JSON decoding error: \(error)")
-                inCompletion(nil)
-            }
-        }
-        
-        task.resume()
-    }
-    
-    /* ###################################################################### */
-    /**
      This fetches the login options, for logging in an existing user.
      
      - parameter inURLString: The string to use as a URI for the registration.
@@ -304,7 +262,7 @@ extension PKD_ConnectViewController {
         
         let loginButton = UIButton(type: .system)
         loginButton.setTitle("Login", for: .normal)
-        loginButton.addTarget(self, action: #selector(loginWithPasskey), for: .touchUpInside)
+        loginButton.addTarget(self, action: #selector(accessServerWithPasskey), for: .touchUpInside)
         
         let stack = UIStackView(arrangedSubviews: [loginButton])
         stack.axis = .vertical
@@ -354,8 +312,8 @@ extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
      */
-    @objc func loginWithPasskey() {
-        _fetchChallenge(from: "\(Self._baseURIString)/login_challenge.php?user_id=\(Self._userIDString)") { inResult in
+    @objc func accessServerWithPasskey() {
+        _fetchChallenge(from: "\(Self._baseURIString)/modify_challenge.php?user_id=\(Self._userIDString)") { inResult in
             /* ############################################################ */
             /**
              Called to tell the user they need to register, first.
@@ -385,7 +343,7 @@ extension PKD_ConnectViewController {
                       nil == publicKey["allowedCredentials"],
                       let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData
                 else {
-                    print("No allowed credentials. Registering new user.")
+                    print("No allowed credentials.")
                     return
                 }
 
@@ -436,7 +394,7 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
                 "credentialId": assertion.credentialID.base64EncodedString()
             ]
 
-            postResponse(to: "\(Self._baseURIString)/login_response.php", payload: payload)
+            postResponse(to: "\(Self._baseURIString)/modify_response.php", payload: payload)
         }
     }
 
@@ -461,7 +419,7 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
                let stringData = String(data: data, encoding: .utf8) {
                 if self._loginAfter {
                     print("Had to create a new user, logging in...")
-                    self.loginWithPasskey()
+                    self.accessServerWithPasskey()
                 } else {
                     print("Server response: \(stringData)")
                 }
