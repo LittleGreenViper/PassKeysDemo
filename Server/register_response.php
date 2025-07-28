@@ -76,6 +76,7 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
         $stmt = $pdo->prepare('INSERT INTO webauthn_credentials (user_id, credential_id, display_name, sign_count, public_key) VALUES (?, ?, ?, ?, ?)');
         $stmt->execute($params);
     
+        header('Content-Type: application/json');
         echo json_encode(['success' => $userId]);
     } catch (Exception $e) {
         http_response_code(400);

@@ -86,10 +86,14 @@ if (empty($row) || empty($row['user_id'])) {
                 exit;
             }
         } elseif (!empty($userId) && !empty($displayName)) {
+            $stmt = $pdo->prepare('UPDATE passkeys_demo_users SET display_name = ?, credo = ? WHERE user_id = ?');
+            $stmt->execute([$displayName, $credo, $row['user_id']]);
+            $row2 = ['display_name' => $displayName, 'credo' => $credo];
         }
         
         if (!empty($row2)) {
-            echo json_encode(['display_name' => $row2['display_name'], 'credo' => $row2['credo']]);
+            header('Content-Type: application/json');
+            echo json_encode(['userId' => $row['user_id'], 'displayName' => $row2['display_name'], 'credo' => $row2['credo']]);
         } else {
             http_response_code(400);
             echo json_encode(['error' => 'Unable to update']);
