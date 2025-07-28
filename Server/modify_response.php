@@ -38,7 +38,7 @@ $displayName = $_SESSION['displayName'];
 $credo = $_SESSION['credo'];
 
 $pdo = new PDO(Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name, Config::$g_db_login, Config::$g_db_password);
-$stmt = $pdo->prepare('SELECT user_id, display_name, public_key FROM webauthn_credentials WHERE credential_id = ?');
+$stmt = $pdo->prepare('SELECT user_id, display_name, public_key, sign_count FROM webauthn_credentials WHERE credential_id = ?');
 $stmt->execute([$credentialId]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -46,8 +46,6 @@ if (empty($row) || empty($row['user_id'])) {
     http_response_code(404);
     echo json_encode(['error' => 'Credential not found']);
 } else {
-    $row = $row[0];
-
     if (empty($displayName)) {
         $displayName = $row['display_name'];
     }
@@ -56,7 +54,8 @@ if (empty($row) || empty($row['user_id'])) {
         $credo = '';
     }
     
-    $userID = $row['user_id'];
+    $userId = $row['user_id'];
+    $signCount = intval($row['sign_count']);
     
     $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
     
@@ -67,7 +66,7 @@ if (empty($row) || empty($row['user_id'])) {
             $signature,
             $row['public_key'],
             $challenge,
-            $credentialId
+            $signCount
         );
     
         $stmt = $pdo->prepare('UPDATE webauthn_credentials SET sign_count = ? WHERE credential_id = ?');
@@ -76,7 +75,6 @@ if (empty($row) || empty($row['user_id'])) {
         $stmt = $pdo->prepare('SELECT display_name, credo FROM passkeys_demo_users WHERE user_id = ?');
         $stmt->execute([$row['user_id']]);
         $row2 = $stmt->fetch(PDO::FETCH_ASSOC);
-    
         if (empty($row2)) {
             if (!empty($userId) && !empty($displayName)) {
                 $stmt = $pdo->prepare('INSERT INTO passkeys_demo_users (user_id, display_name, credo) VALUES (?, ?, ?)');
