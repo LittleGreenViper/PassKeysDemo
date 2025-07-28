@@ -64,7 +64,7 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
             $userId,
             $data->credentialId,
             $displayName,
-            (int)$data->signCount,
+            intval($data->signCount),
             $data->credentialPublicKey
         ];
         

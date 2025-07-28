@@ -399,10 +399,9 @@ extension PKD_ConnectViewController {
             switch inResult {
             case .success(let challengeDict):
                 guard let publicKey = challengeDict["publicKey"] as? [String: Any],
-                      nil == publicKey["allowedCredentials"],
                       let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData
                 else {
-                    print("No allowed credentials.")
+                    print("No Public Key or Challenge.")
                     return
                 }
 
@@ -477,6 +476,7 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
         request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
         let task = _session.dataTask(with: request) { inData, inResponse, inError in
             guard let response = inResponse as? HTTPURLResponse else { return }
+            print("Status Code: \(response.statusCode)")
             if 200 == response.statusCode,
                let data = inData {
                 if self._loginAfter {

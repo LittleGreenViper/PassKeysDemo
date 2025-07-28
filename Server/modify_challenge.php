@@ -29,6 +29,8 @@ $userId = "";
 $displayName = "";
 $credo = "";
 
+$_SESSION['oldChallenge'] = NULL;
+
 // We pick through each of the supplied GET arguments, and get the user ID, display name, and credo. We don't care about anything else.
 $auth = explode('&', $_SERVER['QUERY_STRING']);
 foreach ($auth as $query) {
@@ -55,12 +57,13 @@ try {
     
     if (!empty($credentials)) {
         $challenge = random_bytes(32);
+        $_SESSION['oldChallenge'] = isset($_SESSION['modifyChallenge']) ? $_SESSION['modifyChallenge'] : NULL;
         $_SESSION['modifyChallenge'] = $challenge;
         $_SESSION['displayName'] = $displayName;
         $_SESSION['credo'] = $credo;
         
         $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
-        $args = $webAuthn->getGetArgs($credentials, 20, false, false, false, false, true);
+        $args = $webAuthn->getGetArgs($credentials);
         $args->publicKey->challenge = base64url_encode($challenge);
         
         header('Content-Type: application/json');
