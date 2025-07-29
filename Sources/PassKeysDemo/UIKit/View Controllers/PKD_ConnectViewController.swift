@@ -191,43 +191,6 @@ class PKD_ConnectViewController: UIViewController {
 extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
-     This fetches the login options, for logging in an existing user.
-     
-     - parameter inURLString: The string to use as a URI for the registration.
-     - parameter inCompletion: A tail completion proc. It will have a single argument, with the user information (if successful).
-     */
-    private func _fetchChallenge(from inURLString: String, completion inCompletion: @escaping (Result<[String: Any], Error>) -> Void) {
-        guard let url = URL(string: inURLString) else { return }
-        let task = _session.dataTask(with: url) { inData, inResponse, inError in
-            if let error = inError {
-                inCompletion(.failure(error))
-                return
-            }
-            
-            if let response = inResponse as? HTTPURLResponse,
-               404 == response.statusCode,
-               let data = inData,
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let errorString = json["error"] as? String,
-               Self._errorResponseString == errorString {
-                inCompletion(.failure(NSError(domain: "user", code: 2)))
-            }
-            
-            guard let data = inData,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  nil != json["publicKey"] as? [String: Any]
-            else {
-                inCompletion(.failure(NSError(domain: "json", code: 1)))
-                return
-            }
-            
-            inCompletion(.success(json))
-        }
-        task.resume()
-    }
-    
-    /* ###################################################################### */
-    /**
      Sets up the screen to reflwct the current app state.
      */
     private func _setUpUI() {
@@ -309,6 +272,42 @@ extension PKD_ConnectViewController {
      Called when the "Login" button is hit.
      */
     @objc func accessServerWithPasskey() {
+        /* ###################################################################### */
+        /**
+         This fetches the challenge, for a logged-in access.
+         
+         - parameter inCompletion: A tail completion proc. It will have a single argument, with the user information (if successful).
+         */
+        func _fetchAccessChallenge(completion inCompletion: @escaping (Result<[String: Any], Error>) -> Void) {
+            guard let url = URL(string: "\(Self._baseURIString)/modify_challenge.php?user_id=\(Self._userIDString)") else { return }
+            let task = _session.dataTask(with: url) { inData, inResponse, inError in
+                if let error = inError {
+                    inCompletion(.failure(error))
+                    return
+                }
+                
+                if let response = inResponse as? HTTPURLResponse,
+                   404 == response.statusCode,
+                   let data = inData,
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let errorString = json["error"] as? String,
+                   Self._errorResponseString == errorString {
+                    inCompletion(.failure(NSError(domain: "user", code: 2)))
+                }
+                
+                guard let data = inData,
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      nil != (json["args"] as? [String: Any])?["publicKey"] as? [String: Any]
+                else {
+                    inCompletion(.failure(NSError(domain: "json", code: 1)))
+                    return
+                }
+                
+                inCompletion(.success(json))
+            }
+            task.resume()
+        }
+        
         /* ################################################################ */
         /**
          Called to tell the user they need to register, first.
@@ -394,24 +393,29 @@ extension PKD_ConnectViewController {
             }
         }
             
-        _fetchChallenge(from: "\(Self._baseURIString)/modify_challenge.php?user_id=\(Self._userIDString)") { inResult in
+        _fetchAccessChallenge() { inResult in
             self._loginAfter = false
             switch inResult {
             case .success(let challengeDict):
-                guard let publicKey = challengeDict["publicKey"] as? [String: Any],
+                guard let publicKey = (challengeDict["args"] as? [String: Any])?["publicKey"] as? [String: Any],
                       let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData
                 else {
                     print("No Public Key or Challenge.")
                     return
                 }
-
-                let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: Self._relyingParty)
-                let request = provider.createCredentialAssertionRequest(challenge: challengeData)
                 
-                let controller = ASAuthorizationController(authorizationRequests: [request])
-                controller.delegate = self
-                controller.presentationContextProvider = self
-                controller.performRequests()
+                if let apiKey = challengeDict["apiKey"] as? String,
+                   !apiKey.isEmpty {
+                    print("We have a previous key: \(apiKey)")
+                } else {
+                    let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: Self._relyingParty)
+                    let request = provider.createCredentialAssertionRequest(challenge: challengeData)
+                    
+                    let controller = ASAuthorizationController(authorizationRequests: [request])
+                    controller.delegate = self
+                    controller.presentationContextProvider = self
+                    controller.performRequests()
+                }
                 
             case .failure(let error):
                 if "user" == (error as NSError).domain {

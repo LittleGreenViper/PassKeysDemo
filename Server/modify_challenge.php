@@ -57,7 +57,7 @@ try {
     
     if (!empty($credentials)) {
         $challenge = random_bytes(32);
-        $_SESSION['oldChallenge'] = isset($_SESSION['modifyChallenge']) ? $_SESSION['modifyChallenge'] : NULL;
+        $_SESSION['oldChallenge'] = $_SESSION['modifyChallenge'];
         $_SESSION['modifyChallenge'] = $challenge;
         $_SESSION['displayName'] = $displayName;
         $_SESSION['credo'] = $credo;
@@ -67,7 +67,7 @@ try {
         $args->publicKey->challenge = base64url_encode($challenge);
         
         header('Content-Type: application/json');
-        echo json_encode($args);
+        echo json_encode(['args' => $args, 'apiKey' => base64url_encode($_SESSION['oldChallenge'])]);
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'User not found']);
