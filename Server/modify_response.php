@@ -79,18 +79,18 @@ if (empty($row) || empty($userId)) {
         $stmt = $pdo->prepare('UPDATE webauthn_credentials SET sign_count = ?, api_key = ? WHERE credential_id = ?');
         $stmt->execute([$newSignCount, $apiKey, $credentialId]);
         
-        performUpdate($pdo, $stmt, $userId, $displayName, $credo);
+        performUpdate($pdo, $stmt, $userId, $apiKey, $displayName, $credo);
         $_SESSION['apiKey'] = $apiKey;
     } catch (Exception $e) {
         http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);
     }
 } elseif ($row['api_key'] == $apiKey) {
-    performUpdate($pdo, $stmt, $userId, $displayName, $credo);
-    $stmt = $pdo->prepare('UPDATE webauthn_credentials SET api_key = ? WHERE credential_id = ?');
-    $stmt->execute([$apiKey, $credentialId]);
+    performUpdate($pdo, $stmt, $userId, $apiKey $displayName, $credo);
     $_SESSION['apiKey'] = $apiKey;
 } else {
+    $stmt = $pdo->prepare('UPDATE webauthn_credentials SET api_key = NULL WHERE credential_id = ?');
+    $stmt->execute([$credentialId]);
     http_response_code(400);
     echo json_encode(['error' => 'API Key Mismatch']);
 }
@@ -105,19 +105,19 @@ if (empty($row) || empty($userId)) {
     @param string $credo The user's credo string (if being changed).
     @return the data provided, as a Base64URL-encoded string.
  */
-function performUpdate($pdo, $stmt, $userID, $displayName = NULL, $credo = NULL) {
+function performUpdate($pdo, $stmt, $userID, $apiKey, $displayName = NULL, $credo = NULL) {
     $stmt = $pdo->prepare('SELECT display_name, credo FROM passkeys_demo_users WHERE user_id = ?');
     $stmt->execute([$userID]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-die(print_r($row, true));
+
     if (empty($row) && !empty($displayName)) {  // No existing user. Create a new one.
         $stmt = $pdo->prepare('INSERT INTO passkeys_demo_users (user_id, display_name, credo) VALUES (?, ?, ?)');
         $stmt->execute([$userID, $displayName, ""]);
-        $row = ['display_name' => $displayName, 'credo' => $credo];
+        $row = ['display_name' => $displayName, 'credo' => '', 'apiKey' => $apiKey];
     } elseif (!empty($row) && !empty($displayName)) {    // Existing user, and we want to make a change.
         $stmt = $pdo->prepare('UPDATE passkeys_demo_users SET display_name = ?, credo = ? WHERE user_id = ?');
         $stmt->execute([$displayName, $credo, $userID]);
-        $row = ['display_name' => $displayName, 'credo' => $credo];
+        $row = ['display_name' => $displayName, 'credo' => $credo, 'apiKey' => $apiKey];
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'User not found']);
@@ -126,7 +126,7 @@ die(print_r($row, true));
     
     if (!empty($row)) {
         header('Content-Type: application/json');
-        echo json_encode(['userId' => $userID, 'displayName' => $row['display_name'], 'credo' => $row['credo']]);
+        echo json_encode(['displayName' => $row['display_name'], 'credo' => $row['credo'], 'apiKey' => $apiKey]);
     } else {
         http_response_code(400);
         echo json_encode(['error' => 'Unable to update']);
