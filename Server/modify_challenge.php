@@ -28,8 +28,20 @@ use lbuchs\WebAuthn\WebAuthn;
 $userId = "";
 $displayName = "";
 $credo = "";
+$oldChallenge = "";
 
-$_SESSION['oldChallenge'] = NULL;
+file_put_contents('./check_modify_challenge.txt', print_r(['$_SESSION' => $_SESSION], true));
+
+if (isset($_SESSION['modifyChallenge']) && !empty($_SESSION['modifyChallenge'])) {
+    $oldChallenge = $_SESSION['modifyChallenge'];
+
+    if (!empty($oldChallenge)) {
+        $oldChallenge = base64url_encode($oldChallenge);
+    }
+}
+
+unset($_SESSION['oldChallenge']);
+unset($_SESSION['modifyChallenge']);
 
 // We pick through each of the supplied GET arguments, and get the user ID, display name, and credo. We don't care about anything else.
 $auth = explode('&', $_SERVER['QUERY_STRING']);
@@ -57,22 +69,25 @@ try {
     
     if (!empty($credentials)) {
         $challenge = random_bytes(32);
-        $_SESSION['oldChallenge'] = $_SESSION['modifyChallenge'];
         $_SESSION['modifyChallenge'] = $challenge;
         $_SESSION['displayName'] = $displayName;
         $_SESSION['credo'] = $credo;
-        
+        $_SESSION['oldChallenge'] = $oldChallenge;
         $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
         $args = $webAuthn->getGetArgs($credentials);
         $args->publicKey->challenge = base64url_encode($challenge);
-        
+
         header('Content-Type: application/json');
-        echo json_encode(['args' => $args, 'apiKey' => base64url_encode($_SESSION['oldChallenge'])]);
+        echo json_encode(['args' => $args, 'apiKey' => $oldChallenge]);
     } else {
         http_response_code(404);
+        unset($_SESSION['oldChallenge']);
+        unset($_SESSION['modifyChallenge']);
         echo json_encode(['error' => 'User not found']);
     }
 } catch (Exception $e) {
+    unset($_SESSION['oldChallenge']);
+    unset($_SESSION['modifyChallenge']);
     http_response_code(400);
     echo json_encode(['error' => $e->getMessage()]);
 }

@@ -177,16 +177,31 @@ class PKD_ConnectViewController: UIViewController {
     /**
      We maintain a consistent session, because the challenges are set to work across a session.
      */
-    private let _session: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.httpCookieStorage = HTTPCookieStorage.shared
-        config.httpCookieAcceptPolicy = .always
-        return URLSession(configuration: config)
-    }()
+    private var _cachedSession: URLSession?
 }
 
 /* ###################################################################################################################################### */
-// MARK: private Instance Methods
+// MARK: Computed Properties
+/* ###################################################################################################################################### */
+extension PKD_ConnectViewController {
+    /* ###################################################################### */
+    /**
+     Return our instance property session.
+     */
+    private var _session: URLSession {
+        self._cachedSession ?? {
+            let config = URLSessionConfiguration.default
+            config.httpCookieStorage = HTTPCookieStorage.shared
+            config.httpCookieAcceptPolicy = .always
+            let session = URLSession(configuration: config)
+            self._cachedSession = session
+            return session
+        }()
+    }
+}
+
+/* ###################################################################################################################################### */
+// MARK: Private Instance Methods
 /* ###################################################################################################################################### */
 extension PKD_ConnectViewController {
     /* ###################################################################### */
@@ -280,7 +295,7 @@ extension PKD_ConnectViewController {
          */
         func _fetchAccessChallenge(completion inCompletion: @escaping (Result<[String: Any], Error>) -> Void) {
             guard let url = URL(string: "\(Self._baseURIString)/modify_challenge.php?user_id=\(Self._userIDString)") else { return }
-            let task = _session.dataTask(with: url) { inData, inResponse, inError in
+            let task = self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
                     inCompletion(.failure(error))
                     return
@@ -306,6 +321,14 @@ extension PKD_ConnectViewController {
                 inCompletion(.success(json))
             }
             task.resume()
+        }
+        
+        /* ################################################################ */
+        /**
+         Called to send connections, after a successful login.
+         */
+        func _loggedInCallback(apiKey inAPIKey: String) {
+            print("We have a previous key: \(inAPIKey)")
         }
         
         /* ################################################################ */
@@ -404,9 +427,10 @@ extension PKD_ConnectViewController {
                     return
                 }
                 
+                // See if we have already logged in, and we're just making a subsequent call.
                 if let apiKey = challengeDict["apiKey"] as? String,
                    !apiKey.isEmpty {
-                    print("We have a previous key: \(apiKey)")
+                    _loggedInCallback(apiKey: apiKey)
                 } else {
                     let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: Self._relyingParty)
                     let request = provider.createCredentialAssertionRequest(challenge: challengeData)
@@ -478,9 +502,13 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
         request.httpBody = responseData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
-        let task = _session.dataTask(with: request) { inData, inResponse, inError in
+        let task = self._session.dataTask(with: request) { inData, inResponse, inError in
             guard let response = inResponse as? HTTPURLResponse else { return }
-            print("Status Code: \(response.statusCode)")
+            print("Status Code: \(response.statusCode)\n")
+            if let data = inData,
+               let responseString = String(data: data, encoding: .utf8){
+                print("Response: \(responseString)\n")
+            }
             if 200 == response.statusCode,
                let data = inData {
                 if self._loginAfter {

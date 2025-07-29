@@ -25,6 +25,8 @@ session_start();
 use lbuchs\WebAuthn\WebAuthn;
 use lbuchs\WebAuthn\Binary\ByteBuffer;
 
+file_put_contents('./check_modify_response.txt', print_r(['$_SESSION' => $_SESSION], true));
+
 $rawPostData = file_get_contents("php://input");
 $input = json_decode($rawPostData, true);
 
@@ -34,21 +36,14 @@ $signature = base64_decode($input['signature']);
 $credentialId = base64url_decode($input['credentialId']);
 
 $challenge = $_SESSION['modifyChallenge'];
-$oldChallenge = isset($_SESSION['oldChallenge']) ? $_SESSION['oldChallenge'] : NULL;
+$oldChallenge = $_SESSION['oldChallenge'];
 $displayName = $_SESSION['displayName'];
 $credo = $_SESSION['credo'];
 
-$_SESSION['modifyChallenge'] = NULL;
-
-$presentedAPIKey = "";
-
-$auth = explode('&', $_SERVER['QUERY_STRING']);
-foreach ($auth as $query) {
-    $exp = explode('=', $query);
-    if ('key' == $exp[0]) {
-        $presentedAPIKey = rawurldecode(trim($exp[1]));
-    }
-}
+unset($_SESSION['displayName']);
+unset($_SESSION['credo']);
+unset($_SESSION['modifyChallenge']);
+unset($_SESSION['oldChallenge']);
 
 $pdo = new PDO(Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name, Config::$g_db_login, Config::$g_db_password);
 $stmt = $pdo->prepare('SELECT user_id, display_name, sign_count, api_key, public_key FROM webauthn_credentials WHERE credential_id = ?');
@@ -82,8 +77,6 @@ if (empty($row) || empty($userId)) {
             $challenge,
             $signCount
         );
-    
-// file_put_contents('./check_modify.txt', print_r(['data' => $data], true));
 
         $newSignCount = intval($webAuthn->getSignatureCounter());
         $stmt = $pdo->prepare('UPDATE webauthn_credentials SET sign_count = ?, api_key = ? WHERE credential_id = ?');
@@ -91,6 +84,7 @@ if (empty($row) || empty($userId)) {
         
         performUpdate($pdo, $stmt, $userId, $displayName, $credo);
         $_SESSION['modifyChallenge'] = $challenge;
+        unset($_SESSION['oldChallenge']);
     } catch (Exception $e) {
         http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);
@@ -98,7 +92,7 @@ if (empty($row) || empty($userId)) {
 } elseif ($row['api_key'] == $oldChallenge) {
     performUpdate($pdo, $stmt, $userId, $displayName, $credo);
     $stmt = $pdo->prepare('UPDATE webauthn_credentials SET api_key = ? WHERE credential_id = ?');
-    $stmt->execute([intval($challenge), $credentialId]);
+    $stmt->execute([base64url_encode($challenge), $credentialId]);
     $_SESSION['modifyChallenge'] = $challenge;
 } else {
     http_response_code(400);
