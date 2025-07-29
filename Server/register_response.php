@@ -54,6 +54,7 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
 } else {
     // Create a new WebAuthn instance, using our organization name, and the serving host.
     $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+    $apiKey = base64url_encode(random_bytes(32));
     
     try {
         // This is where the data to be stored for the subsequent logins is generated.
@@ -65,6 +66,7 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
             $data->credentialId,
             $displayName,
             intval($data->signCount),
+            $apiKey,
             $data->credentialPublicKey
         ];
         
@@ -73,12 +75,12 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
                         Config::$g_db_login,
                         Config::$g_db_password);
                         
-        $_SESSION['modifyChallenge'] = $challenge;
-        $stmt = $pdo->prepare('INSERT INTO webauthn_credentials (user_id, credential_id, display_name, sign_count, public_key) VALUES (?, ?, ?, ?, ?)');
+        $stmt = $pdo->prepare('INSERT INTO webauthn_credentials (user_id, credential_id, display_name, sign_count, api_key, public_key) VALUES (?, ?, ?, ?, ?, ?)');
         $stmt->execute($params);
-    
+        $_SESSION['modifyChallenge'] = $challenge;
+        $_SESSION['apiKey'] = $apiKey;
         header('Content-Type: application/json');
-        echo json_encode(['success' => $userId]);
+        echo json_encode(['success' => $api_key]);
     } catch (Exception $e) {
         http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);
