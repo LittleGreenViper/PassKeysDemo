@@ -117,12 +117,30 @@ class PKD_ConnectViewController: UIViewController {
              */
             let user: UserInfoStruct
         }
-
+        
         /* ################################################################## */
         /**
          The public key, associated with this credential.
          */
         let publicKey: PublicKeyStruct
+        
+        /* ################################################################## */
+        /**
+         The display name associated with the user.
+         */
+        let displayName: String
+        
+        /* ################################################################## */
+        /**
+         The credo associated with the user (will aways be empty, at first).
+         */
+        let credo: String
+        
+        /* ################################################################## */
+        /**
+         The login token.
+         */
+        let bearerToken: String
     }
 
     /* ###################################################################### */
@@ -160,6 +178,18 @@ class PKD_ConnectViewController: UIViewController {
      This is set to true, if we are registering a new user, before logging in.
      */
     private var _loginAfter = false
+    
+    /* ###################################################################### */
+    /**
+     We maintain a consistent session, because the challenges are set to work across a session.
+     */
+    private var _cachedSession: URLSession?
+
+    /* ###################################################################### */
+    /**
+     If we are currently logged in, this contains the bearer token. Nil, if not logged in.
+     */
+    private var _bearerToken: String?
 
     /* ###################################################################### */
     /**
@@ -172,12 +202,6 @@ class PKD_ConnectViewController: UIViewController {
      This contains a credo (may be empty), if we are logged in. Nil, otherwise.
      */
     private var _credo: String?
-    
-    /* ###################################################################### */
-    /**
-     We maintain a consistent session, because the challenges are set to work across a session.
-     */
-    private var _cachedSession: URLSession?
 }
 
 /* ###################################################################################################################################### */
@@ -312,7 +336,8 @@ extension PKD_ConnectViewController {
                 
                 guard let data = inData,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      nil != (json["args"] as? [String: Any])?["publicKey"] as? [String: Any]
+                      nil != (json["publicKey"] as? [String: Any]),
+                      nil != (json["bearerToken"] as? String)
                 else {
                     inCompletion(.failure(NSError(domain: "json", code: 1)))
                     return
@@ -327,8 +352,8 @@ extension PKD_ConnectViewController {
         /**
          Called to send connections, after a successful login.
          */
-        func _loggedInCallback(apiKey inAPIKey: String) {
-            print("We have a previous key: \(inAPIKey)")
+        func _loggedInCallback(bearerToken inBearerToken: String) {
+            print("We have a previous key: \(inBearerToken)")
         }
         
         /* ################################################################ */
@@ -420,7 +445,7 @@ extension PKD_ConnectViewController {
             self._loginAfter = false
             switch inResult {
             case .success(let challengeDict):
-                guard let publicKey = (challengeDict["args"] as? [String: Any])?["publicKey"] as? [String: Any],
+                guard let publicKey = (challengeDict["publicKey"] as? [String: Any]),
                       let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData
                 else {
                     print("No Public Key or Challenge.")
@@ -428,9 +453,9 @@ extension PKD_ConnectViewController {
                 }
                 
                 // See if we have already logged in, and we're just making a subsequent call.
-                if let apiKey = challengeDict["apiKey"] as? String,
-                   !apiKey.isEmpty {
-                    _loggedInCallback(apiKey: apiKey)
+                if let bearerToken = challengeDict["bearerToken"] as? String,
+                   !bearerToken.isEmpty {
+                    _loggedInCallback(bearerToken: bearerToken)
                 } else {
                     let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: Self._relyingParty)
                     let request = provider.createCredentialAssertionRequest(challenge: challengeData)
