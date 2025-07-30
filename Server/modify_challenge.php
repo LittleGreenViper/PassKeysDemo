@@ -28,7 +28,7 @@ use lbuchs\WebAuthn\WebAuthn;
 $userId = "";
 $displayName = "";
 $credo = "";
-$apiKey = "";
+$token = "";
 
 $_SESSION = [];
 
@@ -42,8 +42,8 @@ foreach ($auth as $query) {
         $displayName = rawurldecode(trim($exp[1]));
     } elseif ('credo' == $exp[0]) {
         $credo = rawurldecode(trim($exp[1]));
-    } elseif ('key' == $exp[0]) {
-        $apiKey = rawurldecode(trim($exp[1]));
+    } elseif ('bearer_token' == $exp[0]) {
+        $token = rawurldecode(trim($exp[1]));
     }
 }
 
@@ -63,13 +63,13 @@ try {
         $_SESSION['modifyChallenge'] = $challenge;
         $_SESSION['displayName'] = $displayName;
         $_SESSION['credo'] = $credo;
-        $_SESSION['apiKey'] = $apiKey;
+        $_SESSION['bearer_token'] = $token;
         $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
         $args = $webAuthn->getGetArgs($credentials);
         $args->publicKey->challenge = base64url_encode($challenge);
 
         header('Content-Type: application/json');
-        echo json_encode(['args' => $args, 'apiKey' => $oldChallenge]);
+        echo json_encode(['args' => $args, 'display_name' => $displayName, 'credo' => $credo, 'bearer_token' => $token]);
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'User not found']);

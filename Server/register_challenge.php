@@ -65,26 +65,35 @@ if (empty($userId) || empty($displayName)) {
     http_response_code(400);
     echo '&#128169;';   // Oh, poo.
 } else {
-    // Create a new WebAuthn instance, using our organization name, and the serving host.
-    $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
-   
-    // We will use the function to create a registration object, which will need to be presented in a subsequent call.
-    $args = $webAuthn->getCreateArgs($userId, $displayName, $userId);
+    $pdo = new PDO(Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name, Config::$g_db_login, Config::$g_db_password);
+    $stmt = $pdo->prepare('SELECT credential_id FROM webauthn_credentials WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (empty($row)) {
+        // Create a new WebAuthn instance, using our organization name, and the serving host.
+        $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+       
+        // We will use the function to create a registration object, which will need to be presented in a subsequent call.
+        $args = $webAuthn->getCreateArgs($userId, $userId, $displayName);
+        
+        // We encode the challenge data as a Base64 URL-encoded string.
+        $base64urlChallenge = base64url_encode($webAuthn->getChallenge()->getBinaryString());
+        // We do the same for the binary unique user ID.
+        $userIdEncoded = base64url_encode($args->publicKey->user->id->getBinaryString());
+          
+        // We replace the ones given by the function (basic Base64), with the Base64 URL-encoded strings.
+        $args->publicKey->challenge = $base64urlChallenge;
+        $args->publicKey->user->id = $userIdEncoded;
+        
+        // We will save these in the session, which must be preserved for the next step.
+        $_SESSION['registerChallenge'] = $base64urlChallenge;
+        $_SESSION['registerUserID'] = $userId;
+        $_SESSION['registerDisplayName'] = $displayName;
     
-    // We encode the challenge data as a Base64 URL-encoded string.
-    $base64urlChallenge = base64url_encode($webAuthn->getChallenge()->getBinaryString());
-    // We do the same for the binary unique user ID.
-    $userIdEncoded = base64url_encode($args->publicKey->user->id->getBinaryString());
-      
-    // We replace the ones given by the function (basic Base64), with the Base64 URL-encoded strings.
-    $args->publicKey->challenge = $base64urlChallenge;
-    $args->publicKey->user->id = $userIdEncoded;
-    
-    // We will save these in the session, which must be preserved for the next step.
-    $_SESSION['registerChallenge'] = $base64urlChallenge;
-    $_SESSION['registerUserID'] = $userId;
-    $_SESSION['registerDisplayName'] = $displayName;
-
-    header('Content-Type: application/json');
-    echo json_encode($args);
+        header('Content-Type: application/json');
+        echo json_encode($args);
+    } else {
+        http_response_code(400);
+        echo '&#128169;';   // Oh, poo.
+    }
 }
