@@ -79,15 +79,15 @@ if (empty($row) || empty($userId)) {
         $stmt = $pdo->prepare('UPDATE webauthn_credentials SET sign_count = ?, bearer_token = ? WHERE credential_id = ?');
         $stmt->execute([$newSignCount, $token, $credentialId]);
         
-        performUpdate($pdo, $stmt, $userId, $token, $displayName, $credo);
         $_SESSION['bearer_token'] = $token;
+        performUpdate($pdo, $stmt, $userId, $token, $displayName, $credo);
     } catch (Exception $e) {
         http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);
     }
 } elseif (!empty($row) && ($row['bearer_token'] == $token)) {
-    performUpdate($pdo, $stmt, $userId, $token $displayName, $credo);
     $_SESSION['bearer_token'] = $token;
+    performUpdate($pdo, $stmt, $userId, $token, $displayName, $credo);
 } else {
     $stmt = $pdo->prepare('UPDATE webauthn_credentials SET bearer_token = NULL WHERE credential_id = ?');
     $stmt->execute([$credentialId]);
@@ -110,15 +110,19 @@ function performUpdate($pdo, $stmt, $userId, $token, $displayName = NULL, $credo
     $stmt->execute([$userId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    if (!empty($row) && !empty($displayName) && !empty($row['display_name'])) {
+    if (!empty($token) && !empty($row) && !empty($displayName) && !empty($row['display_name'])) {
+        if (empty($credo)) {
+            $credo = '';
+        }
+        
         if (($displayName != $row['display_name']) || ($credo != $row['credo'])) {
             $stmt = $pdo->prepare('UPDATE passkeys_demo_users SET display_name = ?, credo = ? WHERE user_id = ?');
             $stmt->execute([$displayName, $credo, $userId]);
-            $row = ['display_name' => $displayName, 'credo' => $credo, 'bearer_token' => $token];
+            $row = ['display_name' => $displayName, 'credo' => $credo, 'bearerToken' => $token];
         }
         
         header('Content-Type: application/json');
-        echo json_encode(['displayName' => $row['display_name'], 'credo' => $row['credo'], 'bearer_token' => $token]);
+        echo json_encode(['displayName' => $row['display_name'], 'credo' => $row['credo'], 'bearerToken' => $token]);
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'User not found']);

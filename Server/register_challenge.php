@@ -46,8 +46,8 @@ session_start();
 use lbuchs\WebAuthn\WebAuthn;
 
 // We will be extracting a User ID, and a display name, from what the app sends in, for the challenge query. Default is nothing.
-$userId = "";
-$displayName = "";
+$userId = '';
+$displayName = '';
 
 // We pick through each of the supplied GET arguments, and get the user ID and the display name. We don't care about anything else.
 $auth = explode('&', $_SERVER['QUERY_STRING']);
@@ -91,7 +91,7 @@ if (empty($userId) || empty($displayName)) {
         $_SESSION['registerDisplayName'] = $displayName;
     
         header('Content-Type: application/json');
-        echo json_encode($args);
+        echo json_encode(['publicKey' => $args->publicKey, 'displayName' => $displayName, 'credo' => '', 'bearerToken' => '']);
     } else {
         http_response_code(400);
         echo '&#128169;';   // Oh, poo.

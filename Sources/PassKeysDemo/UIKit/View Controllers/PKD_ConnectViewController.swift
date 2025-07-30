@@ -318,7 +318,7 @@ extension PKD_ConnectViewController {
          - parameter inCompletion: A tail completion proc. It will have a single argument, with the user information (if successful).
          */
         func _fetchAccessChallenge(completion inCompletion: @escaping (Result<[String: Any], Error>) -> Void) {
-            guard let url = URL(string: "\(Self._baseURIString)/modify_challenge.php?user_id=\(Self._userIDString)") else { return }
+            guard let url = URL(string: "\(Self._baseURIString)/modify_challenge.php?user_id=\(Self._userIDString)\((self._bearerToken ?? "").isEmpty ? "" : "&bearer_token=\(self._bearerToken ?? "")")") else { return }
             let task = self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
                     inCompletion(.failure(error))
@@ -453,9 +453,9 @@ extension PKD_ConnectViewController {
                 }
                 
                 // See if we have already logged in, and we're just making a subsequent call.
-                if let bearerToken = challengeDict["bearerToken"] as? String,
-                   !bearerToken.isEmpty {
-                    _loggedInCallback(bearerToken: bearerToken)
+                if let token = challengeDict["bearerToken"] as? String,
+                   !token.isEmpty {
+                    _loggedInCallback(bearerToken: token)
                 } else {
                     let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: Self._relyingParty)
                     let request = provider.createCredentialAssertionRequest(challenge: challengeData)
@@ -533,20 +533,35 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
             if let data = inData,
                let responseString = String(data: data, encoding: .utf8){
                 print("Response: \(responseString)\n")
-            }
-            if 200 == response.statusCode,
-               let data = inData {
-                if self._loginAfter {
-                    self.accessServerWithPasskey()
+                if 200 == response.statusCode,
+                   let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
+                   let token = dict["bearerToken"],
+                   !token.isEmpty {
+                    self._bearerToken = token
+                    if self._loginAfter {
+                        self.accessServerWithPasskey()
+                    } else {
+                        let decoder = JSONDecoder()
+                        if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
+                            self._displayName = userData.displayName
+                            self._credo = userData.credo
+                        }
+                    }
+                    DispatchQueue.main.async { self._setUpUI() }
                 } else {
-                    let decoder = JSONDecoder()
-                    if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
-                        self._displayName = userData.displayName
-                        self._credo = userData.credo
+                    DispatchQueue.main.async {
+                        self._setUpUI()
+                        let style: UIAlertController.Style = .alert
+                        let alertController = UIAlertController(title: "Error Logging In", message: "Unable to log in.", preferredStyle: style)
+                        
+                        let okAction = UIAlertAction(title: "OK", style: .cancel, handler: nil)
+                        
+                        alertController.addAction(okAction)
+                        
+                        self.present(alertController, animated: true, completion: nil)
                     }
                 }
             }
-            DispatchQueue.main.async { self._setUpUI() }
         }
         task.resume()
     }

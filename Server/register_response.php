@@ -85,7 +85,10 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
         $_SESSION['bearer_token'] = $token;
         $_SESSION['displayName'] = $displayName;
         header('Content-Type: application/json');
-        echo json_encode(['success' => ['bearer_token' => $token, 'challenge' => base64url_encode($challenge)]]);
+        if (empty($token)) {
+            $token = '';
+        }
+        echo json_encode(['displayName' => $displayName, 'credo' => '', 'bearerToken' => $token]);
     } catch (Exception $e) {
         http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);

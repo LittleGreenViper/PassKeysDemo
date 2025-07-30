@@ -25,10 +25,10 @@ session_start();
 use lbuchs\WebAuthn\WebAuthn;
 
 // We will be extracting a User ID, display name, and credo from what the app sends in, for the challenge query. Default is nothing.
-$userId = "";
-$displayName = "";
-$credo = "";
-$token = "";
+$userId = '';
+$displayName = '';
+$credo = '';
+$bearerToken = '';
 
 $_SESSION = [];
 
@@ -43,7 +43,7 @@ foreach ($auth as $query) {
     } elseif ('credo' == $exp[0]) {
         $credo = rawurldecode(trim($exp[1]));
     } elseif ('bearer_token' == $exp[0]) {
-        $token = rawurldecode(trim($exp[1]));
+        $bearerToken = rawurldecode(trim($exp[1]));
     }
 }
 
@@ -63,13 +63,15 @@ try {
         $_SESSION['modifyChallenge'] = $challenge;
         $_SESSION['displayName'] = $displayName;
         $_SESSION['credo'] = $credo;
-        $_SESSION['bearer_token'] = $token;
+        $_SESSION['bearer_token'] = $bearerToken;
         $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
         $args = $webAuthn->getGetArgs($credentials);
         $args->publicKey->challenge = base64url_encode($challenge);
-
+        $args->displayName = $displayName;
+        $args->credo = $credo;
+        $args->bearerToken = $bearerToken;
         header('Content-Type: application/json');
-        echo json_encode(['args' => $args, 'display_name' => $displayName, 'credo' => $credo, 'bearer_token' => $token]);
+        echo json_encode($args);
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'User not found']);
