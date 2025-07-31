@@ -55,24 +55,30 @@ $userId = '';
 $displayName = '';
 $credo = '';
 $bearerToken = '';
+// This is set to true, if we want to force an update. Otherwise, we just read what's there, and ignore the display name and credo values.
+$performUpdate = false;
 
 $_SESSION = []; // Start fresh.
 
 // We pick through each of the supplied GET arguments, and get the user ID, display name, credo, ands any bearer token. We don't care about anything else.
-$auth = explode('&', $_SERVER['QUERY_STRING']);
-foreach ($auth as $query) {
-    $exp = explode('=', $query);
-    if ('userId' == $exp[0]) { 
-        $userId = rawurldecode(trim($exp[1]));
-    } elseif ('displayName' == $exp[0]) {
-        $displayName = rawurldecode(trim($exp[1]));
-    } elseif ('credo' == $exp[0]) {
-        $credo = rawurldecode(trim($exp[1]));
-    } elseif ('token' == $exp[0]) {
-        $bearerToken = rawurldecode(trim($exp[1]));
+$queryString = explode('&', $_SERVER['QUERY_STRING']);
+$performUpdate = false;
+foreach ($queryString as $query) {
+    if ('update' == $query) {
+        $performUpdate = true;
+    } else {
+        $exp = explode('=', $query);
+        if ('userId' == $exp[0]) { 
+            $userId = rawurldecode(trim($exp[1]));
+        } elseif ('displayName' == $exp[0]) {
+            $displayName = rawurldecode(trim($exp[1]));
+        } elseif ('credo' == $exp[0]) {
+            $credo = rawurldecode(trim($exp[1]));
+        } elseif ('token' == $exp[0]) {
+            $bearerToken = rawurldecode(trim($exp[1]));
+        }
     }
 }
-
 try {
     // Load credentials from DB
     $pdo = new PDO(Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name, Config::$g_db_login, Config::$g_db_password);
@@ -94,9 +100,13 @@ try {
         
         // Pass these on to the next step.
         $_SESSION['modifyChallenge'] = $challenge;
-        $_SESSION['displayName'] = $displayName;
-        $_SESSION['credo'] = $credo;
         $_SESSION['bearerToken'] = $bearerToken;
+        // We only set these, if we will be performing an update.
+        if ($performUpdate) {
+            $_SESSION['displayName'] = $displayName;
+            $_SESSION['credo'] = $credo;
+            $_SESSION['update'] = true;
+        }
         
         // Now, we create a record for the app to incorporate into a signed structure.
         $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
@@ -104,8 +114,6 @@ try {
         // We need to replace the default stuff with what we have on deck.
         $args->publicKey->challenge = base64url_encode($challenge); // NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
         // We add these fields. We're just using this struct as an envelope to send them to the app.
-        $args->displayName = $displayName;
-        $args->credo = $credo;
         $args->bearerToken = $bearerToken;
         
         header('Content-Type: application/json');

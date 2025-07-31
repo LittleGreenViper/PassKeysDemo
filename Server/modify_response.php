@@ -57,6 +57,7 @@ $challenge = $_SESSION['modifyChallenge'];  // The challenge sent from the first
 $bearerToken = $_SESSION['bearerToken'];    // Any bearer token supplied to the first step as a GET argument.
 $displayName = $_SESSION['displayName'];    // If the user wants to change the display name, it is provided here.
 $credo = $_SESSION['credo'];                // If the user wants to change the credo, it is supplied here.
+$update = (1 == intval($_SESSION['update']) ? true : false);              // If true, we want to update.
 
 $_SESSION = []; // Clear the poop deck (of poop).
 
@@ -66,10 +67,6 @@ $stmt = $pdo->prepare('SELECT userId, displayName, signCount, bearerToken, publi
 $stmt->execute([$credentialId]);
 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (empty($displayName)) {
-    $displayName = $row['displayName'];
-}
-
 $userId = isset($row['userId']) ? $row['userId'] : NULL;
 
 if (empty($row) || empty($userId)) {    // Look for obvious errors. If we didn't get a User ID to check, or there's no response, then game over, man.
@@ -78,10 +75,6 @@ if (empty($row) || empty($userId)) {    // Look for obvious errors. If we didn't
 } elseif (empty($bearerToken) || ($row['bearerToken'] != $bearerToken)) {   // If the bearer token doesn't match, then we need to log in again.
     if (empty($displayName)) {
         $displayName = $row['displayName'];
-    }
-    
-    if (empty($credo)) {
-        $credo = '';
     }
     
     $signCount = intval($row['signCount']);
@@ -108,7 +101,7 @@ if (empty($row) || empty($userId)) {    // Look for obvious errors. If we didn't
         $stmt->execute([$newSignCount, $bearerToken, $credentialId]);
         
         $_SESSION['bearerToken'] = $bearerToken;    // Pass it on, in the session.
-        performUpdate($pdo, $stmt, $userId, $bearerToken, $displayName, $credo);
+        performUpdate($pdo, $stmt, $userId, $bearerToken, $displayName, $credo, false);
     } catch (Exception $e) {
         // Try to clear the token, if we end up here.
         $stmt = $pdo->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE credentialId = ?');
@@ -119,7 +112,7 @@ if (empty($row) || empty($userId)) {    // Look for obvious errors. If we didn't
     }
 } elseif (!empty($row) && ($row['bearerToken'] == $bearerToken)) {  // If we are still logged in, and the session is still live, we'll make sure we match the token.
     $_SESSION['bearerToken'] = $bearerToken;    // Keep the chain unbroken.
-    performUpdate($pdo, $stmt, $userId, $bearerToken, $displayName, $credo);
+    performUpdate($pdo, $stmt, $userId, $bearerToken, $displayName, $credo, $update);
 } else {
     // Make sure to clear the token, if we end up here.
     $stmt = $pdo->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE credentialId = ?');
@@ -138,20 +131,26 @@ if (empty($row) || empty($userId)) {    // Look for obvious errors. If we didn't
     @param string $credo The user's credo string (if being changed).
     @return the data provided, as a Base64URL-encoded string.
  */
-function performUpdate($pdo, $stmt, $userId, $bearerToken, $displayName = NULL, $credo = NULL) {
+function performUpdate($pdo, $stmt, $userId, $bearerToken, $displayName, $credo, $update) {
     $stmt = $pdo->prepare('SELECT displayName, credo FROM passkeys_demo_users WHERE userId = ?');
     $stmt->execute([$userId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!empty($bearerToken) && !empty($row) && !empty($displayName) && !empty($row['displayName'])) {
-        if (empty($credo)) {
-            $credo = '';
-        }
-        
-        if (($displayName != $row['displayName']) || ($credo != $row['credo'])) {
-            $stmt = $pdo->prepare('UPDATE passkeys_demo_users SET displayName = ?, credo = ? WHERE userId = ?');
-            $stmt->execute([$displayName, $credo, $userId]);
-            $row = ['displayName' => $displayName, 'credo' => $credo, 'bearerToken' => $bearerToken];
+    if (!empty($bearerToken) && !empty($row)&& !empty($row['displayName'])) {
+        if ($update) {
+            if (empty($displayName)) {
+                $displayName = $row['displayName'];
+            }
+            
+            if (empty($credo)) {
+                $credo = '';
+            }
+            
+            if (($displayName != $row['displayName']) || ($credo != $row['credo'])) {
+                $stmt = $pdo->prepare('UPDATE passkeys_demo_users SET displayName = ?, credo = ? WHERE userId = ?');
+                $stmt->execute([$displayName, $credo, $userId]);
+                $row = ['displayName' => $displayName, 'credo' => $credo];
+            }
         }
         
         header('Content-Type: application/json');

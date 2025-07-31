@@ -199,21 +199,46 @@ class PKD_ConnectViewController: UIViewController {
 
     /* ###################################################################### */
     /**
-     This contains a display name (cannot be empty), if we are logged in. Nil, otherwise.
      */
-    private var _displayName: String?
+    private var _originalDisplayName: String = ""
 
     /* ###################################################################### */
     /**
-     This contains a credo (may be empty), if we are logged in. Nil, otherwise.
      */
-    private var _credo: String?
+    private var _originalCredo: String = ""
+
+    /* ###################################################################### */
+    /**
+     */
+    private weak var _displayNameTextField: UITextField?
+
+    /* ###################################################################### */
+    /**
+     */
+    private weak var _credoTextField: UITextField?
+
+    /* ###################################################################### */
+    /**
+     */
+    private weak var _updateButton: UIButton?
 }
 
 /* ###################################################################################################################################### */
 // MARK: Computed Properties
 /* ###################################################################################################################################### */
 extension PKD_ConnectViewController {
+    /* ###################################################################### */
+    /**
+     This contains a display name.
+     */
+    private var _displayName: String? { self._displayNameTextField?.text }
+
+    /* ###################################################################### */
+    /**
+     This contains a credo.
+     */
+    private var _credo: String? { self._credoTextField?.text }
+
     /* ###################################################################### */
     /**
      Return our instance property session.
@@ -228,6 +253,12 @@ extension PKD_ConnectViewController {
             return session
         }()
     }
+    
+    /* ###################################################################### */
+    /**
+     True, if we are currently logged in.
+     */
+    private var _isLoggedIn: Bool { nil != self._cachedSession }
 }
 
 /* ###################################################################################################################################### */
@@ -243,19 +274,37 @@ extension PKD_ConnectViewController {
         
         view.subviews.forEach { $0.removeFromSuperview() }
         
-        if let displayName = self._displayName {
+        if self._isLoggedIn {
             let displayNameEditField = UITextField()
-            displayNameEditField.text = displayName
+            displayNameEditField.text = ""
+            displayNameEditField.placeholder = "Enter A Display Name"
+            displayNameEditField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
+            displayNameEditField.clearButtonMode = .whileEditing
+            displayNameEditField.borderStyle = .roundedRect
+            self._displayNameTextField = displayNameEditField
+            
+            let credoEditField = UITextField()
+            credoEditField.text = ""
+            credoEditField.placeholder = "Enter A Credo"
+            credoEditField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
+            credoEditField.clearButtonMode = .always
+            credoEditField.borderStyle = .roundedRect
+            self._credoTextField = credoEditField
+
+            let updateButton = UIButton(type: .system)
+            updateButton.setTitle("Update", for: .normal)
+            updateButton.addTarget(self, action: #selector(accessServerWithPasskey), for: .touchUpInside)
+            self._updateButton = updateButton
 
             let logoutButton = UIButton(type: .system)
             logoutButton.setTitle("Logout", for: .normal)
             logoutButton.addTarget(self, action: #selector(logout), for: .touchUpInside)
 
-            let buttonStack = UIStackView(arrangedSubviews: [logoutButton])
+            let buttonStack = UIStackView(arrangedSubviews: [logoutButton, updateButton])
             buttonStack.axis = .horizontal
             buttonStack.spacing = 20
 
-            let stack = UIStackView(arrangedSubviews: [displayNameEditField, buttonStack])
+            let stack = UIStackView(arrangedSubviews: [displayNameEditField, credoEditField, buttonStack])
             stack.axis = .vertical
             stack.spacing = 20
             stack.translatesAutoresizingMaskIntoConstraints = false
@@ -285,19 +334,30 @@ extension PKD_ConnectViewController {
 
     /* ###################################################################### */
     /**
+     This looks for a dirty value, and enables the update button, if we have had a change.
+     
+     - returns: the current enablement state.
+     */
+    @discardableResult
+    private func _calculateUpdateButtonEnabledState() -> Bool {
+        let isEnabled = self._isLoggedIn && (self._displayName != self._originalDisplayName) || (self._credo != self._originalCredo)
+        DispatchQueue.main.async { self._updateButton?.isEnabled = isEnabled }
+        return isEnabled
+    }
+    
+    /* ###################################################################### */
+    /**
      Called to access or modify the user data, via a POST transaction.
      
      - parameter inURLString: The URL String we are calling.
      - parameter inPayload: The POST arguments.
      */
     private func _postResponse(to inURLString: String, payload inPayload: [String: Any]) {
+        print("Connecting to URL: \(inURLString)")
         guard let url = URL(string: inURLString),
               let responseData = try? JSONSerialization.data(withJSONObject: inPayload),
               !responseData.isEmpty
         else { return }
-
-        self._displayName = nil
-        self._credo = nil
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -310,6 +370,8 @@ extension PKD_ConnectViewController {
             if let data = inData,
                let responseString = String(data: data, encoding: .utf8){
                 print("Response: \(responseString)\n")
+                var displayName = ""
+                var credo = ""
                 if 200 == response.statusCode,
                    let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
                    let token = dict["bearerToken"],
@@ -320,11 +382,18 @@ extension PKD_ConnectViewController {
                     } else {
                         let decoder = JSONDecoder()
                         if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
-                            self._displayName = userData.displayName
-                            self._credo = userData.credo
+                            displayName = userData.displayName
+                            credo = userData.credo
+                            self._originalDisplayName = displayName
+                            self._originalCredo = credo
                         }
                     }
-                    DispatchQueue.main.async { self._setUpUI() }
+                    DispatchQueue.main.async {
+                        self._setUpUI()
+                        self._displayNameTextField?.text = displayName
+                        self._credoTextField?.text = credo
+                        self._calculateUpdateButtonEnabledState()
+                    }
                 } else {
                     DispatchQueue.main.async {
                         self._setUpUI()
@@ -364,19 +433,32 @@ extension PKD_ConnectViewController {
 extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
+     Called whenever the text in one of our edit fields changes.
+     
+     We just use this to manage the enablement of the update button.
+     */
+    @objc func textFieldChanged() {
+        _calculateUpdateButtonEnabledState()
+    }
+
+    /* ###################################################################### */
+    /**
      Called when the "Logout" button is hit.
      */
     @objc func logout() {
-        self._displayName = nil
-        self._credo = nil
+        self._bearerToken = nil
+        self._credentialID = nil
+        self._cachedSession = nil
         self._setUpUI()
     }
     
     /* ###################################################################### */
     /**
-     Called when the "Login" button is hit.
+     This is called when the login or update button is hit.
+     
+     - parameter inButton: This is the button, if called from pressing the update button, or login button. Can be omitted.
      */
-    @objc func accessServerWithPasskey() {
+    @objc func accessServerWithPasskey(_ inButton: UIButton! = nil) {
         /* ###################################################################### */
         /**
          This fetches the challenge, for a logged-in access.
@@ -384,7 +466,21 @@ extension PKD_ConnectViewController {
          - parameter inCompletion: A tail completion proc. It will have a single argument, with the user information (if successful).
          */
         func _fetchAccessChallenge(completion inCompletion: @escaping (Result<[String: Any], Error>) -> Void) {
-            guard let url = URL(string: "\(Self._baseURIString)/modify_challenge.php?userId=\(Self._userIDString)\((self._bearerToken ?? "").isEmpty ? "" : "&token=\(self._bearerToken ?? "")")") else { return }
+            var urlString = "\(Self._baseURIString)/modify_challenge.php?userId=\(Self._userIDString)"
+            
+            if let bearerToken = self._bearerToken,
+               !bearerToken.isEmpty {
+                urlString += "&token=\(bearerToken)"
+                
+                if self._isLoggedIn,
+                   inButton == self._updateButton {
+                    let displayName = self._displayNameTextField?.text?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? self._originalDisplayName
+                    let credo = self._credoTextField?.text?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? self._originalCredo
+                    urlString += "&displayName=\(displayName)&credo=\(credo)&update"
+                }
+            }
+            
+            guard let url = URL(string: urlString) else { return }
             let task = self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
                     inCompletion(.failure(error))
@@ -409,6 +505,7 @@ extension PKD_ConnectViewController {
                     return
                 }
                 
+                print("Data: \(json)")
                 inCompletion(.success(json))
             }
             task.resume()
@@ -549,7 +646,7 @@ extension PKD_ConnectViewController {
 }
 
 /* ###################################################################################################################################### */
-// MARK:
+// MARK: ASAuthorizationControllerDelegate Conformance
 /* ###################################################################################################################################### */
 extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
     /* ###################################################################### */
@@ -589,7 +686,7 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
 }
 
 /* ###################################################################################################################################### */
-// MARK:
+// MARK: ASAuthorizationControllerPresentationContextProviding Conformance
 /* ###################################################################################################################################### */
 extension PKD_ConnectViewController: ASAuthorizationControllerPresentationContextProviding {
     /* ###################################################################### */

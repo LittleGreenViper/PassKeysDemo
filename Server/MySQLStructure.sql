@@ -11,5 +11,5 @@ DROP TABLE IF EXISTS `passkeys_demo_users`;
 CREATE TABLE `passkeys_demo_users` (
   `userId` varchar(255) UNIQUE NOT NULL,
   `displayName` varchar(255) NOT NULL,
-  `credo` text DEFAULT NULL
+  `credo` text NOT NULL
 );
