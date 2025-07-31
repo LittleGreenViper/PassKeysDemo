@@ -262,158 +262,6 @@ extension PKD_ConnectViewController {
 }
 
 /* ###################################################################################################################################### */
-// MARK: Private Instance Methods
-/* ###################################################################################################################################### */
-extension PKD_ConnectViewController {
-    /* ###################################################################### */
-    /**
-     Sets up the screen to reflwct the current app state.
-     */
-    private func _setUpUI() {
-        guard let view = self.view else { return }
-        
-        view.subviews.forEach { $0.removeFromSuperview() }
-        
-        if self._isLoggedIn {
-            let displayNameEditField = UITextField()
-            displayNameEditField.text = ""
-            displayNameEditField.placeholder = "Enter A Display Name"
-            displayNameEditField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
-            displayNameEditField.clearButtonMode = .whileEditing
-            displayNameEditField.borderStyle = .roundedRect
-            self._displayNameTextField = displayNameEditField
-            
-            let credoEditField = UITextField()
-            credoEditField.text = ""
-            credoEditField.placeholder = "Enter A Credo"
-            credoEditField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
-            credoEditField.clearButtonMode = .always
-            credoEditField.borderStyle = .roundedRect
-            self._credoTextField = credoEditField
-
-            let updateButton = UIButton(type: .system)
-            updateButton.setTitle("Update", for: .normal)
-            updateButton.addTarget(self, action: #selector(accessServerWithPasskey), for: .touchUpInside)
-            self._updateButton = updateButton
-
-            let logoutButton = UIButton(type: .system)
-            logoutButton.setTitle("Logout", for: .normal)
-            logoutButton.addTarget(self, action: #selector(logout), for: .touchUpInside)
-
-            let buttonStack = UIStackView(arrangedSubviews: [logoutButton, updateButton])
-            buttonStack.axis = .horizontal
-            buttonStack.spacing = 20
-
-            let stack = UIStackView(arrangedSubviews: [displayNameEditField, credoEditField, buttonStack])
-            stack.axis = .vertical
-            stack.spacing = 20
-            stack.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(stack)
-            
-            NSLayoutConstraint.activate([
-                stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            ])
-        } else {
-            let loginButton = UIButton(type: .system)
-            loginButton.setTitle("Login", for: .normal)
-            loginButton.addTarget(self, action: #selector(accessServerWithPasskey), for: .touchUpInside)
-            
-            let stack = UIStackView(arrangedSubviews: [loginButton])
-            stack.axis = .vertical
-            stack.spacing = 20
-            stack.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(stack)
-            
-            NSLayoutConstraint.activate([
-                stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            ])
-        }
-    }
-
-    /* ###################################################################### */
-    /**
-     This looks for a dirty value, and enables the update button, if we have had a change.
-     
-     - returns: the current enablement state.
-     */
-    @discardableResult
-    private func _calculateUpdateButtonEnabledState() -> Bool {
-        let isEnabled = self._isLoggedIn && (self._displayName != self._originalDisplayName) || (self._credo != self._originalCredo)
-        DispatchQueue.main.async { self._updateButton?.isEnabled = isEnabled }
-        return isEnabled
-    }
-    
-    /* ###################################################################### */
-    /**
-     Called to access or modify the user data, via a POST transaction.
-     
-     - parameter inURLString: The URL String we are calling.
-     - parameter inPayload: The POST arguments.
-     */
-    private func _postResponse(to inURLString: String, payload inPayload: [String: Any]) {
-        print("Connecting to URL: \(inURLString)")
-        guard let url = URL(string: inURLString),
-              let responseData = try? JSONSerialization.data(withJSONObject: inPayload),
-              !responseData.isEmpty
-        else { return }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.httpBody = responseData
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
-        let task = self._session.dataTask(with: request) { inData, inResponse, inError in
-            guard let response = inResponse as? HTTPURLResponse else { return }
-            print("Status Code: \(response.statusCode)\n")
-            if let data = inData,
-               let responseString = String(data: data, encoding: .utf8){
-                print("Response: \(responseString)\n")
-                var displayName = ""
-                var credo = ""
-                if 200 == response.statusCode,
-                   let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
-                   let token = dict["bearerToken"],
-                   !token.isEmpty {
-                    self._bearerToken = token
-                    if self._loginAfter {
-                        self.accessServerWithPasskey()
-                    } else {
-                        let decoder = JSONDecoder()
-                        if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
-                            displayName = userData.displayName
-                            credo = userData.credo
-                            self._originalDisplayName = displayName
-                            self._originalCredo = credo
-                        }
-                    }
-                    DispatchQueue.main.async {
-                        self._setUpUI()
-                        self._displayNameTextField?.text = displayName
-                        self._credoTextField?.text = credo
-                        self._calculateUpdateButtonEnabledState()
-                    }
-                } else {
-                    DispatchQueue.main.async {
-                        self._setUpUI()
-                        let style: UIAlertController.Style = .alert
-                        let alertController = UIAlertController(title: "Error Logging In", message: "Unable to log in.", preferredStyle: style)
-                        
-                        let okAction = UIAlertAction(title: "OK", style: .cancel, handler: nil)
-                        
-                        alertController.addAction(okAction)
-                        
-                        self.present(alertController, animated: true, completion: nil)
-                    }
-                }
-            }
-        }
-        task.resume()
-    }
-}
-
-/* ###################################################################################################################################### */
 // MARK: Base Class Overrides
 /* ###################################################################################################################################### */
 extension PKD_ConnectViewController {
@@ -566,6 +414,8 @@ extension PKD_ConnectViewController {
                     task.resume()
                 }
               
+                self._loginAfter = false
+
                 _fetchRegistrationOptions(from: "\(Self._baseURIString)/register_challenge.php?userId=\(Self._userIDString)&displayName=\(Self._userNameString)") { InResponse in
                     guard let publicKey = InResponse?.publicKey,
                           let challengeData = publicKey.challenge.base64urlDecodedData,
@@ -646,6 +496,159 @@ extension PKD_ConnectViewController {
 }
 
 /* ###################################################################################################################################### */
+// MARK: Private Instance Methods
+/* ###################################################################################################################################### */
+extension PKD_ConnectViewController {
+    /* ###################################################################### */
+    /**
+     Sets up the screen to reflwct the current app state.
+     */
+    private func _setUpUI() {
+        guard let view = self.view else { return }
+        
+        view.subviews.forEach { $0.removeFromSuperview() }
+        
+        if self._isLoggedIn {
+            let displayNameEditField = UITextField()
+            displayNameEditField.text = ""
+            displayNameEditField.placeholder = "Enter A Display Name"
+            displayNameEditField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
+            displayNameEditField.clearButtonMode = .whileEditing
+            displayNameEditField.borderStyle = .roundedRect
+            self._displayNameTextField = displayNameEditField
+            
+            let credoEditField = UITextField()
+            credoEditField.text = ""
+            credoEditField.placeholder = "Enter A Credo"
+            credoEditField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
+            credoEditField.clearButtonMode = .always
+            credoEditField.borderStyle = .roundedRect
+            self._credoTextField = credoEditField
+
+            let updateButton = UIButton(type: .system)
+            updateButton.setTitle("Update", for: .normal)
+            updateButton.addTarget(self, action: #selector(accessServerWithPasskey), for: .touchUpInside)
+            self._updateButton = updateButton
+
+            let logoutButton = UIButton(type: .system)
+            logoutButton.setTitle("Logout", for: .normal)
+            logoutButton.addTarget(self, action: #selector(logout), for: .touchUpInside)
+
+            let buttonStack = UIStackView(arrangedSubviews: [logoutButton, updateButton])
+            buttonStack.axis = .horizontal
+            buttonStack.spacing = 20
+
+            let stack = UIStackView(arrangedSubviews: [displayNameEditField, credoEditField, buttonStack])
+            stack.axis = .vertical
+            stack.spacing = 20
+            stack.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(stack)
+            
+            NSLayoutConstraint.activate([
+                stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            ])
+        } else {
+            let loginButton = UIButton(type: .system)
+            loginButton.setTitle("Login", for: .normal)
+            loginButton.addTarget(self, action: #selector(accessServerWithPasskey), for: .touchUpInside)
+            
+            let stack = UIStackView(arrangedSubviews: [loginButton])
+            stack.axis = .vertical
+            stack.spacing = 20
+            stack.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(stack)
+            
+            NSLayoutConstraint.activate([
+                stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            ])
+        }
+    }
+
+    /* ###################################################################### */
+    /**
+     This looks for a dirty value, and enables the update button, if we have had a change.
+     
+     - returns: the current enablement state.
+     */
+    @discardableResult
+    private func _calculateUpdateButtonEnabledState() -> Bool {
+        let isEnabled = self._isLoggedIn && !(self._displayName?.isEmpty ?? true) && (self._displayName != self._originalDisplayName) || (self._credo != self._originalCredo)
+        DispatchQueue.main.async { self._updateButton?.isEnabled = isEnabled }
+        return isEnabled
+    }
+    
+    /* ###################################################################### */
+    /**
+     Called to access or modify the user data, via a POST transaction.
+     
+     - parameter inURLString: The URL String we are calling.
+     - parameter inPayload: The POST arguments.
+     */
+    private func _postResponse(to inURLString: String, payload inPayload: [String: Any]) {
+        print("Connecting to URL: \(inURLString)")
+        guard let url = URL(string: inURLString),
+              let responseData = try? JSONSerialization.data(withJSONObject: inPayload),
+              !responseData.isEmpty
+        else { return }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = responseData
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
+        let task = self._session.dataTask(with: request) { inData, inResponse, inError in
+            guard let response = inResponse as? HTTPURLResponse else { return }
+            print("Status Code: \(response.statusCode)\n")
+            if let data = inData,
+               let responseString = String(data: data, encoding: .utf8){
+                print("Response: \(responseString)\n")
+                var displayName = ""
+                var credo = ""
+                if 200 == response.statusCode,
+                   let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
+                   let token = dict["bearerToken"],
+                   !token.isEmpty {
+                    self._bearerToken = token
+                    if self._loginAfter {
+                        self.accessServerWithPasskey()
+                    } else {
+                        let decoder = JSONDecoder()
+                        if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
+                            displayName = userData.displayName
+                            credo = userData.credo
+                            self._originalDisplayName = displayName
+                            self._originalCredo = credo
+                        }
+                    }
+                    DispatchQueue.main.async {
+                        self._setUpUI()
+                        self._displayNameTextField?.text = displayName
+                        self._credoTextField?.text = credo
+                        self._calculateUpdateButtonEnabledState()
+                    }
+                } else {
+                    self._credentialID = nil
+                    DispatchQueue.main.async {
+                        self._setUpUI()
+                        let style: UIAlertController.Style = .alert
+                        let alertController = UIAlertController(title: "Error Logging In", message: "Unable to log in.", preferredStyle: style)
+                        
+                        let okAction = UIAlertAction(title: "OK", style: .cancel, handler: nil)
+                        
+                        alertController.addAction(okAction)
+                        
+                        self.present(alertController, animated: true, completion: nil)
+                    }
+                }
+            }
+        }
+        task.resume()
+    }
+}
+
+/* ###################################################################################################################################### */
 // MARK: ASAuthorizationControllerDelegate Conformance
 /* ###################################################################################################################################### */
 extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
@@ -658,9 +661,9 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
                 "clientDataJSON": credential.rawClientDataJSON.base64EncodedString(),
                 "attestationObject": credential.rawAttestationObject?.base64EncodedString() ?? ""
             ]
-            _postResponse(to: "\(Self._baseURIString)/register_response.php", payload: payload)
+            self._credentialID = credential.credentialID.base64EncodedString()
+            self._postResponse(to: "\(Self._baseURIString)/register_response.php", payload: payload)
         } else if let assertion = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
-            self._credentialID = assertion.credentialID.base64EncodedString()
             struct AssertionJSON: Codable {
                 var type: String = ""
                 var challenge: String = ""
@@ -673,7 +676,8 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
                 "signature": assertion.signature.base64EncodedString(),
                 "credentialId": assertion.credentialID.base64EncodedString()
             ]
-            _postResponse(to: "\(Self._baseURIString)/modify_response.php", payload: payload)
+            self._credentialID = assertion.credentialID.base64EncodedString()
+            self._postResponse(to: "\(Self._baseURIString)/modify_response.php", payload: payload)
         }
     }
 
