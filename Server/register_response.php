@@ -45,7 +45,7 @@ $attestationObject = base64_decode($input['attestationObject']);
 // We also fetch the three session-transmitted properties.
 $userId = $_SESSION['registerUserID'];
 $displayName = $_SESSION['registerDisplayName'];
-$challenge = base64url_decode($_SESSION['registerChallenge']);
+$challenge = base64url_decode($_SESSION['registerChallenge']);  // NOTE: Base64URL encoded.
 
 $_SESSION = [];
 
@@ -56,7 +56,9 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
 } else {
     // Create a new WebAuthn instance, using our organization name, and the serving host.
     $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
-    $token = base64url_encode(random_bytes(32));
+    
+    // Create a new token, as this is a new login. NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
+    $bearerToken = base64url_encode(random_bytes(32));
     
     try {
         // This is where the data to be stored for the subsequent logins is generated.
@@ -68,7 +70,7 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
             $data->credentialId,
             $displayName,
             intval($data->signCount),
-            $token,
+            $bearerToken,
             $data->credentialPublicKey
         ];
         
@@ -76,19 +78,19 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
         $pdo = new PDO( Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name,
                         Config::$g_db_login,
                         Config::$g_db_password);
-                        
-        $stmt = $pdo->prepare('INSERT INTO webauthn_credentials (user_id, credential_id, display_name, sign_count, bearer_token, public_key) VALUES (?, ?, ?, ?, ?, ?)');
+        // Create a new credential record.
+        $stmt = $pdo->prepare('INSERT INTO webauthn_credentials (userId, credentialId, displayName, signCount, bearerToken, publicKey) VALUES (?, ?, ?, ?, ?, ?)');
         $stmt->execute($params);
-        $stmt = $pdo->prepare('INSERT INTO passkeys_demo_users (user_id, display_name, credo) VALUES (?, ?, ?)');
+        // Create a new user data record.
+        $stmt = $pdo->prepare('INSERT INTO passkeys_demo_users (userId, displayName, credo) VALUES (?, ?, ?)');
         $stmt->execute([$userId, $displayName, ""]);
+        // Send these on to the next step.
         $_SESSION['modifyChallenge'] = $challenge;
-        $_SESSION['bearer_token'] = $token;
         $_SESSION['displayName'] = $displayName;
+        $_SESSION['bearerToken'] = $bearerToken;
+
         header('Content-Type: application/json');
-        if (empty($token)) {
-            $token = '';
-        }
-        echo json_encode(['displayName' => $displayName, 'credo' => '', 'bearerToken' => $token]);
+        echo json_encode(['displayName' => $displayName, 'credo' => '', 'bearerToken' => $bearerToken]);
     } catch (Exception $e) {
         http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);

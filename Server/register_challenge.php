@@ -20,20 +20,21 @@
 */
 
 /**
-This is called (via GET) to prepare some basic arguments for the next step in the registration.
-
-The registration is a two-step process, both of which need to be done in the same HTTP session.
-
-This is the first step, where the credentials are created, and returned to the app.
-
-The app must then return the credentials, along with the generated challenge string.
-
-The file is called with two GET arguments that must be supplied:
-
-- `user_id`: This will have a URL-encoded string, with the unique (to this server) user ID that identifies this user.
-
-- `display_name`: This is a URL-encoded readable name for the user. It does not need to be unique. 
-
+    \brief Generate a challenge for the initial user registration process.
+    
+    This is called (via GET) to prepare some basic arguments for the next step in the registration.
+    
+    The registration is a two-step process, both of which need to be done in the same HTTP session.
+    
+    This is the first step, where the credentials are created, and returned to the app.
+    
+    The app must then return the credentials, along with the generated challenge string.
+    
+    The file is called with two GET arguments that must be supplied:
+    
+        - `userId`: This will have a URL-encoded string, with the unique (to this server) user ID that identifies this user.
+    
+        - `displayName`: This is a URL-encoded readable name for the user. It does not need to be unique, but is required. 
 */
 
 require 'vendor/autoload.php';
@@ -53,22 +54,26 @@ $displayName = '';
 $auth = explode('&', $_SERVER['QUERY_STRING']);
 foreach ($auth as $query) {
     $exp = explode('=', $query);
-    if ('user_id' == $exp[0]) {
+    if ('userId' == $exp[0]) {
         $userId = rawurldecode(trim($exp[1]));
-    } elseif ('display_name' == $exp[0]) {
+    } elseif ('displayName' == $exp[0]) {
         $displayName = rawurldecode(trim($exp[1]));
     }
 }
 
-// WE must have BOTH a user ID AND a display name.
-if (empty($userId) || empty($displayName)) {
+// WE must have BOTH a user ID AND a display name. We also should not already be logged in.
+if (!empty($_SESSION['bearerToken']) || empty($userId) || empty($displayName)) {
+    $_SESSION = []; // Clear the poop deck (of poop).
     http_response_code(400);
     echo '&#128169;';   // Oh, poo.
 } else {
+// We fetch the user credentials from the credential DB.
     $pdo = new PDO(Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name, Config::$g_db_login, Config::$g_db_password);
-    $stmt = $pdo->prepare('SELECT credential_id FROM webauthn_credentials WHERE user_id = ?');
+    $stmt = $pdo->prepare('SELECT credentialId FROM webauthn_credentials WHERE userId = ?');
     $stmt->execute([$userId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // If we didn't have one, we will create a new one. This is the only sucess path. Anything else is FAIL.
     if (empty($row)) {
         // Create a new WebAuthn instance, using our organization name, and the serving host.
         $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
@@ -78,7 +83,7 @@ if (empty($userId) || empty($displayName)) {
         
         // We encode the challenge data as a Base64 URL-encoded string.
         $base64urlChallenge = base64url_encode($webAuthn->getChallenge()->getBinaryString());
-        // We do the same for the binary unique user ID.
+        // We do the same for the binary unique user ID. NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
         $userIdEncoded = base64url_encode($args->publicKey->user->id->getBinaryString());
           
         // We replace the ones given by the function (basic Base64), with the Base64 URL-encoded strings.
@@ -93,6 +98,7 @@ if (empty($userId) || empty($displayName)) {
         header('Content-Type: application/json');
         echo json_encode(['publicKey' => $args->publicKey, 'displayName' => $displayName, 'credo' => '', 'bearerToken' => '']);
     } else {
+        $_SESSION = []; // Clear the poop deck (of poop).
         http_response_code(400);
         echo '&#128169;';   // Oh, poo.
     }
