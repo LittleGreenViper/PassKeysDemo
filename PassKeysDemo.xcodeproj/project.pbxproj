@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */; };
+		D42C349B2E3CF300002C325B /* PKD_Handler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42C349A2E3CF300002C325B /* PKD_Handler.swift */; };
 		D44C206A2E35502C000C8BD0 /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
 		D499A5CB2E33AD1A001593B7 /* PKD_AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C12E33AD1A001593B7 /* PKD_AppDelegate.swift */; };
 		D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C82E33AD1A001593B7 /* PKD_SceneDelegate.swift */; };
@@ -19,6 +20,7 @@
 /* Begin PBXFileReference section */
 		D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_ConnectViewController.swift; sourceTree = "<group>"; };
 		D40941472E34FDE8001431EB /* PassKeysDemoUIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PassKeysDemoUIKit.entitlements; sourceTree = "<group>"; };
+		D42C349A2E3CF300002C325B /* PKD_Handler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_Handler.swift; sourceTree = "<group>"; };
 		D44C20692E355029000C8BD0 /* PKD_Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_Extensions.swift; sourceTree = "<group>"; };
 		D499A5A82E33ACF4001593B7 /* PassKeysDemoUIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PassKeysDemoUIKit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D499A5C12E33AD1A001593B7 /* PKD_AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_AppDelegate.swift; sourceTree = "<group>"; };
@@ -53,6 +55,7 @@
 			isa = PBXGroup;
 			children = (
 				D44C20692E355029000C8BD0 /* PKD_Extensions.swift */,
+				D42C349A2E3CF300002C325B /* PKD_Handler.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -206,6 +209,7 @@
 				D44C206A2E35502C000C8BD0 /* PKD_Extensions.swift in Sources */,
 				D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */,
 				D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */,
+				D42C349B2E3CF300002C325B /* PKD_Handler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
