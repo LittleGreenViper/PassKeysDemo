@@ -18,7 +18,7 @@
 
 /* Begin PBXFileReference section */
 		D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_ConnectViewController.swift; sourceTree = "<group>"; };
-		D40941472E34FDE8001431EB /* PassKeysDemoUIKit 2.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "PassKeysDemoUIKit 2.entitlements"; sourceTree = "<group>"; };
+		D40941472E34FDE8001431EB /* PassKeysDemoUIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PassKeysDemoUIKit.entitlements; sourceTree = "<group>"; };
 		D44C20692E355029000C8BD0 /* PKD_Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_Extensions.swift; sourceTree = "<group>"; };
 		D499A5A82E33ACF4001593B7 /* PassKeysDemoUIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PassKeysDemoUIKit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D499A5C12E33AD1A001593B7 /* PKD_AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_AppDelegate.swift; sourceTree = "<group>"; };
@@ -95,7 +95,7 @@
 		D499A5D22E33AD1F001593B7 /* Meta */ = {
 			isa = PBXGroup;
 			children = (
-				D40941472E34FDE8001431EB /* PassKeysDemoUIKit 2.entitlements */,
+				D40941472E34FDE8001431EB /* PassKeysDemoUIKit.entitlements */,
 				D499A5C32E33AD1A001593B7 /* Info.plist */,
 			);
 			path = Meta;
@@ -254,7 +254,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.litlegreenviper.PassKeysDemoUIKit;
+				PRODUCT_BUNDLE_IDENTIFIER = com.littlegreenviper.PassKeysDemoUIKit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -285,7 +285,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.litlegreenviper.PassKeysDemoUIKit;
+				PRODUCT_BUNDLE_IDENTIFIER = com.littlegreenviper.PassKeysDemoUIKit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

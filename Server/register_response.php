@@ -55,7 +55,7 @@ if (empty($userId) || empty($displayName) || empty($challenge) || empty($clientD
     echo '&#128169;';   // Oh, poo.
 } else {
     // Create a new WebAuthn instance, using our organization name, and the serving host.
-    $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+    $webAuthn = new WebAuthn(Config::$g_relying_party_name, Config::$g_relying_party_uri);
     
     // Create a new token, as this is a new login. NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
     $bearerToken = base64url_encode(random_bytes(32));

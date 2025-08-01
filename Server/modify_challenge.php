@@ -109,7 +109,7 @@ try {
         }
         
         // Now, we create a record for the app to incorporate into a signed structure.
-        $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+        $webAuthn = new WebAuthn(Config::$g_relying_party_name, Config::$g_relying_party_uri);
         $args = $webAuthn->getGetArgs($credentials);
         // We need to replace the default stuff with what we have on deck.
         $args->publicKey->challenge = base64url_encode($challenge); // NOTE: This needs to be Base64URL encoded, not just Base64 encoded.

@@ -76,7 +76,7 @@ if (!empty($_SESSION['bearerToken']) || empty($userId) || empty($displayName)) {
     // If we didn't have one, we will create a new one. This is the only sucess path. Anything else is FAIL.
     if (empty($row)) {
         // Create a new WebAuthn instance, using our organization name, and the serving host.
-        $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+        $webAuthn = new WebAuthn(Config::$g_relying_party_name, Config::$g_relying_party_uri);
        
         // We will use the function to create a registration object, which will need to be presented in a subsequent call.
         $args = $webAuthn->getCreateArgs($userId, $userId, $displayName);

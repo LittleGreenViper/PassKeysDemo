@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>PKDDefaultBaseURI</key>
-	<string>https://littlegreenviper.com/PassKeysDemo</string>
+	<string>https://pkd.littlegreenviper.com/</string>
 	<key>PKDDefaultRelyingParty</key>
-	<string>littlegreenviper.com</string>
+	<string>pkd.littlegreenviper.com</string>
 	<key>PKDDefaultUserID</key>
 	<string>test@example.com</string>
 	<key>PKDDefaultUserName</key>

@@ -79,7 +79,7 @@ if (empty($row) || empty($userId)) {    // Look for obvious errors. If we didn't
     
     $signCount = intval($row['signCount']);
     
-    $webAuthn = new WebAuthn(Config::$g_relying_party_name, $_SERVER['HTTP_HOST']);
+    $webAuthn = new WebAuthn(Config::$g_relying_party_name, Config::$g_relying_party_uri);
     
     // If there was no signed client data record, with a matching challenge, then game over, man.
     try {
