@@ -27,7 +27,7 @@ import AuthenticationServices
 /**
  
  */
-class PKD_Handler {
+class PKD_Handler: NSObject {
     /* ###################################################################### */
     /**
      This is whatever anchor we are providing the authentication services for their screens.
@@ -38,7 +38,7 @@ class PKD_Handler {
 /* ###################################################################################################################################### */
 // MARK: ASAuthorizationControllerDelegate Conformance
 /* ###################################################################################################################################### */
-extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
+extension PKD_Handler: ASAuthorizationControllerDelegate {
     /* ###################################################################### */
     /**
      Called when the user completes an authorization screen.
@@ -48,7 +48,8 @@ extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
      */
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization inAuthorization: ASAuthorization) {
     }
-    
+}
+
 /* ###################################################################################################################################### */
 // MARK: ASAuthorizationControllerPresentationContextProviding Conformance
 /* ###################################################################################################################################### */
