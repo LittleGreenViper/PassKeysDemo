@@ -34,20 +34,24 @@ class PKD_ConnectViewController: UIViewController {
     // MARK: Used For Working With User Data
     /* ################################################################################################################################## */
     /**
+     This has the data sent back, upon successful login or editing.
      */
     private struct _UserDataStruct: Decodable {
         /* ################################################################## */
         /**
+         The user's displayed name.
          */
         let displayName: String
 
         /* ################################################################## */
         /**
+         A bit of text, stored on the user's behalf.
          */
         let credo: String
         
         /* ################################################################## */
         /**
+         The bearer token, for logged-in users.
          */
         let bearerToken: String
     }
@@ -56,6 +60,7 @@ class PKD_ConnectViewController: UIViewController {
     // MARK: Used For Fetching Registration Data
     /* ################################################################################################################################## */
     /**
+     This is what the server sends back, when we register,
      */
     private struct _PublicKeyCredentialCreationOptionsStruct: Decodable {
         /* ############################################################################################################################## */
@@ -199,26 +204,31 @@ class PKD_ConnectViewController: UIViewController {
 
     /* ###################################################################### */
     /**
+     We hold onto this, so we can calculate a "dirty" state.
      */
     private var _originalDisplayName: String = ""
 
     /* ###################################################################### */
     /**
+     We hold onto this, so we can calculate a "dirty" state.
      */
     private var _originalCredo: String = ""
 
     /* ###################################################################### */
     /**
+     The text field that allows the user to edit their display name.
      */
     private weak var _displayNameTextField: UITextField?
 
     /* ###################################################################### */
     /**
+     The text field that allows the user to edit their credo text.
      */
     private weak var _credoTextField: UITextField?
 
     /* ###################################################################### */
     /**
+     The button for updating (so it can be enabled or disabled).
      */
     private weak var _updateButton: UIButton?
 }
