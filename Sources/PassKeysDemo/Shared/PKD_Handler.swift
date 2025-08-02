@@ -20,6 +20,7 @@
 
 import Foundation
 import AuthenticationServices
+import KeychainSwift
 
 /* ###################################################################################################################################### */
 // MARK: - PassKeys Interaction Handling Class -
@@ -27,7 +28,21 @@ import AuthenticationServices
 /**
  
  */
-class PKD_Handler: NSObject {
+open class PKD_Handler: NSObject {
+    /* ###################################################################### */
+    /**
+     The responding callback to the context.
+     
+     This is always called in the main thread.
+     
+     The first argument is a simple tuple, with strings for the displayName and credo.
+     
+     The second argument is a boolean. True, if the process suceeded, false, if not.
+     
+     Both may be nil.
+     */
+    public typealias TransactionCallback = ((displayName: String, credo: String)?, Bool?) -> Void
+
     /* ################################################################################################################################## */
     // MARK: Used For Working With User Data
     /* ################################################################################################################################## */
@@ -148,6 +163,12 @@ class PKD_Handler: NSObject {
 
     /* ###################################################################### */
     /**
+     The key that we use to store the user ID in the KeyChain.
+     */
+    static private let _userIDKeychainKey = "PKD_UserID"
+
+    /* ###################################################################### */
+    /**
      The error returned, if the credential is not in the server store.
      */
     static private let _errorResponseString = "User not found"
@@ -202,10 +223,30 @@ class PKD_Handler: NSObject {
     
     /* ###################################################################### */
     /**
-     The User ID string.
+     The User ID string, as stored in the keychain. Nil, if no string stored.
      */
-    let userIDString: String
+    private var _storedUserIDString: String? {
+        let swiftKeychainWrapper = KeychainSwift()
+        swiftKeychainWrapper.synchronizable = true
+        
+        return swiftKeychainWrapper.get(Self._userIDKeychainKey)
+    }
     
+    /* ###################################################################### */
+    /**
+     The User ID string. This is stored in the keychain.
+     If there was no preexisting value, a new ID is stored as a UUID, so every userID is unique.
+     */
+    private var _userIDString: String {
+        var ret = self._storedUserIDString ?? UUID().uuidString
+        
+        let swiftKeychainWrapper = KeychainSwift()
+        swiftKeychainWrapper.synchronizable = true
+        swiftKeychainWrapper.set(ret, forKey: Self._userIDKeychainKey)
+        
+        return ret
+    }
+
     /* ###################################################################### */
     /**
      The user name string.
@@ -235,12 +276,10 @@ class PKD_Handler: NSObject {
      */
     init(relyingParty inRelyingParty: String,
          baseURIString inBaseURIString: String,
-         userIDString inUserIDString: String,
          userNameString inUserNameString: String,
          presentationAnchor inPresentationAnchor: ASPresentationAnchor) {
         self.relyingParty = inRelyingParty
         self.baseURIString = inBaseURIString
-        self.userIDString = inUserIDString
         self.userNameString = inUserNameString
         self.presentationAnchor = inPresentationAnchor
     }
@@ -323,16 +362,7 @@ extension PKD_Handler {
                     }
                 } else {
                     self._credentialID = nil
-                    DispatchQueue.main.async {
-                        let style: UIAlertController.Style = .alert
-                        let alertController = UIAlertController(title: "Error Logging In", message: "Unable to log in.", preferredStyle: style)
-                        
-                        let okAction = UIAlertAction(title: "OK", style: .cancel, handler: nil)
-                        
-                        alertController.addAction(okAction)
-                        
-                        self.present(alertController, animated: true, completion: nil)
-                    }
+                    DispatchQueue.main.async { }
                 }
             }
         }
@@ -346,9 +376,6 @@ extension PKD_Handler {
 extension PKD_Handler {
     /* ###################################################################### */
     /**
-     This is called when the login or update button is hit.
-     
-     - parameter inButton: This is the button, if called from pressing the update button, or login button. Can be omitted.
      */
     @objc func accessServerWithPasskey() {
         /* ###################################################################### */
@@ -485,21 +512,7 @@ extension PKD_Handler {
                 }
             }
 
-            DispatchQueue.main.async {
-                if let presentedBy = PKD_SceneDelegate.currentWindow?.rootViewController {
-                    let style: UIAlertController.Style = .alert
-                    let alertController = UIAlertController(title: "Must Register", message: "Since you have not set up a passkey yet, you must register a new account, before logging in.", preferredStyle: style)
-
-                    let okAction = UIAlertAction(title: "OK", style: .cancel) { _ in
-                        self._loginAfter = true
-                        _registerPasskey()
-                    }
-                    
-                    alertController.addAction(okAction)
-                    
-                    presentedBy.present(alertController, animated: true, completion: nil)
-                }
-            }
+            DispatchQueue.main.async { /* HANDLE NEED TO REGISTER */ }
         }
             
         _fetchAccessChallenge() { inResult in
@@ -526,6 +539,7 @@ extension PKD_Handler {
                 }   else {
                     print("No Public Key or Challenge.")
                 }
+            
             case .failure(let error):
                 self._credentialID = nil
                 self._bearerToken = nil
@@ -551,7 +565,7 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
      - parameter inAuthController: The auth controller.
      - parameter inAuthorization: The authorization generated by the controller.
      */
-    func authorizationController(controller inAuthController: ASAuthorizationController, didCompleteWithAuthorization inAuthorization: ASAuthorization) {
+    public func authorizationController(controller inAuthController: ASAuthorizationController, didCompleteWithAuthorization inAuthorization: ASAuthorization) {
     }
 }
 
@@ -566,5 +580,144 @@ extension PKD_Handler: ASAuthorizationControllerPresentationContextProviding {
      - parameter for: The auth controller (ignored).
      - returns: stored presentation anchor. We force the unwrap, because bad things should happen, if it's not valid.
      */
-    func presentationAnchor(for: ASAuthorizationController) -> ASPresentationAnchor { self.presentationAnchor! }
+    public func presentationAnchor(for: ASAuthorizationController) -> ASPresentationAnchor { self.presentationAnchor! }
+}
+
+/* ###################################################################################################################################### */
+// MARK: External API
+/* ###################################################################################################################################### */
+public extension PKD_Handler {
+    /* ###################################################################### */
+    /**
+     The stored User ID string. Empty, if none.
+     */
+    var userIDString: String { self._storedUserIDString ?? "" }
+
+    /* ###################################################################### */
+    /**
+     Returns true, if we are registered (have a stored user ID).
+     */
+    var isRegistered: Bool { !self.userIDString.isEmpty }
+
+    /* ###################################################################### */
+    /**
+     Returns true, if we are logged in (have an active session).
+     */
+    var isLoggedIn: Bool { self._isLoggedIn }
+
+    /* ###################################################################### */
+    /**
+     This completely removes the user ID from the KeyChain.
+     */
+    func clearUserInfo() {
+        KeychainSwift().clear()
+    }
+    
+    /* ###################################################################### */
+    /**
+     This logs the user in.
+     
+     > NOTE: The user must be logged out, or this does nothing. The user must also be previously registered.
+
+     - parameter inCompletion: A tail completion callback. This also acts as an initial read.
+     */
+    func login(completion inCompletion: @escaping TransactionCallback) {
+        if self.isRegistered,
+           !self.isLoggedIn {
+            
+        } else {
+            inCompletion(nil, false)
+        }
+    }
+
+    /* ###################################################################### */
+    /**
+     This logs the user out.
+     
+     > NOTE: The user must be logged in, or this does nothing.
+     
+     - parameter inCompletion: This is an optional tail completion callback, with a single Boolean argument. True, if the logout was successful.
+     */
+    func logout(completion inCompletion: ((Bool) -> Void)? = nil) {
+        if self.isLoggedIn {
+            
+        } else {
+            inCompletion?(false)
+        }
+    }
+
+    /* ###################################################################### */
+    /**
+     Registers the user as a new one. This also logs in the user.
+     
+     > NOTE: The user cannot be logged in, and cannot have an existing account.
+     
+     - parameter inCompletion: A tail completion callback.
+     */
+    func create(displayName: String, credo: String, completion inCompletion: @escaping TransactionCallback) {
+        if !self.isRegistered,
+           !self.isLoggedIn {
+            
+        } else {
+            inCompletion(nil, false)
+        }
+    }
+
+    /* ###################################################################### */
+    /**
+     Reads the stored user data.
+     
+     > NOTE: The user needs to be logged in, and must have an existing account.
+
+     - parameter inCompletion: A tail completion callback.
+    */
+    func read(completion inCompletion: @escaping TransactionCallback) {
+        if self.isRegistered,
+           self.isLoggedIn {
+            
+        } else {
+            inCompletion(nil, false)
+        }
+    }
+
+    /* ###################################################################### */
+    /**
+     Modifies the stored user data.
+     
+     > NOTE: The user needs to be logged in, and must have an existing account.
+
+     - parameter inCompletion: A tail completion callback.
+          */
+    func update(displayName: String, credo: String, completion inCompletion: @escaping TransactionCallback) {
+        if self.isRegistered,
+           self.isLoggedIn {
+            
+        } else {
+            inCompletion(nil, false)
+        }
+    }
+
+    /* ###################################################################### */
+    /**
+     Removes the user record.
+     
+     > NOTE: The user needs to be logged in, and must have an existing account.
+
+     > NOTE: This does not remove the PassKey! The user needs to do that manually.
+
+     - parameter inCompletion: An optional tail completion callback, with a single boolean. True, if the deletion was successful.
+     */
+    func delete(completion inCompletion: ((Bool) -> Void)? = nil) {
+        if self.isRegistered,
+           self.isLoggedIn {
+            self.logout { inSuccess in
+                if inSuccess {
+                    self.clearUserInfo()
+                }
+                inCompletion?(inSuccess)
+            }
+        } else {
+            inCompletion?(false)
+        }
+    }
 }
