@@ -36,7 +36,7 @@ require_once "./PKDServer.class.php";
     <body>
         <?php
             
-        $temp = new PKDServer($get_args, $post_args);
+        $temp = new PKDServer();
 
         ?>
     </body>

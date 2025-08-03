@@ -16,8 +16,7 @@
     portions of the Software.
 
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES
-    OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
@@ -40,10 +39,49 @@ This class implements the server-side PassKeys (WebAuthn) component.
 class PKDServer {
     /**************************************/
     /**
+    This contains an object, with any arguments sent via GET.
+    */
+    var $getArgs;
+
+    /**************************************/
+    /**
+    This contains an object, with any arguments sent via POST (We only have JSON sent by POST).
+    */
+    var $postArgs;
+
+    /**************************************/
+    /**
+    This is an initialized instance of WebAuthn that we'll be using for checking credentials.
+    */
+    var $webAuthnInstance;
+
+    /**************************************/
+    /**
+    This is an initialized instance of PDO, that we'll be using to interact with the database.
+    */
+    var $pdoInstance;
+    
+    /**************************************/
+    /**
+    Main constructor.
     */
     public function __construct() {
-        $get_args = (object)$_GET;
         $rawPostData = file_get_contents("php://input");
-        $post_args = json_decode($rawPostData, true);
+        $pdoHostDBConfig = Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name;
+
+        $this->getArgs = (object)$_GET;
+        $this->postArgs = json_decode($rawPostData, true);
+        $this->pdoInstance = new PDO($pdoHostDBConfig, Config::$g_db_login, Config::$g_db_password);
+        $this->webAuthnInstance = new WebAuthn(Config::$g_relying_party_name, Config::$g_relying_party_uri);
+    }
+    
+    /**************************************/
+    /**
+    */
+    public function loginChallenge() {
+        $userId = $this->getArgs->userId;
+        
+        if (!empty($userId)) {
+        }
     }
 }
