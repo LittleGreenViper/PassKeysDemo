@@ -37,12 +37,70 @@ open class PKD_Handler: NSObject {
      
      The first argument is a simple tuple, with strings for the displayName and credo.
      
-     The second argument is a boolean. True, if the process suceeded, false, if not.
+     The second argument is a LoginResponse, with a report on the transaction success or failure.
      
      Both may be nil.
      */
-    public typealias TransactionCallback = ((displayName: String, credo: String)?, Bool?) -> Void
+    public typealias TransactionCallback = ((displayName: String, credo: String)?, LoginResponse) -> Void
 
+    /* ################################################################################################################################## */
+    // MARK: Responses From Login Attempts
+    /* ################################################################################################################################## */
+    /**
+     This is what is returned to the login callback.
+     */
+    public enum Errors: Error {
+        /* ################################################################## */
+        /**
+         Failed, because we have no local userID registered.
+         */
+        case noUserID
+        
+        /* ################################################################## */
+        /**
+         Failed, because already have a user, but should not.
+         */
+        case alreadyRegistered
+
+        /* ################################################################## */
+        /**
+         Failed, because not logged in, but should be logged in.
+         */
+        case notLoggedIn
+
+        /* ################################################################## */
+        /**
+         Failed, because already logged in, but should be logged out.
+         */
+        case alreadyLoggedIn
+        
+        /* ################################################################## */
+        /**
+         Failed, because the presented user was not found on the server.
+         */
+        case userNotFound
+    }
+
+    /* ################################################################################################################################## */
+    // MARK: Responses From Login Attempts
+    /* ################################################################################################################################## */
+    /**
+     This is what is returned to the login callback.
+     */
+    public enum LoginResponse {
+        /* ################################################################## */
+        /**
+         There was an unrecoverable error.
+         */
+        case failure(Error)
+        
+        /* ################################################################## */
+        /**
+         No problems. Login successful.
+         */
+        case success
+    }
+    
     /* ################################################################################################################################## */
     // MARK: Used For Working With User Data
     /* ################################################################################################################################## */
@@ -619,14 +677,17 @@ public extension PKD_Handler {
      
      > NOTE: The user must be logged out, or this does nothing. The user must also be previously registered.
 
-     - parameter inCompletion: A tail completion callback. This also acts as an initial read.
+     - parameter inCompletion: A tail completion callback, with a single LoginResponse argument.
      */
-    func login(completion inCompletion: @escaping TransactionCallback) {
-        if self.isRegistered,
-           !self.isLoggedIn {
-            
+    func login(completion inCompletion: @escaping (LoginResponse) -> Void) {
+        if self.isRegistered {
+            if self.isLoggedIn {
+                
+            } else {
+                inCompletion(.failure(Errors.alreadyLoggedIn))
+            }
         } else {
-            inCompletion(nil, false)
+            inCompletion(.failure(Errors.noUserID))
         }
     }
 
@@ -636,13 +697,13 @@ public extension PKD_Handler {
      
      > NOTE: The user must be logged in, or this does nothing.
      
-     - parameter inCompletion: This is an optional tail completion callback, with a single Boolean argument. True, if the logout was successful.
+     - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument.
      */
-    func logout(completion inCompletion: ((Bool) -> Void)? = nil) {
+    func logout(completion inCompletion: ((LoginResponse) -> Void)? = nil) {
         if self.isLoggedIn {
             
         } else {
-            inCompletion?(false)
+            inCompletion?(.failure(Errors.notLoggedIn))
         }
     }
 
@@ -655,11 +716,14 @@ public extension PKD_Handler {
      - parameter inCompletion: A tail completion callback.
      */
     func create(displayName: String, credo: String, completion inCompletion: @escaping TransactionCallback) {
-        if !self.isRegistered,
-           !self.isLoggedIn {
-            
+        if !self.isRegistered {
+            if !self.isLoggedIn {
+                
+            } else {
+                inCompletion(nil, .failure(Errors.alreadyLoggedIn))
+            }
         } else {
-            inCompletion(nil, false)
+            inCompletion(nil, .failure(Errors.alreadyRegistered))
         }
     }
 
@@ -672,11 +736,14 @@ public extension PKD_Handler {
      - parameter inCompletion: A tail completion callback.
     */
     func read(completion inCompletion: @escaping TransactionCallback) {
-        if self.isRegistered,
-           self.isLoggedIn {
-            
+        if self.isRegistered {
+            if self.isLoggedIn {
+                
+            } else {
+                inCompletion(nil, .failure(Errors.notLoggedIn))
+            }
         } else {
-            inCompletion(nil, false)
+            inCompletion(nil, .failure(Errors.noUserID))
         }
     }
 
@@ -689,11 +756,14 @@ public extension PKD_Handler {
      - parameter inCompletion: A tail completion callback.
           */
     func update(displayName: String, credo: String, completion inCompletion: @escaping TransactionCallback) {
-        if self.isRegistered,
-           self.isLoggedIn {
-            
+        if self.isRegistered {
+            if self.isLoggedIn {
+                
+            } else {
+                inCompletion(nil, .failure(Errors.notLoggedIn))
+            }
         } else {
-            inCompletion(nil, false)
+            inCompletion(nil, .failure(Errors.noUserID))
         }
     }
 
@@ -705,19 +775,13 @@ public extension PKD_Handler {
 
      > NOTE: This does not remove the PassKey! The user needs to do that manually.
 
-     - parameter inCompletion: An optional tail completion callback, with a single boolean. True, if the deletion was successful.
+     - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument.
      */
-    func delete(completion inCompletion: ((Bool) -> Void)? = nil) {
-        if self.isRegistered,
-           self.isLoggedIn {
-            self.logout { inSuccess in
-                if inSuccess {
-                    self.clearUserInfo()
-                }
-                inCompletion?(inSuccess)
-            }
+    func delete(completion inCompletion: ((LoginResponse) -> Void)? = nil) {
+        if self.isLoggedIn {
+            
         } else {
-            inCompletion?(false)
+            inCompletion?(.failure(Errors.notLoggedIn))
         }
     }
 }
