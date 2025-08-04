@@ -34,6 +34,41 @@ use lbuchs\WebAuthn\WebAuthn;
 
 /******************************************/
 /**
+*/
+enum Operation: String {
+    /**************************************/
+    /**
+     */
+    case login = 'login';
+
+    /**************************************/
+    /**
+     */
+    case logout = 'logout';
+
+    /**************************************/
+    /**
+     */
+    case createUser = 'createUser';
+
+    /**************************************/
+    /**
+     */
+    case readUser = 'readUser';
+
+    /**************************************/
+    /**
+     */
+    case updateUser = 'updateUser';
+
+    /**************************************/
+    /**
+     */
+    case deleteUser = 'deleteUser';
+}
+
+/******************************************/
+/**
 This class implements the server-side PassKeys (WebAuthn) component.
 */
 class PKDServer {
@@ -73,6 +108,18 @@ class PKDServer {
         $this->postArgs = json_decode($rawPostData, true);
         $this->pdoInstance = new PDO($pdoHostDBConfig, Config::$g_db_login, Config::$g_db_password);
         $this->webAuthnInstance = new WebAuthn(Config::$g_relying_party_name, Config::$g_relying_party_uri);
+        $operation = Operation::from($this->getArgs->operation);
+        $userId = $this->getArgs->userId;
+        switch($operation) {
+            case Operation::login:
+                if (!empty($userId)) {
+                    $this->loginChallenge();
+                }
+                break;
+                
+            default:
+                echo("<h1>ERROR</h1>");
+        }
     }
     
     /**************************************/
@@ -80,8 +127,6 @@ class PKDServer {
     */
     public function loginChallenge() {
         $userId = $this->getArgs->userId;
-        
-        if (!empty($userId)) {
-        }
+        echo('<h2>User: '.$userId.'</h2>');
     }
 }
