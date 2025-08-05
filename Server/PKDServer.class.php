@@ -184,7 +184,7 @@ class PKDServer {
         if (!empty($userId)) {
             $stmt = $this->pdoInstance->prepare('SELECT credentialId, displayName, signCount FROM webauthn_credentials WHERE userId = ?');
             $stmt->execute([$userId]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC)
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
             $credentialId = $row['credentialId'];
             
             if (!empty($credentialId)) {

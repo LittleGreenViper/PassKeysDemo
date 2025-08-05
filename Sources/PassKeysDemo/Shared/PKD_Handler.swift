@@ -719,7 +719,7 @@ public extension PKD_Handler {
      */
     func login(completion inCompletion: @escaping (LoginResponse) -> Void) {
         if self.isRegistered {
-            if self.isLoggedIn {
+            if !self.isLoggedIn {
                 
             } else {
                 inCompletion(.failure(Errors.alreadyLoggedIn))
@@ -755,7 +755,7 @@ public extension PKD_Handler {
      */
     func create(displayName: String, credo: String, completion inCompletion: @escaping TransactionCallback) {
         if !self.isRegistered {
-            if !self.isLoggedIn {
+            if self.isLoggedIn {
                 
             } else {
                 inCompletion(nil, .failure(Errors.alreadyLoggedIn))
