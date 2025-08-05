@@ -114,11 +114,14 @@ class PKDServer {
             case Operation::login:
                 if (!empty($userId)) {
                     $this->loginChallenge();
+                } else {
+                    $this->loginCompletion();
                 }
                 break;
                 
             default:
-                echo("<h1>ERROR</h1>");
+                http_response_code(400);
+                echo '&#128169;';   // Oh, poo.
         }
     }
     
@@ -126,7 +129,36 @@ class PKDServer {
     /**
     */
     public function loginChallenge() {
-        $userId = $this->getArgs->userId;
-        echo('<h2>User: '.$userId.'</h2>');
+        $stmt = $pdo->prepare('SELECT credentialId FROM webauthn_credentials WHERE userId = ?');
+        $stmt->execute([$this->getArgs->userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!empty($row)) {
+            $challenge = random_bytes(32);  // Create a new challenge.
+            // Pass these on to the next step.
+            $_SESSION['loginChallenge'] = $challenge;
+            $_SESSION['loginUserId'] = $userId;
+            echo(base64url_encode($challenge));
+        } else {
+            http_response_code(404);
+            echo json_encode(['error' => 'User not found']);
+        }
+    }
+    
+    /**************************************/
+    /**
+    */
+    public function loginCompletion() {
+        $userId = $_SESSION['loginUserId'];
+        $challenge = $_SESSION['loginChallenge'];
+        if (!empty($userId)) {
+            $stmt = $pdo->prepare('SELECT credentialId, displayName FROM webauthn_credentials WHERE userId = ?');
+            $stmt->execute([$userId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC)
+            $credentialId = $row['credentialId'];
+            
+            if (!empty($credentialId)) {
+            }
+        }
     }
 }
