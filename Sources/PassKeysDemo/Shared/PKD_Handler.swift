@@ -327,21 +327,6 @@ open class PKD_Handler: NSObject {
         
         return swiftKeychainWrapper.get(Self._userIDKeychainKey)
     }
-    
-    /* ###################################################################### */
-    /**
-     The User ID string. This is stored in the keychain.
-     If there was no preexisting value, a new ID is stored as a UUID, so every userID is unique.
-     */
-    private var _userIDString: String {
-        var ret = self._storedUserIDString ?? UUID().uuidString
-        
-        let swiftKeychainWrapper = KeychainSwift()
-        swiftKeychainWrapper.synchronizable = true
-        swiftKeychainWrapper.set(ret, forKey: Self._userIDKeychainKey)
-        
-        return ret
-    }
 
     /* ###################################################################### */
     /**
@@ -402,15 +387,30 @@ extension PKD_Handler {
     
     /* ###################################################################### */
     /**
-     True, if we are currently logged in.
+     True, if we are currently logged in. Must also be registered (belt and suspenders).
      */
-    private var _isLoggedIn: Bool { nil != self._cachedSession }
+    private var _isLoggedIn: Bool { !(self._storedUserIDString ?? "").isEmpty && nil != self._cachedSession }
 }
 
 /* ###################################################################################################################################### */
 // MARK:
 /* ###################################################################################################################################### */
 extension PKD_Handler {
+    /* ###################################################################### */
+    /**
+     Creates a new random User ID string. This is stored in the keychain.
+     It will not overwrite a preexisting string.
+     */
+    private func _createNewUserIdString() -> String {
+        var ret = self._storedUserIDString ?? UUID().uuidString
+        
+        let swiftKeychainWrapper = KeychainSwift()
+        swiftKeychainWrapper.synchronizable = true
+        swiftKeychainWrapper.set(ret, forKey: Self._userIDKeychainKey)
+        
+        return ret
+    }
+
     /* ###################################################################### */
     /**
      Called to access or modify the user data, via a POST transaction.
@@ -470,6 +470,22 @@ extension PKD_Handler {
 // MARK:
 /* ###################################################################################################################################### */
 extension PKD_Handler {
+    private func _getLoginChallenge(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
+        if let userIdString = self._storedUserIDString,
+           !userIdString.isEmpty {
+            var urlString = "\(self.baseURIString)/index.php?operation=login&userId=\(userIdString)"
+            guard let url = URL(string: urlString) else { return }
+            self._session.dataTask(with: url) { inData, inResponse, inError in
+                if let error = inError {
+                    inCompletion(.failure(error))
+                } else {
+                    
+                }
+            }.resume()
+        } else {
+        }
+    }
+    
     /* ###################################################################### */
     /**
      */
@@ -693,7 +709,7 @@ public extension PKD_Handler {
     /**
      Returns true, if we are registered (have a stored user ID).
      */
-    var isRegistered: Bool { !self.userIDString.isEmpty }
+    var isRegistered: Bool { !(self._storedUserIDString ?? "").isEmpty }
 
     /* ###################################################################### */
     /**
