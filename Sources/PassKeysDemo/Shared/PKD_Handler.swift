@@ -26,7 +26,7 @@ import KeychainSwift
 // MARK: - PassKeys Interaction Handling Class -
 /* ###################################################################################################################################### */
 /**
- 
+ This class abstracts the communication infrastructure with the server, and acts as a model for the user interface.
  */
 open class PKD_Handler: NSObject {
     /* ###################################################################### */
@@ -76,9 +76,31 @@ open class PKD_Handler: NSObject {
         
         /* ################################################################## */
         /**
-         Failed, because the presented user was not found on the server.
+         Returns a localized string, with the error description.
          */
-        case userNotFound
+        var localizedDescription: String {
+            var ret = "Unknown error"
+            
+            switch self {
+            case .noUserID:
+                ret = "No user with this ID registered"
+                break
+                
+            case .alreadyRegistered:
+                ret = "A user with this ID is already registered"
+                break
+                
+            case .notLoggedIn:
+                ret = "Not logged in"
+                break
+                
+            case .alreadyLoggedIn:
+                ret = "Already logged in"
+                break
+           }
+            
+            return ret
+        }
     }
 
     /* ################################################################################################################################## */
@@ -90,31 +112,37 @@ open class PKD_Handler: NSObject {
     enum Operation: String {
         /* ################################################################## */
         /**
+         Login a previously registered user, using the userId, and the PassKey.
          */
         case login
 
         /* ################################################################## */
         /**
+         Log out a currently logged-in user.
          */
         case logout
 
         /* ################################################################## */
         /**
+         Create a new user on the server.
          */
         case createUser
 
         /* ################################################################## */
         /**
+         Read the displayName and credo of a registered (and logged-in) user.
          */
         case readUser
 
         /* ################################################################## */
         /**
+         Change the displayName and/or credo of the registered (and logged-in) user.
          */
         case updateUser
 
         /* ################################################################## */
         /**
+         Delete a registered (and logged-in) user.
          */
         case deleteUser
     }
@@ -846,8 +874,10 @@ public extension PKD_Handler {
      */
     func create(displayName: String, credo: String, completion inCompletion: @escaping TransactionCallback) {
         if !self.isRegistered {
-            if self.isLoggedIn {
-                
+            if !self.isLoggedIn {
+                self._getCreateChallenge { [weak self] inCreateChallengeResponse in
+                    
+                }
             } else {
                 inCompletion(nil, .failure(Errors.alreadyLoggedIn))
             }
@@ -908,7 +938,7 @@ public extension PKD_Handler {
      */
     func delete(completion inCompletion: ((LoginResponse) -> Void)? = nil) {
         if self.isLoggedIn {
-            
+            self.clearUserInfo()
         } else {
             inCompletion?(.failure(Errors.notLoggedIn))
         }

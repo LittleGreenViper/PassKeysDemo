@@ -298,6 +298,25 @@ extension PKD_ConnectViewController {
 // MARK: Callbacks
 /* ###################################################################################################################################### */
 extension PKD_ConnectViewController {
+    @objc func register() {
+//        self._pkdInstance?.
+    }
+    
+    @objc func login() {
+        self._pkdInstance?.login { [weak self] inResult in
+            switch inResult {
+            case .success:
+                print("Success!")
+                break
+                
+            case .failure(let inError):
+                print("Error: \(inError.localizedDescription)")
+                break
+            }
+            DispatchQueue.main.async { self?._setUpUI() }
+        }
+    }
+    
     /* ###################################################################### */
     /**
      Called whenever the text in one of our edit fields changes.
