@@ -26,18 +26,4 @@
 */
 
 require_once "./PKDServer.class.php";
-?>
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Nothing to see here, folks.</title>
-    </head>
-    <body>
-        <?php
-            
-        $temp = new PKDServer();
-
-        ?>
-    </body>
-</html>
+new PKDServer();

@@ -63,7 +63,7 @@ enum Operation: String {
     
     The call requires a unique userId, and displayName. Also, the session must be logged in.
      */
-    case createUser = 'createUser';
+    case createUser = 'create';
 
     /**************************************/
     /**
@@ -71,7 +71,7 @@ enum Operation: String {
     
     The call requires a unique userId. Also, the session must be logged in.
      */
-    case readUser = 'readUser';
+    case readUser = 'read';
 
     /**************************************/
     /**
@@ -79,7 +79,7 @@ enum Operation: String {
     
     The call requires a unique userId, displayName, and credo. Also, the session must be logged in.
      */
-    case updateUser = 'updateUser';
+    case updateUser = 'update';
 
     /**************************************/
     /**
@@ -87,7 +87,7 @@ enum Operation: String {
     
     The call requires a unique userId. Also, the session must be logged in.
      */
-    case deleteUser = 'deleteUser';
+    case deleteUser = 'delete';
 }
 
 /******************************************/
@@ -141,6 +141,14 @@ class PKDServer {
                 }
                 break;
                 
+            case Operation::createUser:
+                if (!empty($this->getArgs->userId)) {
+                    $this->createChallenge();
+                } else {
+                    $this->createCompletion();
+                }
+                break;
+
             default:
                 http_response_code(400);
                 echo '&#128169;';   // Oh, poo.
@@ -162,7 +170,7 @@ class PKDServer {
             $challenge = random_bytes(32);  // Create a new challenge.
             // Pass these on to the next step.
             $_SESSION['loginChallenge'] = $challenge;
-            $_SESSION['loginUserId'] = $userId;
+            $_SESSION['loginUserId'] = $this->getArgs->userId;
             echo(base64url_encode($challenge));
         } else {
             http_response_code(404);
@@ -245,12 +253,15 @@ class PKDServer {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!empty($userId) && empty($row)) {
-            // We will use the function to create a registration object, which will need to be presented in a subsequent call.
+            // We will use the function to create a registration object,
+            // which will need to be presented in a subsequent call.
             $args = $this->webAuthnInstance->getCreateArgs($userId, $userId, $displayName);
             
             // We encode the challenge data as a Base64 URL-encoded string.
-            $base64urlChallenge = base64url_encode($this->webAuthnInstance->getChallenge()->getBinaryString());
-            // We do the same for the binary unique user ID. NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
+            $binaryString = $this->webAuthnInstance->getChallenge()->getBinaryString();
+            $base64urlChallenge = base64url_encode($binaryString);
+            // We do the same for the binary unique user ID.
+            // NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
             $userIdEncoded = base64url_encode($args->publicKey->user->id->getBinaryString());
               
             // We replace the ones given by the function (basic Base64), with the Base64 URL-encoded strings.
@@ -258,22 +269,73 @@ class PKDServer {
             $args->publicKey->user->id = $userIdEncoded;
             
             // We will save these in the session, which must be preserved for the next step.
-            $_SESSION['createChallenge'] = $base64urlChallenge;
             $_SESSION['createUserID'] = $userId;
             $_SESSION['createDisplayName'] = $displayName;
+            $_SESSION['createChallenge'] = $base64urlChallenge;
         
             header('Content-Type: application/json');
             echo json_encode(['publicKey' => $args->publicKey]);
         } else {
             http_response_code(400);
-            echo '&#128169;';   // Oh, poo.
+            echo '-1-&#128169;';   // Oh, poo.
         }
     }
     
     /**************************************/
     /**
+    This completes the creation.
+    
+    It ensures that the PassKey is valid, and matches the challenge we sent up, then creates
+    a record in each of the database tables.
+    
+    It responds with the displayName, credo, and bearerToken for the new user.
     */
     public function createCompletion() {
+        // Create a new token, as this is a new login.
+        // NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
+        $bearerToken = base64url_encode(random_bytes(32));
+        $userId = $_SESSION['createUserID'];
+        $displayName = $_SESSION['createDisplayName'];
+        $clientDataJSON = base64_decode($this->postArgs->clientDataJSON);
+        $attestationObject = base64_decode($this->postArgs->attestationObject);
+        $challenge = base64url_decode($_SESSION['createChallenge']);  // NOTE: Base64URL encoded.
+        
+        if (!empty($clientDataJSON) && !empty($attestationObject)) {
+            try {
+                // This is where the data to be stored for the subsequent logins is generated.
+                $data = $this->webAuthnInstance->processCreate( $clientDataJSON,
+                                                                $attestationObject,
+                                                                $challenge);
+                
+                // We will be storing all this into the database.
+                $params = [
+                    $userId,
+                    $data->credentialId,
+                    $displayName,
+                    intval($data->signCount),
+                    $bearerToken,
+                    $data->credentialPublicKey
+                ];
+                
+                // Create a new credential record.
+                $stmt = $this->pdoInstance->prepare('INSERT INTO webauthn_credentials (userId, credentialId, displayName, signCount, bearerToken, publicKey) VALUES (?, ?, ?, ?, ?, ?)');
+                $stmt->execute($params);
+                // Create a new user data record.
+                $stmt = $this->pdoInstance->prepare('INSERT INTO passkeys_demo_users (userId, displayName, credo) VALUES (?, ?, ?)');
+                $stmt->execute([$userId, $displayName, ""]);
+                // Send these on to the next step.
+                $_SESSION['bearerToken'] = $bearerToken;
+        
+                header('Content-Type: application/json');
+                echo json_encode(['displayName' => $displayName, 'credo' => '', 'bearerToken' => $bearerToken]);
+            } catch (Exception $e) {
+                http_response_code(400);
+                echo json_encode(['error' => $e->getMessage()]);
+            }
+        } else {
+            http_response_code(400);
+            echo '&#128169;';   // Oh, poo.
+        }
     }
     
     /***********************/
