@@ -180,10 +180,16 @@ class PKD_ConnectViewController: UIViewController {
     
     /* ###################################################################### */
     /**
+     This is the instance of the PKD API Handler that we use to communicate with the server.
+     */
+    private var _pkdInstance: PKD_Handler?
+    
+    /* ###################################################################### */
+    /**
      This is set to true, if we are registering a new user, before logging in.
      */
     private var _loginAfter = false
-    
+
     /* ###################################################################### */
     /**
      We maintain a consistent session, because the challenges are set to work across a session.
@@ -281,6 +287,9 @@ extension PKD_ConnectViewController {
      */
     override func viewDidLoad() {
         super.viewDidLoad()
+        if let window = self.view.window {
+            self._pkdInstance = PKD_Handler(relyingParty: Self._relyingParty, baseURIString: Self._baseURIString, userNameString: Self._userNameString, presentationAnchor: window)
+        }
         self._setUpUI()
     }
 }
@@ -514,6 +523,21 @@ extension PKD_ConnectViewController {
      Sets up the screen to reflwct the current app state.
      */
     private func _setUpUI() {
+        guard let view = self.view else { return }
+        
+        view.subviews.forEach { $0.removeFromSuperview() }
+        
+        if self._isLoggedIn {
+        } else {
+            
+        }
+    }
+    
+    /* ###################################################################### */
+    /**
+     Sets up the screen to reflwct the current app state.
+     */
+    private func _oldSetUpUI() {
         guard let view = self.view else { return }
         
         view.subviews.forEach { $0.removeFromSuperview() }

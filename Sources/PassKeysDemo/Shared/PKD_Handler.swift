@@ -470,6 +470,47 @@ extension PKD_Handler {
 // MARK:
 /* ###################################################################################################################################### */
 extension PKD_Handler {
+    /* ###################################################################### */
+    /**
+     */
+    private func _getCreateChallenge(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
+        if let userIdString = self._storedUserIDString,
+           !userIdString.isEmpty {
+            var urlString = "\(self.baseURIString)/index.php?operation=create&userId=\(userIdString)"
+            guard let url = URL(string: urlString) else { return }
+            self._session.dataTask(with: url) { inData, inResponse, inError in
+                if let error = inError {
+                    inCompletion(.failure(error))
+                } else {
+                    
+                }
+            }.resume()
+        } else {
+        }
+    }
+    
+    /* ###################################################################### */
+    /**
+     */
+    private func _performCreate(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
+        if let userIdString = self._storedUserIDString,
+           !userIdString.isEmpty {
+            var urlString = "\(self.baseURIString)/index.php?operation=create"
+            guard let url = URL(string: urlString) else { return }
+            self._session.dataTask(with: url) { inData, inResponse, inError in
+                if let error = inError {
+                    inCompletion(.failure(error))
+                } else {
+                    
+                }
+            }.resume()
+        } else {
+        }
+    }
+    
+    /* ###################################################################### */
+    /**
+     */
     private func _getLoginChallenge(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
         if let userIdString = self._storedUserIDString,
            !userIdString.isEmpty {
@@ -478,6 +519,40 @@ extension PKD_Handler {
             self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
                     inCompletion(.failure(error))
+                } else {
+                    
+                }
+            }.resume()
+        } else {
+        }
+    }
+    
+    /* ###################################################################### */
+    /**
+     */
+    private func _performLogin(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
+        if let userIdString = self._storedUserIDString,
+           !userIdString.isEmpty {
+            var urlString = "\(self.baseURIString)/index.php?operation=login"
+            guard let url = URL(string: urlString) else { return }
+            self._session.dataTask(with: url) { inData, inResponse, inError in
+                if let error = inError {
+                    inCompletion(.failure(error))
+//                } else if let publicKey = inResponse?.publicKey,
+//                          let challengeData = publicKey.challenge.base64urlDecodedData,
+//                          let userIDData = publicKey.user.id.base64urlDecodedData {
+//                    let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: publicKey.rp.id)
+//
+//                    let request = provider.createCredentialRegistrationRequest(
+//                        challenge: challengeData,
+//                        name: publicKey.user.displayName,
+//                        userID: userIDData
+//                    )
+//
+//                    let controller = ASAuthorizationController(authorizationRequests: [request])
+//                    controller.delegate = self
+//                    controller.presentationContextProvider = self
+//                    controller.performRequests()
                 } else {
                     
                 }
