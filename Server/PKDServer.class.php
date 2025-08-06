@@ -226,12 +226,62 @@ class PKDServer {
             echo '&#128169;';   // Oh, poo.
         }
     }
-
+    
+    /**************************************/
+    /**
+    The first part of the create operation.
+    
+    This is called with a userId (and optionally, a display name), and returns the public key struct, as JSON.
+    */
+    public function createChallenge() {
+        $userId = $this->getArgs->userId;
+        $displayName = $this->getArgs->displayName;
+        if (empty($displayName)) {
+            $displayName = "New User";
+        }
+        
+        $stmt = $this->pdoInstance->prepare('SELECT credentialId FROM webauthn_credentials WHERE userId = ?');
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!empty($userId) && empty($row)) {
+            // We will use the function to create a registration object, which will need to be presented in a subsequent call.
+            $args = $this->webAuthnInstance->getCreateArgs($userId, $userId, $displayName);
+            
+            // We encode the challenge data as a Base64 URL-encoded string.
+            $base64urlChallenge = base64url_encode($this->webAuthnInstance->getChallenge()->getBinaryString());
+            // We do the same for the binary unique user ID. NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
+            $userIdEncoded = base64url_encode($args->publicKey->user->id->getBinaryString());
+              
+            // We replace the ones given by the function (basic Base64), with the Base64 URL-encoded strings.
+            $args->publicKey->challenge = $base64urlChallenge;
+            $args->publicKey->user->id = $userIdEncoded;
+            
+            // We will save these in the session, which must be preserved for the next step.
+            $_SESSION['createChallenge'] = $base64urlChallenge;
+            $_SESSION['createUserID'] = $userId;
+            $_SESSION['createDisplayName'] = $displayName;
+        
+            header('Content-Type: application/json');
+            echo json_encode(['publicKey' => $args->publicKey]);
+        } else {
+            http_response_code(400);
+            echo '&#128169;';   // Oh, poo.
+        }
+    }
+    
+    /**************************************/
+    /**
+    */
+    public function createCompletion() {
+    }
+    
     /***********************/
     /**
         Updates the user table with the new values (or simply returns the current values).
         @param string $userId The user ID from the credentials.
-        @param string $displayName The user's display name (if being changed). NOTE: This should be set for any change, even if this string is not changed from what's in the DB.
+        @param string $displayName The user's display name (if being changed).
+        NOTE: This should be set for any change, even if this string is not changed from what's in the DB.
         @param string $credo The user's credo string (if being changed).
         @return the data provided, as a Base64URL-encoded string.
      */
