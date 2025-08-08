@@ -73,7 +73,13 @@ open class PKD_Handler: NSObject {
          Failed, because already logged in, but should be logged out.
          */
         case alreadyLoggedIn
-        
+
+        /* ################################################################## */
+        /**
+         Failed, because of a communication issue.
+         */
+        case communicationError
+
         /* ################################################################## */
         /**
          Returns a localized string, with the error description.
@@ -96,6 +102,10 @@ open class PKD_Handler: NSObject {
                 
             case .alreadyLoggedIn:
                 ret = "Already logged in"
+                break
+                
+            case .communicationError:
+                ret = "Communication Error"
                 break
            }
             
@@ -216,7 +226,6 @@ open class PKD_Handler: NSObject {
             struct RelyingPartyStruct: Decodable {
                 /* ########################################################## */
                 /**
-                 This is a Base64-encoded ID for the relying party.
                  */
                 let id: String
             }
@@ -236,16 +245,15 @@ open class PKD_Handler: NSObject {
 
                 /* ########################################################## */
                 /**
+                 */
+                let name: String
+                
+                /* ########################################################## */
+                /**
                  This is the user's public display name (does not need to be unique).
                  */
                 let displayName: String
             }
-
-            /* ############################################################## */
-            /**
-             This has a base64URL-encoded challenge string.
-             */
-            let challenge: String
 
             /* ############################################################## */
             /**
@@ -258,6 +266,12 @@ open class PKD_Handler: NSObject {
              The user information, associated with this credential.
              */
             let user: UserInfoStruct
+
+            /* ############################################################## */
+            /**
+             This has a base64URL-encoded challenge string.
+             */
+            let challenge: String
         }
         
         /* ################################################################## */
@@ -265,24 +279,6 @@ open class PKD_Handler: NSObject {
          The public key, associated with this credential.
          */
         let publicKey: PublicKeyStruct
-        
-        /* ################################################################## */
-        /**
-         The display name associated with the user.
-         */
-        let displayName: String
-        
-        /* ################################################################## */
-        /**
-         The credo associated with the user (will aways be empty, at first).
-         */
-        let credo: String
-        
-        /* ################################################################## */
-        /**
-         The login token.
-         */
-        let bearerToken: String
     }
 
     /* ###################################################################### */
@@ -430,7 +426,7 @@ extension PKD_Handler {
      It will not overwrite a preexisting string.
      */
     private func _createNewUserIdString() -> String {
-        var ret = self._storedUserIDString ?? UUID().uuidString
+        let ret = self._storedUserIDString ?? UUID().uuidString
         
         let swiftKeychainWrapper = KeychainSwift()
         swiftKeychainWrapper.synchronizable = true
@@ -441,12 +437,12 @@ extension PKD_Handler {
 
     /* ###################################################################### */
     /**
-     Called to access or modify the user data, via a POST transaction.
+     Called to create a new user, via a POST transaction.
      
      - parameter inURLString: The URL String we are calling.
      - parameter inPayload: The POST arguments.
      */
-    private func _postResponse(to inURLString: String, payload inPayload: [String: Any]) {
+    private func _postCreateResponse(to inURLString: String, payload inPayload: [String: Any]) {
         print("Connecting to URL: \(inURLString)")
         guard let url = URL(string: inURLString),
               let responseData = try? JSONSerialization.data(withJSONObject: inPayload),
@@ -458,7 +454,7 @@ extension PKD_Handler {
         request.httpBody = responseData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
-        let task = self._session.dataTask(with: request) { inData, inResponse, inError in
+        self._session.dataTask(with: request) { inData, inResponse, inError in
             guard let response = inResponse as? HTTPURLResponse else { return }
             print("Status Code: \(response.statusCode)\n")
             if let data = inData,
@@ -471,26 +467,20 @@ extension PKD_Handler {
                    let token = dict["bearerToken"],
                    !token.isEmpty {
                     self._bearerToken = token
-                    if self._loginAfter {
-                        self.accessServerWithPasskey()
-                    } else {
-                        let decoder = JSONDecoder()
-                        if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
-                            displayName = userData.displayName
-                            credo = userData.credo
-                            self._originalDisplayName = displayName
-                            self._originalCredo = credo
-                        }
+                    let decoder = JSONDecoder()
+                    if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
+                        displayName = userData.displayName
+                        credo = userData.credo
+                        self._originalDisplayName = displayName
+                        self._originalCredo = credo
                     }
-                    DispatchQueue.main.async {
-                    }
+                    DispatchQueue.main.async { }
                 } else {
                     self._credentialID = nil
                     DispatchQueue.main.async { }
                 }
             }
-        }
-        task.resume()
+        }.resume()
     }
 }
 
@@ -501,16 +491,37 @@ extension PKD_Handler {
     /* ###################################################################### */
     /**
      */
-    private func _getCreateChallenge(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
-        if let userIdString = self._storedUserIDString,
-           !userIdString.isEmpty {
-            var urlString = "\(self.baseURIString)/index.php?operation=create&userId=\(userIdString)"
+    private func _getCreateChallenge(completion inCompletion: @escaping (Result<_PublicKeyCredentialCreationOptionsStruct, Error>) -> Void) {
+        let userIdString = self._createNewUserIdString()
+        if !userIdString.isEmpty {
+            let urlString = "\(self.baseURIString)/index.php?operation=create&userId=\(userIdString)"
             guard let url = URL(string: urlString) else { return }
             self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
                     inCompletion(.failure(error))
+                } else if let data = inData {
+                    do {
+                        let decoder = JSONDecoder()
+                        let options = try decoder.decode(_PublicKeyCredentialCreationOptionsStruct.self, from: data)
+                        inCompletion(.success(options))
+
+                        self.clearUserInfo()
+
+                    } catch {
+                        print("JSON decoding error: \(error)")
+                        self.clearUserInfo()
+                        inCompletion(.failure(Errors.communicationError))
+                    }
                 } else {
-                    
+                    self.clearUserInfo()
+                    if let error = inError {
+                        print("Failed to fetch options: \(inError?.localizedDescription ?? "Unknown error")")
+                        inCompletion(.failure(error))
+                    } else {
+                        print("Failed to fetch options: Communication error")
+                        inCompletion(.failure(Errors.communicationError))
+                    }
+                    return
                 }
             }.resume()
         } else {
@@ -520,19 +531,26 @@ extension PKD_Handler {
     /* ###################################################################### */
     /**
      */
-    private func _performCreate(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
+    private func _nextStepInCreate(with inOptions: _PublicKeyCredentialCreationOptionsStruct, completion inCompletion: @escaping (Result<String, Error>) -> Void) {
         if let userIdString = self._storedUserIDString,
-           !userIdString.isEmpty {
-            var urlString = "\(self.baseURIString)/index.php?operation=create"
-            guard let url = URL(string: urlString) else { return }
-            self._session.dataTask(with: url) { inData, inResponse, inError in
-                if let error = inError {
-                    inCompletion(.failure(error))
-                } else {
-                    
-                }
-            }.resume()
+           !userIdString.isEmpty,
+           let challengeData = inOptions.publicKey.challenge.base64urlDecodedData,
+           let userIDData = inOptions.publicKey.user.id.base64urlDecodedData {
+            let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: inOptions.publicKey.rp.id)
+
+            let request = provider.createCredentialRegistrationRequest(
+                challenge: challengeData,
+                name: inOptions.publicKey.user.displayName,
+                userID: userIDData
+            )
+
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            controller.performRequests()
         } else {
+            self.clearUserInfo()
+            inCompletion(.failure(Errors.communicationError))
         }
     }
     
@@ -542,7 +560,7 @@ extension PKD_Handler {
     private func _getLoginChallenge(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
         if let userIdString = self._storedUserIDString,
            !userIdString.isEmpty {
-            var urlString = "\(self.baseURIString)/index.php?operation=login&userId=\(userIdString)"
+            let urlString = "\(self.baseURIString)/index.php?operation=login&userId=\(userIdString)"
             guard let url = URL(string: urlString) else { return }
             self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
@@ -561,7 +579,7 @@ extension PKD_Handler {
     private func _performLogin(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
         if let userIdString = self._storedUserIDString,
            !userIdString.isEmpty {
-            var urlString = "\(self.baseURIString)/index.php?operation=login"
+            let urlString = "\(self.baseURIString)/index.php?operation=login"
             guard let url = URL(string: urlString) else { return }
             self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
@@ -588,185 +606,6 @@ extension PKD_Handler {
         } else {
         }
     }
-    
-    /* ###################################################################### */
-    /**
-     */
-    @objc func accessServerWithPasskey() {
-        /* ###################################################################### */
-        /**
-         This fetches the challenge, for a logged-in access.
-         
-         - parameter inCompletion: A tail completion proc. It will have a single argument, with the user information (if successful).
-         */
-        func _fetchAccessChallenge(completion inCompletion: @escaping (Result<[String: Any], Error>) -> Void) {
-            var urlString = "\(self.baseURIString)/modify_challenge.php?userId=\(self.userIDString)"
-            
-            if let bearerToken = self._bearerToken,
-               !bearerToken.isEmpty {
-                urlString += "&token=\(bearerToken)"
-                
-                if self._isLoggedIn,
-                   self.credoString != self._originalCredo || self.displayNameString != self._originalDisplayName,
-                   !self.displayNameString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    let displayName = self.displayNameString.trimmingCharacters(in: .whitespacesAndNewlines).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? self._originalDisplayName
-                    let credo = self.credoString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? self._originalCredo
-                    urlString += "&displayName=\(displayName)&credo=\(credo)&update"
-                }
-            }
-            
-            guard let url = URL(string: urlString) else { return }
-            let task = self._session.dataTask(with: url) { inData, inResponse, inError in
-                if let error = inError {
-                    inCompletion(.failure(error))
-                    return
-                }
-                
-                if let response = inResponse as? HTTPURLResponse,
-                   404 == response.statusCode,
-                   let data = inData,
-                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let errorString = json["error"] as? String,
-                   Self._errorResponseString == errorString {
-                    inCompletion(.failure(NSError(domain: "user", code: 2)))
-                }
-                
-                guard let data = inData,
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      nil != (json["publicKey"] as? [String: Any]),
-                      nil != (json["bearerToken"] as? String)
-                else {
-                    inCompletion(.failure(NSError(domain: "json", code: 1)))
-                    return
-                }
-                
-                print("Data: \(json)")
-                inCompletion(.success(json))
-            }
-            task.resume()
-        }
-        
-        /* ################################################################ */
-        /**
-         Called to continue connections, after verifying a prior login.
-         
-         - parameter inBearerToken: The logged-in bearer token.
-         */
-        func _loggedInCallback(bearerToken inBearerToken: String, credentialId inCredentialId: String) {
-            self._bearerToken = inBearerToken
-            self._postResponse(to: "\(self.baseURIString)/modify_response.php", payload: ["credentialId": inCredentialId])
-        }
-        
-        /* ################################################################ */
-        /**
-         Called to tell the user they need to register, first.
-         */
-        func _alertAndRegister() {
-            /* ############################################################ */
-            /**
-             This registers a new account and passkey.
-             */
-            func _registerPasskey() {
-                /* ######################################################## */
-                /**
-                 This fetches the registration options, for creating a new user on the server.
-                 
-                 - parameter inURLString: The string to use as a URI for the registration.
-                 - parameter inCompletion: A tail completion proc. It will have a single argument, with the new user information.
-                 */
-                func _fetchRegistrationOptions(from inURLString: String, completion inCompletion: @escaping (_PublicKeyCredentialCreationOptionsStruct?) -> Void) {
-                    guard let url = URL(string: inURLString)
-                    else {
-                        inCompletion(nil)
-                        return
-                    }
-                    
-                    let task = self._session.dataTask(with: url) { inData, _, error in
-                        guard let data = inData else {
-                            print("Failed to fetch options: \(error?.localizedDescription ?? "Unknown error")")
-                            inCompletion(nil)
-                            return
-                        }
-                        
-                        do {
-                            let decoder = JSONDecoder()
-                            let options = try decoder.decode(_PublicKeyCredentialCreationOptionsStruct.self, from: data)
-                            inCompletion(options)
-                        } catch {
-                            print("JSON decoding error: \(error)")
-                            inCompletion(nil)
-                        }
-                    }
-                    
-                    task.resume()
-                }
-              
-                self._loginAfter = false
-
-                _fetchRegistrationOptions(from: "\(self.baseURIString)/register_challenge.php?userId=\(self.userIDString)&displayName=\(self.userNameString)") { InResponse in
-                    guard let publicKey = InResponse?.publicKey,
-                          let challengeData = publicKey.challenge.base64urlDecodedData,
-                          let userIDData = publicKey.user.id.base64urlDecodedData
-                    else {
-                        print("Invalid Base64URL in server response")
-                        return
-                    }
-
-                    let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: publicKey.rp.id)
-
-                    let request = provider.createCredentialRegistrationRequest(
-                        challenge: challengeData,
-                        name: publicKey.user.displayName,
-                        userID: userIDData
-                    )
-
-                    let controller = ASAuthorizationController(authorizationRequests: [request])
-                    controller.delegate = self
-                    controller.presentationContextProvider = self
-                    controller.performRequests()
-                }
-            }
-
-            DispatchQueue.main.async { /* HANDLE NEED TO REGISTER */ }
-        }
-            
-        _fetchAccessChallenge() { inResult in
-            self._loginAfter = false
-            switch inResult {
-            case .success(let challengeDict):
-                if let publicKey = (challengeDict["publicKey"] as? [String: Any]),
-                   let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData {
-                    // See if we have already logged in, and we're just making a subsequent call.
-                    if let token = challengeDict["bearerToken"] as? String,
-                       !token.isEmpty,
-                       let credentialID = self._credentialID,
-                       !credentialID.isEmpty {
-                        _loggedInCallback(bearerToken: token, credentialId: credentialID)
-                    } else {    // In this case, we have not previously signed in, so we need to sign in again, by creating a new record to be vetted by the server, and getting user approval.
-                        let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self.relyingParty)
-                        let request = provider.createCredentialAssertionRequest(challenge: challengeData)
-                        
-                        let controller = ASAuthorizationController(authorizationRequests: [request])
-                        controller.delegate = self
-                        controller.presentationContextProvider = self
-                        controller.performRequests()
-                    }
-                }   else {
-                    print("No Public Key or Challenge.")
-                }
-            
-            case .failure(let error):
-                self._credentialID = nil
-                self._bearerToken = nil
-                // See if it's a "User not found" error, in which case, we will be creating a new user record.
-                if "user" == (error as NSError).domain {
-                    _alertAndRegister()
-                } else {
-                    print("Failed to fetch challenge: \(error)")
-                }
-            }
-        }
-    }
 }
 
 /* ###################################################################################################################################### */
@@ -781,6 +620,14 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
      - parameter inAuthorization: The authorization generated by the controller.
      */
     public func authorizationController(controller inAuthController: ASAuthorizationController, didCompleteWithAuthorization inAuthorization: ASAuthorization) {
+        if let credential = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration {
+            let payload: [String: String] = [
+                "clientDataJSON": credential.rawClientDataJSON.base64EncodedString(),
+                "attestationObject": credential.rawAttestationObject?.base64EncodedString() ?? ""
+            ]
+            self._credentialID = credential.credentialID.base64EncodedString()
+            self._postCreateResponse(to: "\(self.baseURIString)/index.php?operation=create", payload: payload)
+        }
     }
 }
 
@@ -825,7 +672,10 @@ public extension PKD_Handler {
      This completely removes the user ID from the KeyChain.
      */
     func clearUserInfo() {
-        KeychainSwift().clear()
+        let swiftKeychainWrapper = KeychainSwift()
+        swiftKeychainWrapper.synchronizable = true
+        swiftKeychainWrapper.delete(Self._userIDKeychainKey)
+        swiftKeychainWrapper.clear()
     }
     
     /* ###################################################################### */
@@ -875,8 +725,13 @@ public extension PKD_Handler {
     func create(displayName: String, credo: String, completion inCompletion: @escaping TransactionCallback) {
         if !self.isRegistered {
             if !self.isLoggedIn {
-                self._getCreateChallenge { [weak self] inCreateChallengeResponse in
-                    
+                self._getCreateChallenge { inCreateChallengeResponse in
+                    print(inCreateChallengeResponse)
+                    if case .success(let value) = inCreateChallengeResponse {
+                        self._nextStepInCreate(with: value) { inResponse in
+                            inCompletion(nil, .success)
+                        }
+                    }
                 }
             } else {
                 inCompletion(nil, .failure(Errors.alreadyLoggedIn))

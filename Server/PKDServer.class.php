@@ -296,8 +296,8 @@ class PKDServer {
         $bearerToken = base64url_encode(random_bytes(32));
         $userId = $_SESSION['createUserID'];
         $displayName = $_SESSION['createDisplayName'];
-        $clientDataJSON = base64_decode($this->postArgs->clientDataJSON);
-        $attestationObject = base64_decode($this->postArgs->attestationObject);
+        $clientDataJSON = base64_decode($this->postArgs['clientDataJSON']);
+        $attestationObject = base64_decode($this->postArgs['attestationObject']);
         $challenge = base64url_decode($_SESSION['createChallenge']);  // NOTE: Base64URL encoded.
         
         if (!empty($clientDataJSON) && !empty($attestationObject)) {

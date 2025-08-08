@@ -287,10 +287,17 @@ extension PKD_ConnectViewController {
      */
     override func viewDidLoad() {
         super.viewDidLoad()
+        self._setUpUI()
+    }
+    
+    /* ###################################################################### */
+    /**
+     */
+    override func viewDidAppear(_ inIsAnimated: Bool) {
+        super.viewDidAppear(inIsAnimated)
         if let window = self.view.window {
             self._pkdInstance = PKD_Handler(relyingParty: Self._relyingParty, baseURIString: Self._baseURIString, userNameString: Self._userNameString, presentationAnchor: window)
         }
-        self._setUpUI()
     }
 }
 
@@ -298,10 +305,23 @@ extension PKD_ConnectViewController {
 // MARK: Callbacks
 /* ###################################################################################################################################### */
 extension PKD_ConnectViewController {
+    /* ###################################################################### */
+    /**
+     */
     @objc func register() {
-//        self._pkdInstance?.
+        self._pkdInstance?.clearUserInfo()
+        self._pkdInstance?.create(displayName: "TEST", credo: "") { inData, inResponse  in
+            print(inResponse)
+            if let responseData = inData {
+                print("Display Name: \(responseData.displayName)")
+                print("Credo: \(responseData.credo)")
+            }
+        }
     }
     
+    /* ###################################################################### */
+    /**
+     */
     @objc func login() {
         self._pkdInstance?.login { [weak self] inResult in
             switch inResult {
@@ -547,8 +567,22 @@ extension PKD_ConnectViewController {
         view.subviews.forEach { $0.removeFromSuperview() }
         
         if self._isLoggedIn {
-        } else {
+        } else if !(self._pkdInstance?.isRegistered ?? false) {
+            let registerButton = UIButton(type: .system)
+            registerButton.setTitle("Register", for: .normal)
+            registerButton.addTarget(self, action: #selector(register), for: .touchUpInside)
             
+            let stack = UIStackView(arrangedSubviews: [registerButton])
+            stack.axis = .vertical
+            stack.spacing = 20
+            stack.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(stack)
+            
+            NSLayoutConstraint.activate([
+                stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            ])
+
         }
     }
     
