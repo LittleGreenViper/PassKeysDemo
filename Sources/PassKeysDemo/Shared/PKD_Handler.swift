@@ -437,13 +437,22 @@ extension PKD_Handler {
 
     /* ###################################################################### */
     /**
+     Called to log in a user, via a POST transaction.
+     
+     - parameter inURLString: The URL String we are calling.
+     - parameter inPayload: The POST arguments.
+     */
+    private func _postLoginResponse(to inURLString: String, payload inPayload: [String: Any]) {
+    }
+    
+    /* ###################################################################### */
+    /**
      Called to create a new user, via a POST transaction.
      
      - parameter inURLString: The URL String we are calling.
      - parameter inPayload: The POST arguments.
      */
     private func _postCreateResponse(to inURLString: String, payload inPayload: [String: Any]) {
-        print("Connecting to URL: \(inURLString)")
         guard let url = URL(string: inURLString),
               let responseData = try? JSONSerialization.data(withJSONObject: inPayload),
               !responseData.isEmpty
@@ -627,6 +636,23 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
             ]
             self._credentialID = credential.credentialID.base64EncodedString()
             self._postCreateResponse(to: "\(self.baseURIString)/index.php?operation=create", payload: payload)
+        } else if let assertion = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
+            struct AssertionJSON: Codable {
+                var type: String = ""
+                var challenge: String = ""
+                var origin: String = ""
+            }
+            
+            self._credentialID = assertion.credentialID.base64EncodedString()
+            
+            let payload: [String: String] = [
+                "clientDataJSON": assertion.rawClientDataJSON.base64EncodedString(),
+                "authenticatorData": assertion.rawAuthenticatorData.base64EncodedString(),
+                "signature": assertion.signature.base64EncodedString(),
+                "credentialId": self._credentialID ?? ""
+            ]
+            
+            self._postLoginResponse(to: "\(self.baseURIString)/index.php?operation=login", payload: payload)
         }
     }
 }
