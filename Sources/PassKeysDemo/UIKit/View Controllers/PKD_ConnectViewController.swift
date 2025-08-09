@@ -283,20 +283,12 @@ extension PKD_ConnectViewController {
 extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
-     Called when the view hierarchy has been created and initialized.
-     */
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        self._setUpUI()
-    }
-    
-    /* ###################################################################### */
-    /**
      */
     override func viewDidAppear(_ inIsAnimated: Bool) {
         super.viewDidAppear(inIsAnimated)
         if let window = self.view.window {
             self._pkdInstance = PKD_Handler(relyingParty: Self._relyingParty, baseURIString: Self._baseURIString, userNameString: Self._userNameString, presentationAnchor: window)
+            self._setUpUI()
         }
     }
 }
@@ -309,12 +301,11 @@ extension PKD_ConnectViewController {
     /**
      */
     @objc func register() {
-        self._pkdInstance?.clearUserInfo()
-        self._pkdInstance?.create(displayName: "TEST", credo: "") { inData, inResponse  in
-            print(inResponse)
+        self._pkdInstance?.create(displayName: "NEW USER", credo: "") { inData, inResponse  in
             if let responseData = inData {
                 print("Display Name: \(responseData.displayName)")
                 print("Credo: \(responseData.credo)")
+                DispatchQueue.main.async { self._setUpUI() }
             }
         }
     }
@@ -326,7 +317,6 @@ extension PKD_ConnectViewController {
         self._pkdInstance?.login { [weak self] inResult in
             switch inResult {
             case .success:
-                print("Success!")
                 break
                 
             case .failure(let inError):
@@ -335,6 +325,12 @@ extension PKD_ConnectViewController {
             }
             DispatchQueue.main.async { self?._setUpUI() }
         }
+    }
+    
+    /* ###################################################################### */
+    /**
+     */
+    @objc func deleteUser() {
     }
     
     /* ###################################################################### */
@@ -580,9 +576,38 @@ extension PKD_ConnectViewController {
             
             NSLayoutConstraint.activate([
                 stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
             ])
-
+        } else if !(self._pkdInstance?.isLoggedIn ?? false) {
+            let loginButton = UIButton(type: .system)
+            loginButton.setTitle("Login", for: .normal)
+            loginButton.addTarget(self, action: #selector(login), for: .touchUpInside)
+            
+            let stack = UIStackView(arrangedSubviews: [loginButton])
+            stack.axis = .vertical
+            stack.spacing = 20
+            stack.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(stack)
+            
+            NSLayoutConstraint.activate([
+                stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            ])
+        } else if self._pkdInstance?.isLoggedIn ?? false {
+            let deleteButton = UIButton(type: .system)
+            deleteButton.setTitle("Delete", for: .normal)
+            deleteButton.addTarget(self, action: #selector(deleteUser), for: .touchUpInside)
+            
+            let stack = UIStackView(arrangedSubviews: [deleteButton])
+            stack.axis = .vertical
+            stack.spacing = 20
+            stack.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(stack)
+            
+            NSLayoutConstraint.activate([
+                stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            ])
         }
     }
     

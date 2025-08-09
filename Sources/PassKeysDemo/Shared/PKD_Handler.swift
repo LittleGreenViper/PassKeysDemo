@@ -465,10 +465,7 @@ extension PKD_Handler {
         request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
         self._session.dataTask(with: request) { inData, inResponse, inError in
             guard let response = inResponse as? HTTPURLResponse else { return }
-            print("Status Code: \(response.statusCode)\n")
-            if let data = inData,
-               let responseString = String(data: data, encoding: .utf8){
-                print("Response: \(responseString)\n")
+            if let data = inData {
                 var displayName = ""
                 var credo = ""
                 if 200 == response.statusCode,
@@ -513,21 +510,15 @@ extension PKD_Handler {
                         let decoder = JSONDecoder()
                         let options = try decoder.decode(_PublicKeyCredentialCreationOptionsStruct.self, from: data)
                         inCompletion(.success(options))
-
-                        self.clearUserInfo()
-
                     } catch {
-                        print("JSON decoding error: \(error)")
                         self.clearUserInfo()
                         inCompletion(.failure(Errors.communicationError))
                     }
                 } else {
                     self.clearUserInfo()
                     if let error = inError {
-                        print("Failed to fetch options: \(inError?.localizedDescription ?? "Unknown error")")
                         inCompletion(.failure(error))
                     } else {
-                        print("Failed to fetch options: Communication error")
                         inCompletion(.failure(Errors.communicationError))
                     }
                     return
@@ -559,7 +550,7 @@ extension PKD_Handler {
             controller.performRequests()
         } else {
             self.clearUserInfo()
-            inCompletion(.failure(Errors.communicationError))
+            inCompletion(.failure(Errors.noUserID))
         }
     }
     
@@ -574,45 +565,17 @@ extension PKD_Handler {
             self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
                     inCompletion(.failure(error))
-                } else {
-                    
+                } else if let data = inData {
+                    if let responseString = String(data: data, encoding: .utf8),
+                       !responseString.isEmpty {
+                        inCompletion(.success(responseString))
+                    } else {
+                        inCompletion(.failure(Errors.communicationError))
+                    }
                 }
             }.resume()
         } else {
-        }
-    }
-    
-    /* ###################################################################### */
-    /**
-     */
-    private func _performLogin(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
-        if let userIdString = self._storedUserIDString,
-           !userIdString.isEmpty {
-            let urlString = "\(self.baseURIString)/index.php?operation=login"
-            guard let url = URL(string: urlString) else { return }
-            self._session.dataTask(with: url) { inData, inResponse, inError in
-                if let error = inError {
-                    inCompletion(.failure(error))
-//                } else if let publicKey = inResponse?.publicKey,
-//                          let challengeData = publicKey.challenge.base64urlDecodedData,
-//                          let userIDData = publicKey.user.id.base64urlDecodedData {
-//                    let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: publicKey.rp.id)
-//
-//                    let request = provider.createCredentialRegistrationRequest(
-//                        challenge: challengeData,
-//                        name: publicKey.user.displayName,
-//                        userID: userIDData
-//                    )
-//
-//                    let controller = ASAuthorizationController(authorizationRequests: [request])
-//                    controller.delegate = self
-//                    controller.presentationContextProvider = self
-//                    controller.performRequests()
-                } else {
-                    
-                }
-            }.resume()
-        } else {
+            inCompletion(.failure(Errors.noUserID))
         }
     }
 }
@@ -715,7 +678,26 @@ public extension PKD_Handler {
     func login(completion inCompletion: @escaping (LoginResponse) -> Void) {
         if self.isRegistered {
             if !self.isLoggedIn {
-                
+                self._getLoginChallenge { inResponse in
+                    switch inResponse {
+                    case .success(let inChallenge):
+                        if let challengeData = inChallenge.base64urlDecodedData {
+                            let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self.relyingParty)
+                            let request = provider.createCredentialAssertionRequest(challenge: challengeData)
+                            
+                            let controller = ASAuthorizationController(authorizationRequests: [request])
+                            controller.delegate = self
+                            controller.presentationContextProvider = self
+                            controller.performRequests()
+                        } else {
+                            inCompletion(.failure(Errors.communicationError))
+                        }
+                        break
+                        
+                    case .failure(let inError):
+                        inCompletion(.failure(inError))
+                    }
+                }
             } else {
                 inCompletion(.failure(Errors.alreadyLoggedIn))
             }
@@ -819,6 +801,7 @@ public extension PKD_Handler {
      */
     func delete(completion inCompletion: ((LoginResponse) -> Void)? = nil) {
         if self.isLoggedIn {
+            
             self.clearUserInfo()
         } else {
             inCompletion?(.failure(Errors.notLoggedIn))
