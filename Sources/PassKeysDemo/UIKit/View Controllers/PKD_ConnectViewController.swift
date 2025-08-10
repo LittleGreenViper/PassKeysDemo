@@ -20,6 +20,7 @@
 
 import UIKit
 import AuthenticationServices
+import Combine
 
 /* ###################################################################################################################################### */
 // MARK: - Passkeys Interaction View Controller -
@@ -237,6 +238,11 @@ class PKD_ConnectViewController: UIViewController {
      The button for updating (so it can be enabled or disabled).
      */
     private weak var _updateButton: UIButton?
+
+    /* ###################################################################### */
+    /**
+     */
+    private var _bag = Set<AnyCancellable>()
 }
 
 /* ###################################################################################################################################### */
@@ -281,6 +287,18 @@ extension PKD_ConnectViewController {
 // MARK: Base Class Overrides
 /* ###################################################################################################################################### */
 extension PKD_ConnectViewController {
+    /* ###################################################################### */
+    /**
+     */
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        self._pkdInstance?.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] in self?._setUpUI() }
+            .store(in: &self._bag)
+    }
+    
     /* ###################################################################### */
     /**
      */

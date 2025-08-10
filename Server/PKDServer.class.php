@@ -190,28 +190,33 @@ class PKDServer {
         $userId = $_SESSION['loginUserId'];
         $challenge = $_SESSION['loginChallenge'];
         if (!empty($userId)) {
-            $stmt = $this->pdoInstance->prepare('SELECT credentialId, displayName, signCount FROM webauthn_credentials WHERE userId = ?');
+            $stmt = $this->pdoInstance->prepare('SELECT credentialId, displayName, signCount, publicKey FROM webauthn_credentials WHERE userId = ?');
             $stmt->execute([$userId]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             $credentialId = $row['credentialId'];
+            $clientDataJSON = base64_decode($this->postArgs['clientDataJSON']);   // This is a signed record, with various user data.
+            $authenticatorData = base64_decode($this->postArgs['authenticatorData']); // A record, with any authenticator (YubiKey, etc. Not used for our demo).
+            $signature = base64_decode($this->postArgs['signature']); // The signature for the record, against the public key.
+            $publicKey = $row['publicKey'];
+            $signCount = intval($row['signCount']);
             
             if (!empty($credentialId)) {
                 // If there was no signed client data record, with a matching challenge, then game over, man.
                 try {
                     $success = $this->webAuthnInstance->processGet(
-                        $postArgs->clientDataJSON,
-                        $postArgs->authenticatorData,
-                        $postArgs->signature,
-                        $row['publicKey'],
+                        $clientDataJSON,
+                        $authenticatorData,
+                        $signature,
+                        $publicKey,
                         $challenge,
-                        $row['signCount']
+                        $signCount
                     );
                     
                     // Create a new token, as this is a new login. NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
                     $bearerToken = base64url_encode(random_bytes(32));  
                     
                     // Increment the sign count and store the new bearer token.
-                    $newSignCount = intval($webAuthn->getSignatureCounter());
+                    $newSignCount = intval($this->webAuthnInstance->getSignatureCounter());
                     $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET signCount = ?, bearerToken = ? WHERE credentialId = ?');
                     $stmt->execute([$newSignCount, $bearerToken, $credentialId]);
                     

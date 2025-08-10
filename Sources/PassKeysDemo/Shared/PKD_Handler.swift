@@ -21,6 +21,7 @@
 import Foundation
 import AuthenticationServices
 import KeychainSwift
+import Combine
 
 /* ###################################################################################################################################### */
 // MARK: - PassKeys Interaction Handling Class -
@@ -28,7 +29,7 @@ import KeychainSwift
 /**
  This class abstracts the communication infrastructure with the server, and acts as a model for the user interface.
  */
-open class PKD_Handler: NSObject {
+open class PKD_Handler: NSObject, ObservableObject {
     /* ###################################################################### */
     /**
      The responding callback to the context.
@@ -340,17 +341,6 @@ open class PKD_Handler: NSObject {
      The main URI string for our transactions.
      */
     let baseURIString: String
-    
-    /* ###################################################################### */
-    /**
-     The User ID string, as stored in the keychain. Nil, if no string stored.
-     */
-    private var _storedUserIDString: String? {
-        let swiftKeychainWrapper = KeychainSwift()
-        swiftKeychainWrapper.synchronizable = true
-        
-        return swiftKeychainWrapper.get(Self._userIDKeychainKey)
-    }
 
     /* ###################################################################### */
     /**
@@ -378,6 +368,12 @@ open class PKD_Handler: NSObject {
 
     /* ###################################################################### */
     /**
+     Used to push changes to observers.
+     */
+    public let objectWillChange = ObservableObjectPublisher()
+
+    /* ###################################################################### */
+    /**
      */
     init(relyingParty inRelyingParty: String,
          baseURIString inBaseURIString: String,
@@ -394,6 +390,17 @@ open class PKD_Handler: NSObject {
 // MARK: Computed Properties
 /* ###################################################################################################################################### */
 extension PKD_Handler {
+    /* ###################################################################### */
+    /**
+     The User ID string, as stored in the keychain. Nil, if no string stored.
+     */
+    private var _storedUserIDString: String? {
+        let swiftKeychainWrapper = KeychainSwift()
+        swiftKeychainWrapper.synchronizable = true
+        
+        return swiftKeychainWrapper.get(Self._userIDKeychainKey)
+    }
+
     /* ###################################################################### */
     /**
      Return our instance property session.
@@ -443,6 +450,38 @@ extension PKD_Handler {
      - parameter inPayload: The POST arguments.
      */
     private func _postLoginResponse(to inURLString: String, payload inPayload: [String: Any]) {
+        guard let url = URL(string: inURLString),
+              let responseData = try? JSONSerialization.data(withJSONObject: inPayload),
+              !responseData.isEmpty
+        else { return }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = responseData
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
+        self._session.dataTask(with: request) { inData, inResponse, inError in
+            guard let response = inResponse as? HTTPURLResponse else { return }
+            print("Response Code: \(response.statusCode)")
+            if let data = inData {
+                if 200 == response.statusCode,
+                   let token = String(data: data, encoding: .utf8),
+                   !token.isEmpty {
+                    self._bearerToken = token
+                    self.objectWillChange.send()
+                } else {
+                    self._credentialID = nil
+                    self._bearerToken = nil
+                    if let errString = String(data: data, encoding: .utf8),
+                       !errString.isEmpty {
+                        print("Error: \(errString)")
+                    } else {
+                        print("Error (No Data)")
+                    }
+                    DispatchQueue.main.async { }
+                }
+            }
+        }.resume()
     }
     
     /* ###################################################################### */
@@ -480,9 +519,10 @@ extension PKD_Handler {
                         self._originalDisplayName = displayName
                         self._originalCredo = credo
                     }
-                    DispatchQueue.main.async { }
+                    self.objectWillChange.send()
                 } else {
                     self._credentialID = nil
+                    self._bearerToken = nil
                     DispatchQueue.main.async { }
                 }
             }
