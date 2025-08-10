@@ -290,24 +290,25 @@ extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
      */
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard let window = self.view.window else { return }
         
-        self._pkdInstance?.objectWillChange
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in self?._setUpUI() }
-            .store(in: &self._bag)
-    }
-    
-    /* ###################################################################### */
-    /**
-     */
-    override func viewDidAppear(_ inIsAnimated: Bool) {
-        super.viewDidAppear(inIsAnimated)
-        if let window = self.view.window {
-            self._pkdInstance = PKD_Handler(relyingParty: Self._relyingParty, baseURIString: Self._baseURIString, userNameString: Self._userNameString, presentationAnchor: window)
-            self._setUpUI()
+        if self._pkdInstance == nil {
+            let handler = PKD_Handler(relyingParty: Self._relyingParty,
+                                      baseURIString: Self._baseURIString,
+                                      userNameString: Self._userNameString,
+                                      presentationAnchor: window)
+            self._pkdInstance = handler
+            
+            handler.$isLoggedIn
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+                .sink { [weak self] _ in self?._setUpUI() }
+                .store(in: &self._bag)
         }
+        
+        self._setUpUI()
     }
 }
 
@@ -363,206 +364,18 @@ extension PKD_ConnectViewController {
 
     /* ###################################################################### */
     /**
+     Called when the "Update" button is hit.
+     */
+    @objc func update() {
+    }
+
+    /* ###################################################################### */
+    /**
      Called when the "Logout" button is hit.
      */
     @objc func logout() {
-        self._bearerToken = nil
-        self._credentialID = nil
-        self._cachedSession = nil
-        self._setUpUI()
-    }
-    
-    /* ###################################################################### */
-    /**
-     This is called when the login or update button is hit.
-     
-     - parameter inButton: This is the button, if called from pressing the update button, or login button. Can be omitted.
-     */
-    @objc func accessServerWithPasskey(_ inButton: UIButton! = nil) {
-        /* ###################################################################### */
-        /**
-         This fetches the challenge, for a logged-in access.
-         
-         - parameter inCompletion: A tail completion proc. It will have a single argument, with the user information (if successful).
-         */
-        func _fetchAccessChallenge(completion inCompletion: @escaping (Result<[String: Any], Error>) -> Void) {
-            var urlString = "\(Self._baseURIString)/modify_challenge.php?userId=\(Self._userIDString)"
-            
-            if let bearerToken = self._bearerToken,
-               !bearerToken.isEmpty {
-                urlString += "&token=\(bearerToken)"
-                
-                if self._isLoggedIn,
-                   inButton == self._updateButton {
-                    let displayName = self._displayNameTextField?.text?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? self._originalDisplayName
-                    let credo = self._credoTextField?.text?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? self._originalCredo
-                    urlString += "&displayName=\(displayName)&credo=\(credo)&update"
-                }
-            }
-            
-            guard let url = URL(string: urlString) else { return }
-            let task = self._session.dataTask(with: url) { inData, inResponse, inError in
-                if let error = inError {
-                    inCompletion(.failure(error))
-                    return
-                }
-                
-                if let response = inResponse as? HTTPURLResponse,
-                   404 == response.statusCode,
-                   let data = inData,
-                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let errorString = json["error"] as? String,
-                   Self._errorResponseString == errorString {
-                    inCompletion(.failure(NSError(domain: "user", code: 2)))
-                }
-                
-                guard let data = inData,
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      nil != (json["publicKey"] as? [String: Any]),
-                      nil != (json["bearerToken"] as? String)
-                else {
-                    inCompletion(.failure(NSError(domain: "json", code: 1)))
-                    return
-                }
-                
-                print("Data: \(json)")
-                inCompletion(.success(json))
-            }
-            task.resume()
-        }
-        
-        /* ################################################################ */
-        /**
-         Called to continue connections, after verifying a prior login.
-         
-         - parameter inBearerToken: The logged-in bearer token.
-         */
-        func _loggedInCallback(bearerToken inBearerToken: String, credentialId inCredentialId: String) {
-            self._bearerToken = inBearerToken
-            self._postResponse(to: "\(Self._baseURIString)/modify_response.php", payload: ["credentialId": inCredentialId])
-        }
-        
-        /* ################################################################ */
-        /**
-         Called to tell the user they need to register, first.
-         */
-        func _alertAndRegister() {
-            /* ############################################################ */
-            /**
-             This registers a new account and passkey.
-             */
-            func _registerPasskey() {
-                /* ######################################################## */
-                /**
-                 This fetches the registration options, for creating a new user on the server.
-                 
-                 - parameter inURLString: The string to use as a URI for the registration.
-                 - parameter inCompletion: A tail completion proc. It will have a single argument, with the new user information.
-                 */
-                func _fetchRegistrationOptions(from inURLString: String, completion inCompletion: @escaping (_PublicKeyCredentialCreationOptionsStruct?) -> Void) {
-                    guard let url = URL(string: inURLString)
-                    else {
-                        inCompletion(nil)
-                        return
-                    }
-                    
-                    let task = self._session.dataTask(with: url) { inData, _, error in
-                        guard let data = inData else {
-                            print("Failed to fetch options: \(error?.localizedDescription ?? "Unknown error")")
-                            inCompletion(nil)
-                            return
-                        }
-                        
-                        do {
-                            let decoder = JSONDecoder()
-                            let options = try decoder.decode(_PublicKeyCredentialCreationOptionsStruct.self, from: data)
-                            inCompletion(options)
-                        } catch {
-                            print("JSON decoding error: \(error)")
-                            inCompletion(nil)
-                        }
-                    }
-                    
-                    task.resume()
-                }
-              
-                self._loginAfter = false
-
-                _fetchRegistrationOptions(from: "\(Self._baseURIString)/register_challenge.php?userId=\(Self._userIDString)&displayName=\(Self._userNameString)") { InResponse in
-                    guard let publicKey = InResponse?.publicKey,
-                          let challengeData = publicKey.challenge.base64urlDecodedData,
-                          let userIDData = publicKey.user.id.base64urlDecodedData
-                    else {
-                        print("Invalid Base64URL in server response")
-                        return
-                    }
-
-                    let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: publicKey.rp.id)
-
-                    let request = provider.createCredentialRegistrationRequest(
-                        challenge: challengeData,
-                        name: publicKey.user.displayName,
-                        userID: userIDData
-                    )
-
-                    let controller = ASAuthorizationController(authorizationRequests: [request])
-                    controller.delegate = self
-                    controller.presentationContextProvider = self
-                    controller.performRequests()
-                }
-            }
-
-            DispatchQueue.main.async {
-                if let presentedBy = PKD_SceneDelegate.currentWindow?.rootViewController {
-                    let style: UIAlertController.Style = .alert
-                    let alertController = UIAlertController(title: "Must Register", message: "Since you have not set up a passkey yet, you must register a new account, before logging in.", preferredStyle: style)
-
-                    let okAction = UIAlertAction(title: "OK", style: .cancel) { _ in
-                        self._loginAfter = true
-                        _registerPasskey()
-                    }
-                    
-                    alertController.addAction(okAction)
-                    
-                    presentedBy.present(alertController, animated: true, completion: nil)
-                }
-            }
-        }
-            
-        _fetchAccessChallenge() { inResult in
-            self._loginAfter = false
-            switch inResult {
-            case .success(let challengeDict):
-                if let publicKey = (challengeDict["publicKey"] as? [String: Any]),
-                   let challengeData = (publicKey["challenge"] as? String)?.base64urlDecodedData {
-                    // See if we have already logged in, and we're just making a subsequent call.
-                    if let token = challengeDict["bearerToken"] as? String,
-                       !token.isEmpty,
-                       let credentialID = self._credentialID,
-                       !credentialID.isEmpty {
-                        _loggedInCallback(bearerToken: token, credentialId: credentialID)
-                    } else {    // In this case, we have not previously signed in, so we need to sign in again, by creating a new record to be vetted by the server, and getting user approval.
-                        let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: Self._relyingParty)
-                        let request = provider.createCredentialAssertionRequest(challenge: challengeData)
-                        
-                        let controller = ASAuthorizationController(authorizationRequests: [request])
-                        controller.delegate = self
-                        controller.presentationContextProvider = self
-                        controller.performRequests()
-                    }
-                }   else {
-                    print("No Public Key or Challenge.")
-                }
-            case .failure(let error):
-                self._credentialID = nil
-                self._bearerToken = nil
-                // See if it's a "User not found" error, in which case, we will be creating a new user record.
-                if "user" == (error as NSError).domain {
-                    _alertAndRegister()
-                } else {
-                    print("Failed to fetch challenge: \(error)")
-                }
-            }
+        self._pkdInstance?.logout { inResult in
+            DispatchQueue.main.async { self._setUpUI() }
         }
     }
 }
@@ -612,33 +425,6 @@ extension PKD_ConnectViewController {
                 stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
             ])
         } else if self._pkdInstance?.isLoggedIn ?? false {
-            let deleteButton = UIButton(type: .system)
-            deleteButton.setTitle("Delete", for: .normal)
-            deleteButton.addTarget(self, action: #selector(deleteUser), for: .touchUpInside)
-            
-            let stack = UIStackView(arrangedSubviews: [deleteButton])
-            stack.axis = .vertical
-            stack.spacing = 20
-            stack.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(stack)
-            
-            NSLayoutConstraint.activate([
-                stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-            ])
-        }
-    }
-    
-    /* ###################################################################### */
-    /**
-     Sets up the screen to reflwct the current app state.
-     */
-    private func _oldSetUpUI() {
-        guard let view = self.view else { return }
-        
-        view.subviews.forEach { $0.removeFromSuperview() }
-        
-        if self._isLoggedIn {
             let displayNameEditField = UITextField()
             displayNameEditField.text = ""
             displayNameEditField.placeholder = "Enter A Display Name"
@@ -657,33 +443,22 @@ extension PKD_ConnectViewController {
 
             let updateButton = UIButton(type: .system)
             updateButton.setTitle("Update", for: .normal)
-            updateButton.addTarget(self, action: #selector(accessServerWithPasskey), for: .touchUpInside)
+            updateButton.addTarget(self, action: #selector(update), for: .touchUpInside)
             self._updateButton = updateButton
 
             let logoutButton = UIButton(type: .system)
             logoutButton.setTitle("Logout", for: .normal)
             logoutButton.addTarget(self, action: #selector(logout), for: .touchUpInside)
 
-            let buttonStack = UIStackView(arrangedSubviews: [logoutButton, updateButton])
+            let deleteButton = UIButton(type: .system)
+            deleteButton.setTitle("Delete", for: .normal)
+            deleteButton.addTarget(self, action: #selector(deleteUser), for: .touchUpInside)
+
+            let buttonStack = UIStackView(arrangedSubviews: [deleteButton, logoutButton, updateButton])
             buttonStack.axis = .horizontal
             buttonStack.spacing = 20
 
             let stack = UIStackView(arrangedSubviews: [displayNameEditField, credoEditField, buttonStack])
-            stack.axis = .vertical
-            stack.spacing = 20
-            stack.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(stack)
-            
-            NSLayoutConstraint.activate([
-                stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            ])
-        } else {
-            let loginButton = UIButton(type: .system)
-            loginButton.setTitle("Login", for: .normal)
-            loginButton.addTarget(self, action: #selector(accessServerWithPasskey), for: .touchUpInside)
-            
-            let stack = UIStackView(arrangedSubviews: [loginButton])
             stack.axis = .vertical
             stack.spacing = 20
             stack.translatesAutoresizingMaskIntoConstraints = false
@@ -708,131 +483,4 @@ extension PKD_ConnectViewController {
         DispatchQueue.main.async { self._updateButton?.isEnabled = isEnabled }
         return isEnabled
     }
-    
-    /* ###################################################################### */
-    /**
-     Called to access or modify the user data, via a POST transaction.
-     
-     - parameter inURLString: The URL String we are calling.
-     - parameter inPayload: The POST arguments.
-     */
-    private func _postResponse(to inURLString: String, payload inPayload: [String: Any]) {
-        print("Connecting to URL: \(inURLString)")
-        guard let url = URL(string: inURLString),
-              let responseData = try? JSONSerialization.data(withJSONObject: inPayload),
-              !responseData.isEmpty
-        else { return }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.httpBody = responseData
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
-        let task = self._session.dataTask(with: request) { inData, inResponse, inError in
-            guard let response = inResponse as? HTTPURLResponse else { return }
-            print("Status Code: \(response.statusCode)\n")
-            if let data = inData,
-               let responseString = String(data: data, encoding: .utf8){
-                print("Response: \(responseString)\n")
-                var displayName = ""
-                var credo = ""
-                if 200 == response.statusCode,
-                   let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
-                   let token = dict["bearerToken"],
-                   !token.isEmpty {
-                    self._bearerToken = token
-                    if self._loginAfter {
-                        self.accessServerWithPasskey()
-                    } else {
-                        let decoder = JSONDecoder()
-                        if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
-                            displayName = userData.displayName
-                            credo = userData.credo
-                            self._originalDisplayName = displayName
-                            self._originalCredo = credo
-                        }
-                    }
-                    DispatchQueue.main.async {
-                        self._setUpUI()
-                        self._displayNameTextField?.text = displayName
-                        self._credoTextField?.text = credo
-                        self._calculateUpdateButtonEnabledState()
-                    }
-                } else {
-                    self._credentialID = nil
-                    DispatchQueue.main.async {
-                        self._setUpUI()
-                        let style: UIAlertController.Style = .alert
-                        let alertController = UIAlertController(title: "Error Logging In", message: "Unable to log in.", preferredStyle: style)
-                        
-                        let okAction = UIAlertAction(title: "OK", style: .cancel, handler: nil)
-                        
-                        alertController.addAction(okAction)
-                        
-                        self.present(alertController, animated: true, completion: nil)
-                    }
-                }
-            }
-        }
-        task.resume()
-    }
-}
-
-/* ###################################################################################################################################### */
-// MARK: ASAuthorizationControllerDelegate Conformance
-/* ###################################################################################################################################### */
-extension PKD_ConnectViewController: ASAuthorizationControllerDelegate {
-    /* ###################################################################### */
-    /**
-     Called when the user completes an authorization screen.
-     
-     - parameter controller: The auth controller (ignored).
-     - parameter inAuthorization: The authorization generated by the controller.
-     */
-    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization inAuthorization: ASAuthorization) {
-        if let credential = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration {
-            let payload: [String: String] = [
-                "clientDataJSON": credential.rawClientDataJSON.base64EncodedString(),
-                "attestationObject": credential.rawAttestationObject?.base64EncodedString() ?? ""
-            ]
-            self._credentialID = credential.credentialID.base64EncodedString()
-            self._postResponse(to: "\(Self._baseURIString)/register_response.php", payload: payload)
-        } else if let assertion = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
-            struct AssertionJSON: Codable {
-                var type: String = ""
-                var challenge: String = ""
-                var origin: String = ""
-            }
-            
-            let payload: [String: String] = [
-                "clientDataJSON": assertion.rawClientDataJSON.base64EncodedString(),
-                "authenticatorData": assertion.rawAuthenticatorData.base64EncodedString(),
-                "signature": assertion.signature.base64EncodedString(),
-                "credentialId": assertion.credentialID.base64EncodedString()
-            ]
-            self._credentialID = assertion.credentialID.base64EncodedString()
-            self._postResponse(to: "\(Self._baseURIString)/modify_response.php", payload: payload)
-        }
-    }
-
-    /* ###################################################################### */
-    /**
-     */
-    func authorizationController(controller: ASAuthorizationController, didCompleteWithError inError: Error) {
-        print("Authorization error: \(inError)")
-    }
-}
-
-/* ###################################################################################################################################### */
-// MARK: ASAuthorizationControllerPresentationContextProviding Conformance
-/* ###################################################################################################################################### */
-extension PKD_ConnectViewController: ASAuthorizationControllerPresentationContextProviding {
-    /* ###################################################################### */
-    /**
-     Called to fetch an anchoring window for auth screens.
-     
-     - parameter for: The auth controller (ignored).
-     - returns: The window for this app.
-     */
-    func presentationAnchor(for: ASAuthorizationController) -> ASPresentationAnchor { self.view?.window ?? UIWindow() }
 }

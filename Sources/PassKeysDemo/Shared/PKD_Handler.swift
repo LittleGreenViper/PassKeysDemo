@@ -304,7 +304,7 @@ open class PKD_Handler: NSObject, ObservableObject {
     /**
      If we are currently logged in, this contains the bearer token. Nil, if not logged in.
      */
-    private var _bearerToken: String?
+    private var _bearerToken: String? { didSet { DispatchQueue.main.async { self.isLoggedIn = !(self._bearerToken ?? "").isEmpty } } }
 
     /* ###################################################################### */
     /**
@@ -365,12 +365,18 @@ open class PKD_Handler: NSObject, ObservableObject {
      The user credo string.
      */
     let credoString = ""
-
+    
     /* ###################################################################### */
     /**
-     Used to push changes to observers.
+     True, if we are currently logged in. Must also be registered (belt and suspenders).
      */
-    public let objectWillChange = ObservableObjectPublisher()
+    @Published public private(set) var isLoggedIn = false
+    
+    /* ###################################################################### */
+    /**
+     If the handler encounters an error, it sets this.
+     */
+    @Published public private(set) var lastError: Error?
 
     /* ###################################################################### */
     /**
@@ -415,12 +421,6 @@ extension PKD_Handler {
             return session
         }()
     }
-    
-    /* ###################################################################### */
-    /**
-     True, if we are currently logged in. Must also be registered (belt and suspenders).
-     */
-    private var _isLoggedIn: Bool { !(self._storedUserIDString ?? "").isEmpty && nil != self._cachedSession }
 }
 
 /* ###################################################################################################################################### */
@@ -460,28 +460,23 @@ extension PKD_Handler {
         request.httpBody = responseData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
-        self._session.dataTask(with: request) { inData, inResponse, inError in
-            guard let response = inResponse as? HTTPURLResponse else { return }
-            print("Response Code: \(response.statusCode)")
-            if let data = inData {
-                if 200 == response.statusCode,
-                   let token = String(data: data, encoding: .utf8),
-                   !token.isEmpty {
-                    self._bearerToken = token
-                    self.objectWillChange.send()
-                } else {
-                    self._credentialID = nil
-                    self._bearerToken = nil
-                    if let errString = String(data: data, encoding: .utf8),
-                       !errString.isEmpty {
-                        print("Error: \(errString)")
+        DispatchQueue.main.async {
+            self.lastError = nil
+            self._session.dataTask(with: request) { inData, inResponse, inError in
+                guard let response = inResponse as? HTTPURLResponse else { return }
+                if let data = inData {
+                    if 200 == response.statusCode,
+                       let token = String(data: data, encoding: .utf8),
+                       !token.isEmpty {
+                        self._bearerToken = token
                     } else {
-                        print("Error (No Data)")
+                        self._credentialID = nil
+                        self._bearerToken = nil
+                        DispatchQueue.main.async { self.lastError = Errors.communicationError }
                     }
-                    DispatchQueue.main.async { }
                 }
-            }
-        }.resume()
+            }.resume()
+        }
     }
     
     /* ###################################################################### */
@@ -502,31 +497,33 @@ extension PKD_Handler {
         request.httpBody = responseData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
-        self._session.dataTask(with: request) { inData, inResponse, inError in
-            guard let response = inResponse as? HTTPURLResponse else { return }
-            if let data = inData {
-                var displayName = ""
-                var credo = ""
-                if 200 == response.statusCode,
-                   let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
-                   let token = dict["bearerToken"],
-                   !token.isEmpty {
-                    self._bearerToken = token
-                    let decoder = JSONDecoder()
-                    if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
-                        displayName = userData.displayName
-                        credo = userData.credo
-                        self._originalDisplayName = displayName
-                        self._originalCredo = credo
+        DispatchQueue.main.async {
+            self.lastError = nil
+            self._session.dataTask(with: request) { inData, inResponse, inError in
+                guard let response = inResponse as? HTTPURLResponse else { return }
+                if let data = inData {
+                    var displayName = ""
+                    var credo = ""
+                    if 200 == response.statusCode,
+                       let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
+                       let token = dict["bearerToken"],
+                       !token.isEmpty {
+                        self._bearerToken = token
+                        let decoder = JSONDecoder()
+                        if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
+                            displayName = userData.displayName
+                            credo = userData.credo
+                            self._originalDisplayName = displayName
+                            self._originalCredo = credo
+                        }
+                    } else {
+                        self._credentialID = nil
+                        self._bearerToken = nil
+                        DispatchQueue.main.async { self.lastError = Errors.communicationError }
                     }
-                    self.objectWillChange.send()
-                } else {
-                    self._credentialID = nil
-                    self._bearerToken = nil
-                    DispatchQueue.main.async { }
                 }
-            }
-        }.resume()
+            }.resume()
+        }
     }
 }
 
@@ -565,6 +562,8 @@ extension PKD_Handler {
                 }
             }.resume()
         } else {
+            self.clearUserInfo()
+            inCompletion(.failure(Errors.noUserID))
         }
     }
     
@@ -640,12 +639,6 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
             self._credentialID = credential.credentialID.base64EncodedString()
             self._postCreateResponse(to: "\(self.baseURIString)/index.php?operation=create", payload: payload)
         } else if let assertion = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
-            struct AssertionJSON: Codable {
-                var type: String = ""
-                var challenge: String = ""
-                var origin: String = ""
-            }
-            
             self._credentialID = assertion.credentialID.base64EncodedString()
             
             let payload: [String: String] = [
@@ -689,12 +682,6 @@ public extension PKD_Handler {
      Returns true, if we are registered (have a stored user ID).
      */
     var isRegistered: Bool { !(self._storedUserIDString ?? "").isEmpty }
-
-    /* ###################################################################### */
-    /**
-     Returns true, if we are logged in (have an active session).
-     */
-    var isLoggedIn: Bool { self._isLoggedIn }
 
     /* ###################################################################### */
     /**
@@ -752,11 +739,14 @@ public extension PKD_Handler {
      
      > NOTE: The user must be logged in, or this does nothing.
      
-     - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument.
+     - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
     func logout(completion inCompletion: ((LoginResponse) -> Void)? = nil) {
         if self.isLoggedIn {
-            
+            DispatchQueue.main.async {
+                self.isLoggedIn = false
+                inCompletion?(.success)
+            }
         } else {
             inCompletion?(.failure(Errors.notLoggedIn))
         }
@@ -768,7 +758,7 @@ public extension PKD_Handler {
      
      > NOTE: The user cannot be logged in, and cannot have an existing account.
      
-     - parameter inCompletion: A tail completion callback.
+     - parameter inCompletion: A tail completion callback. Always called on the main thread.
      */
     func create(displayName: String, credo: String, completion inCompletion: @escaping TransactionCallback) {
         if !self.isRegistered {
@@ -777,7 +767,7 @@ public extension PKD_Handler {
                     print(inCreateChallengeResponse)
                     if case .success(let value) = inCreateChallengeResponse {
                         self._nextStepInCreate(with: value) { inResponse in
-                            inCompletion(nil, .success)
+                            DispatchQueue.main.async { inCompletion(nil, .success) }
                         }
                     }
                 }
