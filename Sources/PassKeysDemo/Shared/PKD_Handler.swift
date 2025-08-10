@@ -789,8 +789,31 @@ public extension PKD_Handler {
     */
     func read(completion inCompletion: @escaping TransactionCallback) {
         if self.isRegistered {
-            if self.isLoggedIn {
-                
+            if self.isLoggedIn,
+            let bearerToken = self._bearerToken,
+               !bearerToken.isEmpty {
+                let urlString = "\(self.baseURIString)/index.php?operation=read"
+                guard let url = URL(string: urlString) else { return }
+
+                var request = URLRequest(url: url)
+                request.httpMethod = "GET"
+                request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+
+                print("Bearer Token: \(bearerToken)")
+                self._session.dataTask(with: request) { inData, inResponse, inError in
+                    if let error = inError {
+                        inCompletion(nil, .failure(error))
+                    } else if let response = inResponse as? HTTPURLResponse,
+                              200 == response.statusCode,
+                              let data = inData, !data.isEmpty,
+                              let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
+                              let displayName = dict["displayName"],
+                              let credo = dict["credo"] {
+                        inCompletion((displayName, credo), .success)
+                    } else {
+                        inCompletion(nil, .failure(Errors.communicationError))
+                    }
+                }.resume()
             } else {
                 inCompletion(nil, .failure(Errors.notLoggedIn))
             }

@@ -306,6 +306,11 @@ extension PKD_ConnectViewController {
                 .receive(on: RunLoop.main)
                 .sink { [weak self] _ in self?._setUpUI() }
                 .store(in: &self._bag)
+            
+            handler.$lastError
+                .receive(on: RunLoop.main)
+                .sink { [weak self] _ in self?._handleError() }
+                .store(in: &self._bag)
         }
         
         self._setUpUI()
@@ -359,7 +364,7 @@ extension PKD_ConnectViewController {
      We just use this to manage the enablement of the update button.
      */
     @objc func textFieldChanged() {
-        _calculateUpdateButtonEnabledState()
+        self._calculateUpdateButtonEnabledState()
     }
 
     /* ###################################################################### */
@@ -367,6 +372,13 @@ extension PKD_ConnectViewController {
      Called when the "Update" button is hit.
      */
     @objc func update() {
+        if let displayName = self._displayName,
+           !displayName.isEmpty,
+           let credo = self._credo {
+            self._pkdInstance?.update(displayName: displayName, credo: credo) { _, _ in
+                DispatchQueue.main.async { self._setUpUI() }
+            }
+        }
     }
 
     /* ###################################################################### */
@@ -386,15 +398,25 @@ extension PKD_ConnectViewController {
 extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
-     Sets up the screen to reflwct the current app state.
+     */
+    private func _handleError() {
+        if let error = self._pkdInstance?.lastError {
+            let alertController = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
+            alertController.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alertController, animated: true)
+        }
+    }
+    
+    /* ###################################################################### */
+    /**
+     Sets up the screen to reflect the current app state.
      */
     private func _setUpUI() {
         guard let view = self.view else { return }
         
         view.subviews.forEach { $0.removeFromSuperview() }
         
-        if self._isLoggedIn {
-        } else if !(self._pkdInstance?.isRegistered ?? false) {
+        if !(self._pkdInstance?.isRegistered ?? false) {
             let registerButton = UIButton(type: .system)
             registerButton.setTitle("Register", for: .normal)
             registerButton.addTarget(self, action: #selector(register), for: .touchUpInside)
@@ -468,6 +490,21 @@ extension PKD_ConnectViewController {
                 stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             ])
+            
+            self._pkdInstance?.read { [weak self] inResponseData, inResponseResult in
+                if let self = self {
+                    DispatchQueue.main.async {
+                        if let responseData = inResponseData {
+                            self._displayNameTextField?.text = responseData.0
+                            self._credoTextField?.text = responseData.1
+                        } else {
+                            self._displayNameTextField?.text = nil
+                            self._credoTextField?.text = nil
+                        }
+                        self._calculateUpdateButtonEnabledState()
+                    }
+                }
+            }
         }
     }
 

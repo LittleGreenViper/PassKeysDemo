@@ -148,10 +148,77 @@ class PKDServer {
                     $this->createCompletion();
                 }
                 break;
+                
+            case Operation::readUser:
+                $this->handleRead();
+                break;
 
             default:
                 http_response_code(400);
                 echo '&#128169;';   // Oh, poo.
+        }
+    }
+    
+    /**************************************/
+    /**
+    */
+    public function handleRead() {
+        $originalToken = $_SESSION['bearerToken'];
+        $headers = getallheaders();
+        
+        if (!empty($originalToken) && isset($headers['Authorization'])) {
+            $authHeader = $headers['Authorization'];
+        
+            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                $token = $matches[1];
+                if (!empty($token) && ($originalToken == $token)) {
+                    $stmt = $this->pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
+                    $stmt->execute([$originalToken]);
+                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!empty($row) && !empty($row['userId'])) {
+                        $userId = $row['userId'];
+                        $stmt = $this->pdoInstance->prepare('SELECT displayName, credo FROM passkeys_demo_users WHERE userId = ?');
+                        $stmt->execute([$userId]);
+                        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        if (!empty($row) && !empty($row['displayName'])) {
+                            $displayName = $row['displayName'];
+                            $credo = $row['credo'];
+                            if (empty($credo)) {
+                                $credo = '';
+                            }
+                            header('Content-Type: application/json');
+                            echo json_encode(['displayName' => $displayName, 'credo' => $credo]);
+                        } else {
+                            http_response_code(500);
+                            header('Content-Type: application/json');
+                            echo json_encode(['error' => 'Database Sync Issues']);
+                            exit;
+                        }
+                    } else {
+                        http_response_code(401);
+                        header('Content-Type: application/json');
+                        echo json_encode(['error' => 'User Not Found']);
+                        exit;
+                    }
+                } else {
+                    http_response_code(401);
+                    header('Content-Type: application/json');
+                    echo json_encode(['error' => 'Authorization Mismatch']);
+                    exit;
+                }
+            } else {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Invalid Authorization header']);
+                exit;
+            }
+        } else {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Missing Authorization']);
+            exit;
         }
     }
     
@@ -174,6 +241,7 @@ class PKDServer {
             echo(base64url_encode($challenge));
         } else {
             http_response_code(404);
+            header('Content-Type: application/json');
             echo json_encode(['error' => 'User not found']);
         }
     }
@@ -228,10 +296,12 @@ class PKDServer {
                     $stmt->execute([$credentialId]);
                     
                     http_response_code(401);
+                    header('Content-Type: application/json');
                     echo json_encode(['error' => $e->getMessage()]);
                 }
             } else {
                 http_response_code(404);
+                header('Content-Type: application/json');
                 echo json_encode(['error' => 'User not found']);
             }
         } else {
