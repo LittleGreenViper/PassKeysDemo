@@ -152,6 +152,10 @@ class PKDServer {
             case Operation::readUser:
                 $this->handleRead();
                 break;
+                
+            case Operation::updateUser:
+                $this->handleUpdate();
+                break;
 
             default:
                 http_response_code(400);
@@ -196,6 +200,58 @@ class PKDServer {
                             echo json_encode(['error' => 'Database Sync Issues']);
                             exit;
                         }
+                    } else {
+                        http_response_code(401);
+                        header('Content-Type: application/json');
+                        echo json_encode(['error' => 'User Not Found']);
+                        exit;
+                    }
+                } else {
+                    http_response_code(401);
+                    header('Content-Type: application/json');
+                    echo json_encode(['error' => 'Authorization Mismatch']);
+                    exit;
+                }
+            } else {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Invalid Authorization header']);
+                exit;
+            }
+        } else {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Missing Authorization']);
+            exit;
+        }
+    }
+    
+    /**************************************/
+    /**
+    */
+    public function handleUpdate() {
+        $originalToken = $_SESSION['bearerToken'];
+        $headers = getallheaders();
+        
+        if (!empty($originalToken) && isset($headers['Authorization'])) {
+            $authHeader = $headers['Authorization'];
+        
+            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                $token = $matches[1];
+                if (!empty($token) && ($originalToken == $token)) {
+                    $stmt = $this->pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
+                    $stmt->execute([$originalToken]);
+                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!empty($row) && !empty($row['userId'])) {
+                        $userId = $row['userId'];
+                        $displayName = $this->getArgs->displayName;
+                        $credo = $this->getArgs->credo;
+                        
+                        $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET displayName = ?, WHERE userId = ?');
+                        $stmt->execute([$displayName, $userId]);
+                        $stmt = $this->pdoInstance->prepare('UPDATE passkeys_demo_users SET displayName = ?, credo = ? WHERE userId = ?');
+                        $stmt->execute([$displayName, $credo, $userId]);
                     } else {
                         http_response_code(401);
                         header('Content-Type: application/json');
