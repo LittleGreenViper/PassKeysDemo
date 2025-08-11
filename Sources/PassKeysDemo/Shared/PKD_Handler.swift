@@ -83,6 +83,12 @@ open class PKD_Handler: NSObject, ObservableObject {
 
         /* ################################################################## */
         /**
+         Failed, because of incorrect input parameters.
+         */
+        case badInputParameters
+
+        /* ################################################################## */
+        /**
          Returns a localized string, with the error description.
          */
         var localizedDescription: String {
@@ -107,6 +113,10 @@ open class PKD_Handler: NSObject, ObservableObject {
                 
             case .communicationError:
                 ret = "Communication Error"
+                break
+                
+            case .badInputParameters:
+                ret = "Bad Input Parameters"
                 break
            }
             
@@ -322,13 +332,13 @@ open class PKD_Handler: NSObject, ObservableObject {
     /**
      We hold onto this, so we can calculate a "dirty" state.
      */
-    private var _originalDisplayName = ""
+    var originalDisplayName = ""
 
     /* ###################################################################### */
     /**
      We hold onto this, so we can calculate a "dirty" state.
      */
-    private var _originalCredo = ""
+    var originalCredo = ""
 
     /* ###################################################################### */
     /**
@@ -513,8 +523,8 @@ extension PKD_Handler {
                         if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
                             displayName = userData.displayName
                             credo = userData.credo
-                            self._originalDisplayName = displayName
-                            self._originalCredo = credo
+                            self.originalDisplayName = displayName
+                            self.originalCredo = credo
                         }
                     } else {
                         self._credentialID = nil
@@ -809,6 +819,8 @@ public extension PKD_Handler {
                               let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
                               let displayName = dict["displayName"],
                               let credo = dict["credo"] {
+                        self.originalDisplayName = displayName
+                        self.originalCredo = credo
                         inCompletion((displayName, credo), .success)
                     } else {
                         inCompletion(nil, .failure(Errors.communicationError))
@@ -830,10 +842,39 @@ public extension PKD_Handler {
 
      - parameter inCompletion: A tail completion callback.
           */
-    func update(displayName: String, credo: String, completion inCompletion: @escaping TransactionCallback) {
+    func update(displayName inDisplayName: String, credo inCredo: String, completion inCompletion: @escaping TransactionCallback) {
         if self.isRegistered {
-            if self.isLoggedIn {
-                
+            if self.isLoggedIn,
+               let bearerToken = self._bearerToken,
+               !bearerToken.isEmpty {
+                if let displayName = inDisplayName.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
+                   !displayName.isEmpty {
+                    let credo = inCredo.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? ""
+                    let urlString = "\(self.baseURIString)/index.php?operation=update&displayName=\(displayName)&credo=\(credo)"
+                    guard let url = URL(string: urlString) else { return }
+                    
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "GET"
+                    request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+                    
+                    print("Bearer Token: \(bearerToken)")
+                    self._session.dataTask(with: request) { inData, inResponse, inError in
+                        if let error = inError {
+                            inCompletion(nil, .failure(error))
+                        } else if let response = inResponse as? HTTPURLResponse,
+                                  200 == response.statusCode,
+                                  let data = inData, !data.isEmpty,
+                                  let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
+                                  let displayName = dict["displayName"],
+                                  let credo = dict["credo"] {
+                            inCompletion((displayName, credo), .success)
+                        } else {
+                            inCompletion(nil, .failure(Errors.communicationError))
+                        }
+                   }.resume()
+               } else {
+                   inCompletion(nil, .failure(Errors.badInputParameters))
+               }
             } else {
                 inCompletion(nil, .failure(Errors.notLoggedIn))
             }

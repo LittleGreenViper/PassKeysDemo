@@ -211,18 +211,6 @@ class PKD_ConnectViewController: UIViewController {
 
     /* ###################################################################### */
     /**
-     We hold onto this, so we can calculate a "dirty" state.
-     */
-    private var _originalDisplayName: String = ""
-
-    /* ###################################################################### */
-    /**
-     We hold onto this, so we can calculate a "dirty" state.
-     */
-    private var _originalCredo: String = ""
-
-    /* ###################################################################### */
-    /**
      The text field that allows the user to edit their display name.
      */
     private weak var _displayNameTextField: UITextField?
@@ -275,12 +263,6 @@ extension PKD_ConnectViewController {
             return session
         }()
     }
-    
-    /* ###################################################################### */
-    /**
-     True, if we are currently logged in.
-     */
-    private var _isLoggedIn: Bool { nil != self._cachedSession }
 }
 
 /* ###################################################################################################################################### */
@@ -516,7 +498,10 @@ extension PKD_ConnectViewController {
      */
     @discardableResult
     private func _calculateUpdateButtonEnabledState() -> Bool {
-        let isEnabled = self._isLoggedIn && !(self._displayName?.isEmpty ?? true) && (self._displayName != self._originalDisplayName) || (self._credo != self._originalCredo)
+        let hasTextChanged = (self._displayName != self._pkdInstance?.originalDisplayName) || (self._credo != self._pkdInstance?.originalCredo)
+        let displayName = self._displayName ?? ""
+        let isLoggedIn = self._pkdInstance?.isLoggedIn ?? false
+        let isEnabled = isLoggedIn && !displayName.isEmpty && hasTextChanged
         DispatchQueue.main.async { self._updateButton?.isEnabled = isEnabled }
         return isEnabled
     }

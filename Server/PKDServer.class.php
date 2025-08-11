@@ -248,7 +248,7 @@ class PKDServer {
                         $displayName = $this->getArgs->displayName;
                         $credo = $this->getArgs->credo;
                         
-                        $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET displayName = ?, WHERE userId = ?');
+                        $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET displayName = ? WHERE userId = ?');
                         $stmt->execute([$displayName, $userId]);
                         $stmt = $this->pdoInstance->prepare('UPDATE passkeys_demo_users SET displayName = ?, credo = ? WHERE userId = ?');
                         $stmt->execute([$displayName, $credo, $userId]);
