@@ -130,42 +130,48 @@ open class PKD_Handler: NSObject, ObservableObject {
     /**
      This enumeration defines the keys that we send to the server, to enumerate which operation we are performing.
      */
-    enum Operation: String {
+    enum UserOperation: String {
+        /* ################################################################## */
+        /**
+         No Op.
+         */
+        case none = ""
+
         /* ################################################################## */
         /**
          Login a previously registered user, using the userId, and the PassKey.
          */
-        case login
+        case login = "login"
 
         /* ################################################################## */
         /**
          Log out a currently logged-in user.
          */
-        case logout
+        case logout = "logout"
 
         /* ################################################################## */
         /**
          Create a new user on the server.
          */
-        case createUser
+        case createUser = "create"
 
         /* ################################################################## */
         /**
          Read the displayName and credo of a registered (and logged-in) user.
          */
-        case readUser
+        case readUser = "read"
 
         /* ################################################################## */
         /**
          Change the displayName and/or credo of the registered (and logged-in) user.
          */
-        case updateUser
+        case updateUser = "update"
 
         /* ################################################################## */
         /**
          Delete a registered (and logged-in) user.
          */
-        case deleteUser
+        case deleteUser = "delete"
     }
     
     /* ################################################################################################################################## */
@@ -378,6 +384,12 @@ open class PKD_Handler: NSObject, ObservableObject {
     
     /* ###################################################################### */
     /**
+     The last operation.
+     */
+    var lastOperation = UserOperation.none
+    
+    /* ###################################################################### */
+    /**
      True, if we are currently logged in. Must also be registered (belt and suspenders).
      */
     @Published public private(set) var isLoggedIn = false
@@ -547,7 +559,7 @@ extension PKD_Handler {
     private func _getCreateChallenge(completion inCompletion: @escaping (Result<_PublicKeyCredentialCreationOptionsStruct, Error>) -> Void) {
         let userIdString = self._createNewUserIdString()
         if !userIdString.isEmpty {
-            let urlString = "\(self.baseURIString)/index.php?operation=create&userId=\(userIdString)"
+            let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)&userId=\(userIdString)"
             guard let url = URL(string: urlString) else { return }
             self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
@@ -609,7 +621,7 @@ extension PKD_Handler {
     private func _getLoginChallenge(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
         if let userIdString = self._storedUserIDString,
            !userIdString.isEmpty {
-            let urlString = "\(self.baseURIString)/index.php?operation=login&userId=\(userIdString)"
+            let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)&userId=\(userIdString)"
             guard let url = URL(string: urlString) else { return }
             self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
@@ -617,7 +629,12 @@ extension PKD_Handler {
                 } else if let data = inData {
                     if let responseString = String(data: data, encoding: .utf8),
                        !responseString.isEmpty {
-                        inCompletion(.success(responseString))
+                        if let jsonResponse = try? JSONDecoder().decode([String: String].self, from: data),
+                           let _ = jsonResponse["error"] {
+                            inCompletion(.failure(Errors.noUserID))
+                        } else {
+                            inCompletion(.success(responseString))
+                        }
                     } else {
                         inCompletion(.failure(Errors.communicationError))
                     }
@@ -647,7 +664,7 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
                 "attestationObject": credential.rawAttestationObject?.base64EncodedString() ?? ""
             ]
             self._credentialID = credential.credentialID.base64EncodedString()
-            self._postCreateResponse(to: "\(self.baseURIString)/index.php?operation=create", payload: payload)
+            self._postCreateResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)", payload: payload)
         } else if let assertion = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
             self._credentialID = assertion.credentialID.base64EncodedString()
             
@@ -658,7 +675,7 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
                 "credentialId": self._credentialID ?? ""
             ]
             
-            self._postLoginResponse(to: "\(self.baseURIString)/index.php?operation=login", payload: payload)
+            self._postLoginResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)", payload: payload)
         }
     }
 }
@@ -710,36 +727,48 @@ public extension PKD_Handler {
      
      > NOTE: The user must be logged out, or this does nothing. The user must also be previously registered.
 
-     - parameter inCompletion: A tail completion callback, with a single LoginResponse argument.
+     - parameter inCompletion: A tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
     func login(completion inCompletion: @escaping (LoginResponse) -> Void) {
+        DispatchQueue.main.async { self.lastError = nil }
+        self.lastOperation = .login
         if self.isRegistered {
             if !self.isLoggedIn {
                 self._getLoginChallenge { inResponse in
-                    switch inResponse {
-                    case .success(let inChallenge):
-                        if let challengeData = inChallenge.base64urlDecodedData {
-                            let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self.relyingParty)
-                            let request = provider.createCredentialAssertionRequest(challenge: challengeData)
+                    DispatchQueue.main.async {
+                        switch inResponse {
+                        case .success(let inChallenge):
+                            if let challengeData = inChallenge.base64urlDecodedData {
+                                let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self.relyingParty)
+                                let request = provider.createCredentialAssertionRequest(challenge: challengeData)
+                                
+                                let controller = ASAuthorizationController(authorizationRequests: [request])
+                                controller.delegate = self
+                                controller.presentationContextProvider = self
+                                controller.performRequests()
+                            } else {
+                                self.lastError = Errors.communicationError
+                                inCompletion(.failure(Errors.communicationError))
+                            }
+                            break
                             
-                            let controller = ASAuthorizationController(authorizationRequests: [request])
-                            controller.delegate = self
-                            controller.presentationContextProvider = self
-                            controller.performRequests()
-                        } else {
-                            inCompletion(.failure(Errors.communicationError))
+                        case .failure(let inError):
+                            self.lastError = inError
+                            inCompletion(.failure(inError))
                         }
-                        break
-                        
-                    case .failure(let inError):
-                        inCompletion(.failure(inError))
                     }
                 }
             } else {
-                inCompletion(.failure(Errors.alreadyLoggedIn))
+                DispatchQueue.main.async {
+                    self.lastError = Errors.alreadyLoggedIn
+                    inCompletion(.failure(Errors.alreadyLoggedIn))
+                }
             }
         } else {
-            inCompletion(.failure(Errors.noUserID))
+            DispatchQueue.main.async {
+                self.lastError = Errors.noUserID
+                inCompletion(.failure(Errors.noUserID))
+            }
         }
     }
 
@@ -752,13 +781,18 @@ public extension PKD_Handler {
      - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
     func logout(completion inCompletion: ((LoginResponse) -> Void)? = nil) {
+        self.lastOperation = .logout
+        DispatchQueue.main.async { self.lastError = nil }
         if self.isLoggedIn {
             DispatchQueue.main.async {
                 self.isLoggedIn = false
                 inCompletion?(.success)
             }
         } else {
-            inCompletion?(.failure(Errors.notLoggedIn))
+            DispatchQueue.main.async {
+                self.lastError = Errors.notLoggedIn
+                inCompletion?(.failure(Errors.notLoggedIn))
+            }
         }
     }
 
@@ -770,22 +804,41 @@ public extension PKD_Handler {
      
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
      */
-    func create(displayName: String, credo: String, completion inCompletion: @escaping TransactionCallback) {
+    func create(completion inCompletion: @escaping TransactionCallback) {
+        self.lastOperation = .createUser
+        DispatchQueue.main.async { self.lastError = nil }
         if !self.isRegistered {
             if !self.isLoggedIn {
                 self._getCreateChallenge { inCreateChallengeResponse in
-                    print(inCreateChallengeResponse)
                     if case .success(let value) = inCreateChallengeResponse {
                         self._nextStepInCreate(with: value) { inResponse in
-                            DispatchQueue.main.async { inCompletion(nil, .success) }
+                            DispatchQueue.main.async {
+                                if case let .failure(inReason) = inResponse {
+                                    self.lastError = inReason
+                                    inCompletion(nil, .failure(inReason))
+                                } else {
+                                    inCompletion(nil, .success)
+                                }
+                            }
+                        }
+                    } else {
+                        DispatchQueue.main.async {
+                            self.lastError = Errors.communicationError
+                            inCompletion(nil, .failure(Errors.communicationError))
                         }
                     }
                 }
             } else {
-                inCompletion(nil, .failure(Errors.alreadyLoggedIn))
+                DispatchQueue.main.async {
+                    self.lastError = Errors.alreadyLoggedIn
+                    inCompletion(nil, .failure(Errors.alreadyLoggedIn))
+                }
             }
         } else {
-            inCompletion(nil, .failure(Errors.alreadyRegistered))
+            DispatchQueue.main.async {
+                self.lastError = Errors.alreadyRegistered
+                inCompletion(nil, .failure(Errors.alreadyRegistered))
+            }
         }
     }
 
@@ -795,14 +848,16 @@ public extension PKD_Handler {
      
      > NOTE: The user needs to be logged in, and must have an existing account.
 
-     - parameter inCompletion: A tail completion callback.
+     - parameter inCompletion: A tail completion callback. Always called on the main thread.
     */
     func read(completion inCompletion: @escaping TransactionCallback) {
+        self.lastOperation = .readUser
+        DispatchQueue.main.async { self.lastError = nil }
         if self.isRegistered {
             if self.isLoggedIn,
             let bearerToken = self._bearerToken,
                !bearerToken.isEmpty {
-                let urlString = "\(self.baseURIString)/index.php?operation=read"
+                let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.readUser.rawValue)"
                 guard let url = URL(string: urlString) else { return }
 
                 var request = URLRequest(url: url)
@@ -811,26 +866,35 @@ public extension PKD_Handler {
 
                 print("Bearer Token: \(bearerToken)")
                 self._session.dataTask(with: request) { inData, inResponse, inError in
-                    if let error = inError {
-                        inCompletion(nil, .failure(error))
-                    } else if let response = inResponse as? HTTPURLResponse,
-                              200 == response.statusCode,
-                              let data = inData, !data.isEmpty,
-                              let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
-                              let displayName = dict["displayName"],
-                              let credo = dict["credo"] {
-                        self.originalDisplayName = displayName
-                        self.originalCredo = credo
-                        inCompletion((displayName, credo), .success)
-                    } else {
-                        inCompletion(nil, .failure(Errors.communicationError))
+                    DispatchQueue.main.async {
+                        if let error = inError {
+                            inCompletion(nil, .failure(error))
+                        } else if let response = inResponse as? HTTPURLResponse,
+                                  200 == response.statusCode,
+                                  let data = inData, !data.isEmpty,
+                                  let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
+                                  let displayName = dict["displayName"],
+                                  let credo = dict["credo"] {
+                            self.originalDisplayName = displayName
+                            self.originalCredo = credo
+                            inCompletion((displayName, credo), .success)
+                        } else {
+                            self.lastError = Errors.communicationError
+                            inCompletion(nil, .failure(Errors.communicationError))
+                        }
                     }
                 }.resume()
             } else {
-                inCompletion(nil, .failure(Errors.notLoggedIn))
+                DispatchQueue.main.async {
+                    self.lastError = Errors.notLoggedIn
+                    inCompletion(nil, .failure(Errors.notLoggedIn))
+                }
             }
         } else {
-            inCompletion(nil, .failure(Errors.noUserID))
+            DispatchQueue.main.async {
+                self.lastError = Errors.noUserID
+                inCompletion(nil, .failure(Errors.noUserID))
+            }
         }
     }
 
@@ -840,9 +904,13 @@ public extension PKD_Handler {
      
      > NOTE: The user needs to be logged in, and must have an existing account.
 
-     - parameter inCompletion: A tail completion callback.
+     - parameter inDisplayName: The new displayName value.
+     - parameter inCredo: The new credo value.
+     - parameter inCompletion: A tail completion callback. Always called on the main thread.
           */
     func update(displayName inDisplayName: String, credo inCredo: String, completion inCompletion: @escaping TransactionCallback) {
+        self.lastOperation = .updateUser
+        DispatchQueue.main.async { self.lastError = nil }
         if self.isRegistered {
             if self.isLoggedIn,
                let bearerToken = self._bearerToken,
@@ -850,7 +918,7 @@ public extension PKD_Handler {
                 if let displayName = inDisplayName.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
                    !displayName.isEmpty {
                     let credo = inCredo.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? ""
-                    let urlString = "\(self.baseURIString)/index.php?operation=update&displayName=\(displayName)&credo=\(credo)"
+                    let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.updateUser.rawValue)&displayName=\(displayName)&credo=\(credo)"
                     guard let url = URL(string: urlString) else { return }
                     
                     var request = URLRequest(url: url)
@@ -859,27 +927,39 @@ public extension PKD_Handler {
                     
                     print("Bearer Token: \(bearerToken)")
                     self._session.dataTask(with: request) { inData, inResponse, inError in
-                        if let error = inError {
-                            inCompletion(nil, .failure(error))
-                        } else if let response = inResponse as? HTTPURLResponse,
-                                  200 == response.statusCode,
-                                  let data = inData, !data.isEmpty,
-                                  let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
-                                  let displayName = dict["displayName"],
-                                  let credo = dict["credo"] {
-                            inCompletion((displayName, credo), .success)
-                        } else {
-                            inCompletion(nil, .failure(Errors.communicationError))
+                        print("Response Code: \((inResponse as? HTTPURLResponse)?.statusCode ?? 0)")
+                        DispatchQueue.main.async {
+                            if let error = inError {
+                                self.lastError = error
+                                inCompletion(nil, .failure(error))
+                            } else if let response = inResponse as? HTTPURLResponse,
+                                      200 == response.statusCode {
+                                self.originalDisplayName = displayName
+                                self.originalCredo = credo
+                                inCompletion((displayName, credo), .success)
+                            } else {
+                                self.lastError = Errors.communicationError
+                                inCompletion(nil, .failure(Errors.communicationError))
+                            }
                         }
                    }.resume()
                } else {
-                   inCompletion(nil, .failure(Errors.badInputParameters))
+                   DispatchQueue.main.async {
+                       self.lastError = Errors.badInputParameters
+                       inCompletion(nil, .failure(Errors.badInputParameters))
+                   }
                }
             } else {
-                inCompletion(nil, .failure(Errors.notLoggedIn))
+                DispatchQueue.main.async {
+                    self.lastError = Errors.notLoggedIn
+                    inCompletion(nil, .failure(Errors.notLoggedIn))
+                }
             }
         } else {
-            inCompletion(nil, .failure(Errors.noUserID))
+            DispatchQueue.main.async {
+                self.lastError = Errors.noUserID
+                inCompletion(nil, .failure(Errors.noUserID))
+            }
         }
     }
 
@@ -891,14 +971,19 @@ public extension PKD_Handler {
 
      > NOTE: This does not remove the PassKey! The user needs to do that manually.
 
-     - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument.
+     - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
     func delete(completion inCompletion: ((LoginResponse) -> Void)? = nil) {
+        self.lastOperation = .deleteUser
+        DispatchQueue.main.async { self.lastError = nil }
         if self.isLoggedIn {
             
             self.clearUserInfo()
         } else {
-            inCompletion?(.failure(Errors.notLoggedIn))
+            DispatchQueue.main.async {
+                self.lastError = Errors.notLoggedIn
+                inCompletion?(.failure(Errors.notLoggedIn))
+            }
         }
     }
 }

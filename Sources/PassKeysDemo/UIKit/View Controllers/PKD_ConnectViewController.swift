@@ -282,7 +282,7 @@ extension PKD_ConnectViewController {
                                       userNameString: Self._userNameString,
                                       presentationAnchor: window)
             self._pkdInstance = handler
-            
+
             handler.$isLoggedIn
                 .removeDuplicates()
                 .receive(on: RunLoop.main)
@@ -307,13 +307,7 @@ extension PKD_ConnectViewController {
     /**
      */
     @objc func register() {
-        self._pkdInstance?.create(displayName: "NEW USER", credo: "") { inData, inResponse  in
-            if let responseData = inData {
-                print("Display Name: \(responseData.displayName)")
-                print("Credo: \(responseData.credo)")
-                DispatchQueue.main.async { self._setUpUI() }
-            }
-        }
+        self._pkdInstance?.create { _, _ in self._setUpUI() }
     }
     
     /* ###################################################################### */
@@ -329,7 +323,7 @@ extension PKD_ConnectViewController {
                 print("Error: \(inError.localizedDescription)")
                 break
             }
-            DispatchQueue.main.async { self?._setUpUI() }
+            self?._setUpUI()
         }
     }
     
@@ -357,9 +351,7 @@ extension PKD_ConnectViewController {
         if let displayName = self._displayName,
            !displayName.isEmpty,
            let credo = self._credo {
-            self._pkdInstance?.update(displayName: displayName, credo: credo) { _, _ in
-                DispatchQueue.main.async { self._setUpUI() }
-            }
+            self._pkdInstance?.update(displayName: displayName, credo: credo) { _, _ in self._setUpUI() }
         }
     }
 
@@ -368,9 +360,7 @@ extension PKD_ConnectViewController {
      Called when the "Logout" button is hit.
      */
     @objc func logout() {
-        self._pkdInstance?.logout { inResult in
-            DispatchQueue.main.async { self._setUpUI() }
-        }
+        self._pkdInstance?.logout { inResult in self._setUpUI() }
     }
 }
 
@@ -383,7 +373,35 @@ extension PKD_ConnectViewController {
      */
     private func _handleError() {
         if let error = self._pkdInstance?.lastError {
-            let alertController = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
+            let title = "Error"
+            var message = ""
+            
+            switch self._pkdInstance?.lastOperation ?? .none {
+            case .login:
+                message = "Login failed."
+                
+            case .logout:
+                message = "Logout failed."
+                
+            case .createUser:
+                message = "Registration failed."
+        
+            case .readUser:
+                message = "User data retrieval failed."
+                
+            case .updateUser:
+                message = "User data update failed."
+                
+            case .deleteUser:
+                message = "User deletion failed."
+                
+            case .none:
+                message = "Unknown Error"
+            }
+            
+            message += "\n\(error.localizedDescription)"
+            
+            let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
             alertController.addAction(UIAlertAction(title: "OK", style: .default))
             self.present(alertController, animated: true)
         }

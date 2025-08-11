@@ -156,6 +156,16 @@ class PKDServer {
             case Operation::updateUser:
                 $this->handleUpdate();
                 break;
+                
+            case Operation::logout:
+                http_response_code(401);
+                echo 'NOT IMPLEMENTED';
+                break;
+                
+            case Operation::deleteUser:
+                http_response_code(401);
+                echo 'NOT IMPLEMENTED';
+                break;
 
             default:
                 http_response_code(400);
@@ -408,7 +418,7 @@ class PKDServer {
             echo json_encode(['publicKey' => $args->publicKey]);
         } else {
             http_response_code(400);
-            echo '-1-&#128169;';   // Oh, poo.
+            echo '&#128169;';   // Oh, poo.
         }
     }
     
@@ -461,6 +471,7 @@ class PKDServer {
                 echo json_encode(['displayName' => $displayName, 'credo' => '', 'bearerToken' => $bearerToken]);
             } catch (Exception $e) {
                 http_response_code(400);
+                header('Content-Type: application/json');
                 echo json_encode(['error' => $e->getMessage()]);
             }
         } else {
