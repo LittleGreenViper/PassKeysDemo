@@ -158,8 +158,7 @@ class PKDServer {
                 break;
                 
             case Operation::logout:
-                http_response_code(401);
-                echo 'NOT IMPLEMENTED';
+                $this->doLogout();
                 break;
                 
             case Operation::deleteUser:
@@ -489,7 +488,7 @@ class PKDServer {
         @param string $credo The user's credo string (if being changed).
         @return the data provided, as a Base64URL-encoded string.
      */
-    function performUpdate($userId, $bearerToken, $displayName, $credo, $update) {
+    function performUpdate($userId, $bearerToken, $displayName, $credo) {
         $stmt = $this->pdoInstance->prepare('SELECT displayName, credo FROM passkeys_demo_users WHERE userId = ?');
         $stmt->execute([$userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -516,6 +515,39 @@ class PKDServer {
         } else {
             http_response_code(404);
             echo json_encode(['error' => 'User not found']);
+        }
+    }
+    
+    /***********************/
+    /**
+    Performs a full logout (removes the bearer token from the DB, and sets the session to empty).
+     */
+    function doLogout() {
+        $originalToken = $_SESSION['bearerToken'];
+        $headers = getallheaders();
+        
+        if (!empty($originalToken) && isset($headers['Authorization'])) {
+            $authHeader = $headers['Authorization'];
+        
+            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                $token = $matches[1];
+                if (!empty($token) && ($originalToken == $token)) {
+                        $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE bearerToken = ?');
+                        $stmt->execute([$token]);
+                        $_SESSION = [];
+                } else {
+                    http_response_code(403);
+                    header('Content-Type: application/json');
+                    echo json_encode(['error' => 'Authorization Failure']);
+                }
+            } else {
+                http_response_code(403);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Authorization Failure']);
+            }
+        } else {
+            http_response_code(400);
+            echo '&#128169;';   // Oh, poo.
         }
     }
 }

@@ -782,14 +782,45 @@ public extension PKD_Handler {
      */
     func logout(completion inCompletion: ((LoginResponse) -> Void)? = nil) {
         self.lastOperation = .logout
-        DispatchQueue.main.async { self.lastError = nil }
-        if self.isLoggedIn {
-            DispatchQueue.main.async {
-                self.isLoggedIn = false
-                inCompletion?(.success)
-            }
-        } else {
-            DispatchQueue.main.async {
+        DispatchQueue.main.async {
+            self.lastError = nil
+            if self.isLoggedIn {
+                self.lastOperation = .logout
+                if self.isRegistered {
+                    if self.isLoggedIn,
+                       let bearerToken = self._bearerToken,
+                       !bearerToken.isEmpty {
+                        let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.logout.rawValue)"
+                        guard let url = URL(string: urlString) else { return }
+                        
+                        var request = URLRequest(url: url)
+                        request.httpMethod = "GET"
+                        request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+                        
+                        self._session.dataTask(with: request) { inData, inResponse, inError in
+                            DispatchQueue.main.async {
+                                if let error = inError {
+                                    self.lastError = error
+                                    inCompletion?(.failure(error))
+                                } else if let response = inResponse as? HTTPURLResponse,
+                                          200 == response.statusCode {
+                                    self.isLoggedIn = false
+                                    inCompletion?(.success)
+                                } else {
+                                    self.lastError = Errors.communicationError
+                                    inCompletion?(.failure(Errors.communicationError))
+                                }
+                            }
+                       }.resume()
+                    } else {
+                        self.lastError = Errors.notLoggedIn
+                        inCompletion?(.failure(Errors.notLoggedIn))
+                    }
+                } else {
+                    self.lastError = Errors.noUserID
+                    inCompletion?(.failure(Errors.noUserID))
+                }
+            } else {
                 self.lastError = Errors.notLoggedIn
                 inCompletion?(.failure(Errors.notLoggedIn))
             }
@@ -864,7 +895,6 @@ public extension PKD_Handler {
                 request.httpMethod = "GET"
                 request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
 
-                print("Bearer Token: \(bearerToken)")
                 self._session.dataTask(with: request) { inData, inResponse, inError in
                     DispatchQueue.main.async {
                         if let error = inError {
@@ -925,9 +955,7 @@ public extension PKD_Handler {
                     request.httpMethod = "GET"
                     request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
                     
-                    print("Bearer Token: \(bearerToken)")
                     self._session.dataTask(with: request) { inData, inResponse, inError in
-                        print("Response Code: \((inResponse as? HTTPURLResponse)?.statusCode ?? 0)")
                         DispatchQueue.main.async {
                             if let error = inError {
                                 self.lastError = error
