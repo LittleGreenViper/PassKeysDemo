@@ -969,7 +969,7 @@ public extension PKD_Handler {
                     request.httpMethod = "GET"
                     request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
                     
-                    self._session.dataTask(with: request) { inData, inResponse, inError in
+                    self._session.dataTask(with: request) { _, inResponse, inError in
                         DispatchQueue.main.async {
                             if let error = inError {
                                 self.lastError = error
@@ -1029,15 +1029,24 @@ public extension PKD_Handler {
                 request.httpMethod = "GET"
                 request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
                 
-                self._session.dataTask(with: request) { inData, inResponse, inError in
+                self._session.dataTask(with: request) { _, inResponse, inError in
                     DispatchQueue.main.async {
                         if let error = inError {
                             self.lastError = error
                             inCompletion?(.failure(error))
                         } else if let response = inResponse as? HTTPURLResponse,
                                   200 == response.statusCode {
-                            self.clearUserInfo()
-                            self.logout(isLocalOnly: true, completion: inCompletion)
+                            self.logout(isLocalOnly: true) { inResult in
+                                DispatchQueue.main.async {
+                                    if case let .failure(error) = inResult {
+                                        self.lastError = error
+                                        inCompletion?(.failure(error))
+                                    } else {
+                                        self.clearUserInfo()
+                                        inCompletion?(.success)
+                                    }
+                                }
+                            }
                         } else {
                             self.lastError = Errors.communicationError
                             inCompletion?(.failure(Errors.communicationError))
