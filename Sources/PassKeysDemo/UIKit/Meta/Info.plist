@@ -6,10 +6,6 @@
 	<string>https://pkd.littlegreenviper.com/</string>
 	<key>PKDDefaultRelyingParty</key>
 	<string>pkd.littlegreenviper.com</string>
-	<key>PKDDefaultUserID</key>
-	<string>test@example.com</string>
-	<key>PKDDefaultUserName</key>
-	<string>Test User</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

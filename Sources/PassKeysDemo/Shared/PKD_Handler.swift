@@ -28,6 +28,8 @@ import Combine
 /* ###################################################################################################################################### */
 /**
  This class abstracts the communication infrastructure with the server, and acts as a model for the user interface.
+ 
+ This is a Combine ObservableObject, and can be used to subscribe for changes.
  */
 open class PKD_Handler: NSObject, ObservableObject {
     /* ###################################################################### */
@@ -212,12 +214,6 @@ open class PKD_Handler: NSObject, ObservableObject {
          A bit of text, stored on the user's behalf.
          */
         let credo: String
-        
-        /* ################################################################## */
-        /**
-         The bearer token, for logged-in users.
-         */
-        let bearerToken: String
     }
     
     /* ################################################################################################################################## */
@@ -243,6 +239,7 @@ open class PKD_Handler: NSObject, ObservableObject {
             struct RelyingPartyStruct: Decodable {
                 /* ########################################################## */
                 /**
+                 This is used to specify the relying party, for the PassKey. It needs to match the one on the server.
                  */
                 let id: String
             }
@@ -259,11 +256,6 @@ open class PKD_Handler: NSObject, ObservableObject {
                  This is a Base64URL-encoded unique ID for the user.
                  */
                 let id: String
-
-                /* ########################################################## */
-                /**
-                 */
-                let name: String
                 
                 /* ########################################################## */
                 /**
@@ -354,37 +346,41 @@ open class PKD_Handler: NSObject, ObservableObject {
 
     /* ###################################################################### */
     /**
-     The user name string.
-     */
-    let userNameString: String
-
-    /* ###################################################################### */
-    /**
      This is whatever anchor we are providing the authentication services for their screens.
+     
+     > NOTE: This should not be nil! Bad things happen, if it is!
      */
     weak var presentationAnchor: ASPresentationAnchor?
-    
-    /* ###################################################################### */
-    /**
-     The user display name string.
-     */
-    let displayNameString = ""
-    
-    /* ###################################################################### */
-    /**
-     The user credo string.
-     */
-    let credoString = ""
     
     /* ###################################################################### */
     /**
      The last operation.
      */
     var lastOperation = UserOperation.none
+
+    /* ###################################################################### */
+    /**
+     The basic initializer.
+     
+     - Parameters:
+        - inRelyingParty: The ID of the relying party (must match the server)
+        - inBaseURIString: The base URI for the server PKDServer.php file
+        - inUserNameString:
+     */
+    public init(relyingParty inRelyingParty: String,
+                baseURIString inBaseURIString: String,
+                presentationAnchor inPresentationAnchor: ASPresentationAnchor
+    ) {
+        self.relyingParty = inRelyingParty
+        self.baseURIString = inBaseURIString
+        self.presentationAnchor = inPresentationAnchor
+    }
+    
+    // MARK: Public Observable Properties
     
     /* ###################################################################### */
     /**
-     True, if we are currently logged in. Must also be registered (belt and suspenders).
+     True, if we are currently logged in.
      */
     @Published public private(set) var isLoggedIn = false
     
@@ -393,23 +389,10 @@ open class PKD_Handler: NSObject, ObservableObject {
      If the handler encounters an error, it sets this.
      */
     @Published public private(set) var lastError: Error?
-
-    /* ###################################################################### */
-    /**
-     */
-    init(relyingParty inRelyingParty: String,
-         baseURIString inBaseURIString: String,
-         userNameString inUserNameString: String,
-         presentationAnchor inPresentationAnchor: ASPresentationAnchor) {
-        self.relyingParty = inRelyingParty
-        self.baseURIString = inBaseURIString
-        self.userNameString = inUserNameString
-        self.presentationAnchor = inPresentationAnchor
-    }
 }
 
 /* ###################################################################################################################################### */
-// MARK: Computed Properties
+// MARK: Private Computed Properties
 /* ###################################################################################################################################### */
 extension PKD_Handler {
     /* ###################################################################### */
@@ -440,24 +423,9 @@ extension PKD_Handler {
 }
 
 /* ###################################################################################################################################### */
-// MARK:
+// MARK: Private Instance Methods (Called From the Authorization Callback)
 /* ###################################################################################################################################### */
 extension PKD_Handler {
-    /* ###################################################################### */
-    /**
-     Creates a new random User ID string. This is stored in the keychain.
-     It will not overwrite a preexisting string.
-     */
-    private func _createNewUserIdString() -> String {
-        let ret = self._storedUserIDString ?? UUID().uuidString
-        
-        let swiftKeychainWrapper = KeychainSwift()
-        swiftKeychainWrapper.synchronizable = true
-        swiftKeychainWrapper.set(ret, forKey: Self._userIDKeychainKey)
-        
-        return ret
-    }
-
     /* ###################################################################### */
     /**
      Called to log in a user, via a POST transaction.
@@ -544,11 +512,17 @@ extension PKD_Handler {
 }
 
 /* ###################################################################################################################################### */
-// MARK:
+// MARK: Private Instance Methods (Called From the Operation Dispatcher)
 /* ###################################################################################################################################### */
 extension PKD_Handler {
     /* ###################################################################### */
     /**
+     The first part of registration.
+     
+     We call this, with a display name, and it starts the process of validating the PassKey, and sets up the session.
+     
+     - parameter inDisplayName: The display name for the new user. Optional. If not supplied, the server will specify "New User."
+     - parameter inCompletion: A tail completion proc. This may be called in any thread. A sucessful result contains a bunch of data from the server, relevant to the PassKey authentication.
      */
     private func _getCreateChallenge(displayName inDisplayName: String? = nil, completion inCompletion: @escaping (Result<_PublicKeyCredentialCreationOptionsStruct, Error>) -> Void) {
         let userIdString = self._createNewUserIdString()
@@ -589,6 +563,12 @@ extension PKD_Handler {
     
     /* ###################################################################### */
     /**
+     The second part of registration.
+     
+     Finalizes the process of validating the PassKey, and sets up the session.
+     
+     - parameter inOptions: The data supplied by the challenge.
+     - parameter inCompletion: A tail completion proc. This may be called in any thread, and is only called for an error. A successful result does nothing, because we finish in the authentication callback.
      */
     private func _nextStepInCreate(with inOptions: _PublicKeyCredentialCreationOptionsStruct, completion inCompletion: @escaping (Result<String, Error>) -> Void) {
         if let userIdString = self._storedUserIDString,
@@ -615,6 +595,11 @@ extension PKD_Handler {
     
     /* ###################################################################### */
     /**
+     The first part of login.
+     
+     Starts the process of validating the PassKey, and sets up the session.
+     
+     - parameter inCompletion: A tail completion proc. This may be called in any thread. A sucessful result contains the challenge string.
      */
     private func _getLoginChallenge(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
         if let userIdString = self._storedUserIDString,
@@ -641,6 +626,21 @@ extension PKD_Handler {
         } else {
             inCompletion(.failure(Errors.noUserID))
         }
+    }
+    
+    /* ###################################################################### */
+    /**
+     Creates a new random User ID string. This is stored in the keychain.
+     It will not overwrite a preexisting string.
+     */
+    private func _createNewUserIdString() -> String {
+        let ret = self._storedUserIDString ?? UUID().uuidString
+        
+        let swiftKeychainWrapper = KeychainSwift()
+        swiftKeychainWrapper.synchronizable = true
+        swiftKeychainWrapper.set(ret, forKey: Self._userIDKeychainKey)
+        
+        return ret
     }
 }
 

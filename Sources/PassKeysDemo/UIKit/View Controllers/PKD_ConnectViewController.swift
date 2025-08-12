@@ -32,32 +32,6 @@ import Combine
  */
 class PKD_ConnectViewController: UIViewController {
     /* ################################################################################################################################## */
-    // MARK: Used For Working With User Data
-    /* ################################################################################################################################## */
-    /**
-     This has the data sent back, upon successful login or editing.
-     */
-    private struct _UserDataStruct: Decodable {
-        /* ################################################################## */
-        /**
-         The user's displayed name.
-         */
-        let displayName: String
-
-        /* ################################################################## */
-        /**
-         A bit of text, stored on the user's behalf.
-         */
-        let credo: String
-        
-        /* ################################################################## */
-        /**
-         The bearer token, for logged-in users.
-         */
-        let bearerToken: String
-    }
-    
-    /* ################################################################################################################################## */
     // MARK: Used For Fetching Registration Data
     /* ################################################################################################################################## */
     /**
@@ -141,19 +115,7 @@ class PKD_ConnectViewController: UIViewController {
          The credo associated with the user (will aways be empty, at first).
          */
         let credo: String
-        
-        /* ################################################################## */
-        /**
-         The login token.
-         */
-        let bearerToken: String
     }
-
-    /* ###################################################################### */
-    /**
-     The error returned, if the credential is not in the server store.
-     */
-    static private let _errorResponseString = "User not found"
     
     /* ###################################################################### */
     /**
@@ -169,27 +131,15 @@ class PKD_ConnectViewController: UIViewController {
     
     /* ###################################################################### */
     /**
-     The User ID string.
-     */
-    static private let _userIDString = Bundle.main.defaultUserIDString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-    
-    /* ###################################################################### */
-    /**
-     The user name string.
-     */
-    static private let _userNameString = Bundle.main.defaultUserNameString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-    
-    /* ###################################################################### */
-    /**
      This is the instance of the PKD API Handler that we use to communicate with the server.
      */
     private var _pkdInstance: PKD_Handler?
-    
+
     /* ###################################################################### */
     /**
-     This is set to true, if we are registering a new user, before logging in.
+     This is used for the subscriptions.
      */
-    private var _loginAfter = false
+    private var _bag = Set<AnyCancellable>()
 
     /* ###################################################################### */
     /**
@@ -232,11 +182,6 @@ class PKD_ConnectViewController: UIViewController {
      The button for updating (so it can be enabled or disabled).
      */
     private weak var _updateButton: UIButton?
-
-    /* ###################################################################### */
-    /**
-     */
-    private var _bag = Set<AnyCancellable>()
 }
 
 /* ###################################################################################################################################### */
@@ -282,10 +227,9 @@ extension PKD_ConnectViewController {
         super.viewDidAppear(animated)
         guard let window = self.view.window else { return }
         
-        if self._pkdInstance == nil {
+        if nil == self._pkdInstance {
             let handler = PKD_Handler(relyingParty: Self._relyingParty,
                                       baseURIString: Self._baseURIString,
-                                      userNameString: Self._userNameString,
                                       presentationAnchor: window)
             self._pkdInstance = handler
 
@@ -311,6 +255,19 @@ extension PKD_ConnectViewController {
 extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
+     Called whenever the text in one of our edit fields changes.
+     
+     We just use this to manage the enablement of the update button.
+     */
+    @objc func textFieldChanged() {
+        self._calculateUpdateButtonEnabledState()
+    }
+
+    /* ###################################################################### */
+    /**
+     Called to begin the process of registration.
+     
+     Whatever is in the displayName field will be used as the PassKey name.
      */
     @objc func register() {
         self._pkdInstance?.create(displayName: self._displayNameTextField?.text) { _, _ in self._setUpUI() }
@@ -318,6 +275,7 @@ extension PKD_ConnectViewController {
     
     /* ###################################################################### */
     /**
+     Logs in the saved user (stored in the keychain).
      */
     @objc func login() {
         self._pkdInstance?.login { [weak self] inResult in
@@ -350,16 +308,6 @@ extension PKD_ConnectViewController {
         
         self.present(alertController, animated: true, completion: nil)
     }
-    
-    /* ###################################################################### */
-    /**
-     Called whenever the text in one of our edit fields changes.
-     
-     We just use this to manage the enablement of the update button.
-     */
-    @objc func textFieldChanged() {
-        self._calculateUpdateButtonEnabledState()
-    }
 
     /* ###################################################################### */
     /**
@@ -386,8 +334,20 @@ extension PKD_ConnectViewController {
      This nukes all the login info.
      */
     @objc func clearAllLoginInfo() {
-        self._pkdInstance?.clearUserInfo()
-        self._setUpUI()
+        let alertController = UIAlertController(title: "Clear All Login Information?", message: "If you select \"YOLO, BRUH!\", this will clear the login data from the keychain (but not the server). This is really a debug operation.", preferredStyle: .alert)
+        
+        let deleteAction = UIAlertAction(title: "YOLO, BRUH!", style: UIAlertAction.Style.destructive) { [weak self] _ in
+            self?._pkdInstance?.clearUserInfo()
+            self?._setUpUI()
+        }
+        
+        alertController.addAction(deleteAction)
+        
+        let cancelAction = UIAlertAction(title: "No, I Changed My Mind", style: UIAlertAction.Style.default, handler: nil)
+        
+        alertController.addAction(cancelAction)
+        
+        self.present(alertController, animated: true, completion: nil)
     }
 }
 
