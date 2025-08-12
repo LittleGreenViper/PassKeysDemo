@@ -162,8 +162,7 @@ class PKDServer {
                 break;
                 
             case Operation::deleteUser:
-                http_response_code(401);
-                echo 'NOT IMPLEMENTED';
+                $this->doDelete();
                 break;
 
             default:
@@ -535,6 +534,60 @@ class PKDServer {
                         $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE bearerToken = ?');
                         $stmt->execute([$token]);
                         $_SESSION = [];
+                } else {
+                    http_response_code(403);
+                    header('Content-Type: application/json');
+                    echo json_encode(['error' => 'Authorization Failure']);
+                }
+            } else {
+                http_response_code(403);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Authorization Failure']);
+            }
+        } else {
+            http_response_code(400);
+            echo '&#128169;';   // Oh, poo.
+        }
+    }
+    
+    /***********************/
+    /**
+    This deletes the logged-in user from both tables. It also forces a logout.
+     */
+    function doDelete() {
+        $originalToken = $_SESSION['bearerToken'];
+        $headers = getallheaders();
+        
+        if (!empty($originalToken) && isset($headers['Authorization'])) {
+            $authHeader = $headers['Authorization'];
+        
+            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                $token = $matches[1];
+                if (!empty($token) && ($originalToken == $token)) {
+                    $stmt = $this->pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
+                    $stmt->execute([$token]);
+                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!empty($row) && isset($row['userId']) && !empty($row['userId'])) {
+                        try {   // We wrap in a transaction, so we won't have only one table row deleted, if there's an error.
+                            $this->pdoInstance->beginTransaction();
+                                $stmt = $this->pdoInstance->prepare('DELETE FROM webauthn_credentials WHERE userId = ?');
+                                $stmt->execute([$row['userId']]);
+                                $stmt = $this->pdoInstance->prepare('DELETE FROM passkeys_demo_users WHERE userId = ?');
+                                $stmt->execute([$row['userId']]);
+                            $this->pdoInstance->commit();
+                            $_SESSION = [];
+                        } catch (Exception $e) {
+                            $this->pdoInstance->rollBack();
+                            http_response_code(500);
+                            header('Content-Type: application/json');
+                            echo json_encode(['error' => 'Delete Operation Failure']);
+                        }
+                    } else {
+                        http_response_code(404);
+                        header('Content-Type: application/json');
+                        echo json_encode(['error' => 'User Not Found']);
+                    }
                 } else {
                     http_response_code(403);
                     header('Content-Type: application/json');

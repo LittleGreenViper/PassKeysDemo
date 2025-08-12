@@ -329,8 +329,20 @@ extension PKD_ConnectViewController {
     
     /* ###################################################################### */
     /**
+     This is called when the user selects the "Delete" button. They are given a confirmation prompt, before the operation is done.
      */
     @objc func deleteUser() {
+        let alertController = UIAlertController(title: "Delete Your Account?", message: "If you select \"Delete Me, You Brute\", your account will be deleted permanently from the server, and you will need to manually remove your passkey.", preferredStyle: .alert)
+        
+        let deleteAction = UIAlertAction(title: "Delete Me, You Brute", style: UIAlertAction.Style.destructive) { [weak self] _ in self?._pkdInstance?.delete { _ in self?._setUpUI() } }
+        
+        alertController.addAction(deleteAction)
+        
+        let cancelAction = UIAlertAction(title: "No, I Changed My Mind", style: UIAlertAction.Style.default, handler: nil)
+        
+        alertController.addAction(cancelAction)
+        
+        self.present(alertController, animated: true, completion: nil)
     }
     
     /* ###################################################################### */
@@ -473,7 +485,10 @@ extension PKD_ConnectViewController {
             logoutButton.addTarget(self, action: #selector(logout), for: .touchUpInside)
 
             let deleteButton = UIButton(type: .system)
-            deleteButton.setTitle("Delete", for: .normal)
+            var config = UIButton.Configuration.plain()
+            config.title = "Delete"
+            config.baseForegroundColor = .systemRed
+            deleteButton.configuration = config
             deleteButton.addTarget(self, action: #selector(deleteUser), for: .touchUpInside)
 
             let buttonStack = UIStackView(arrangedSubviews: [deleteButton, logoutButton, updateButton])

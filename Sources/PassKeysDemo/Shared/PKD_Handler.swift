@@ -730,8 +730,8 @@ public extension PKD_Handler {
      - parameter inCompletion: A tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
     func login(completion inCompletion: @escaping (LoginResponse) -> Void) {
-        DispatchQueue.main.async { self.lastError = nil }
         self.lastOperation = .login
+        DispatchQueue.main.async { self.lastError = nil }
         if self.isRegistered {
             if !self.isLoggedIn {
                 self._getLoginChallenge { inResponse in
@@ -778,10 +778,21 @@ public extension PKD_Handler {
      
      > NOTE: The user must be logged in, or this does nothing.
      
+     - parameter inLocalOnly: If true (default is false), then the server will not be sent a logout command.
      - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
-    func logout(completion inCompletion: ((LoginResponse) -> Void)? = nil) {
+    func logout(isLocalOnly inLocalOnly: Bool = false, completion inCompletion: ((LoginResponse) -> Void)? = nil) {
         self.lastOperation = .logout
+        guard !inLocalOnly else {
+            self._bearerToken = nil
+            self._cachedSession = nil
+            DispatchQueue.main.async {
+                self.lastError = nil
+                self.isLoggedIn = false
+                inCompletion?(.success)
+            }
+            return
+        }
         DispatchQueue.main.async {
             self.lastError = nil
             if self.isLoggedIn {
@@ -805,6 +816,8 @@ public extension PKD_Handler {
                                 } else if let response = inResponse as? HTTPURLResponse,
                                           200 == response.statusCode {
                                     self.isLoggedIn = false
+                                    self._bearerToken = nil
+                                    self._cachedSession = nil
                                     inCompletion?(.success)
                                 } else {
                                     self.lastError = Errors.communicationError
@@ -1004,13 +1017,42 @@ public extension PKD_Handler {
     func delete(completion inCompletion: ((LoginResponse) -> Void)? = nil) {
         self.lastOperation = .deleteUser
         DispatchQueue.main.async { self.lastError = nil }
-        if self.isLoggedIn {
-            
-            self.clearUserInfo()
+        if self.isRegistered {
+            if self.isLoggedIn,
+               let bearerToken = self._bearerToken,
+               !bearerToken.isEmpty {
+                let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.deleteUser.rawValue)"
+                guard let url = URL(string: urlString) else { return }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "GET"
+                request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+                
+                self._session.dataTask(with: request) { inData, inResponse, inError in
+                    DispatchQueue.main.async {
+                        if let error = inError {
+                            self.lastError = error
+                            inCompletion?(.failure(error))
+                        } else if let response = inResponse as? HTTPURLResponse,
+                                  200 == response.statusCode {
+                            self.clearUserInfo()
+                            self.logout(isLocalOnly: true, completion: inCompletion)
+                        } else {
+                            self.lastError = Errors.communicationError
+                            inCompletion?(.failure(Errors.communicationError))
+                        }
+                    }
+               }.resume()
+            } else {
+                DispatchQueue.main.async {
+                    self.lastError = Errors.notLoggedIn
+                    inCompletion?(.failure(Errors.notLoggedIn))
+                }
+            }
         } else {
             DispatchQueue.main.async {
-                self.lastError = Errors.notLoggedIn
-                inCompletion?(.failure(Errors.notLoggedIn))
+                self.lastError = Errors.noUserID
+                inCompletion?(.failure(Errors.noUserID))
             }
         }
     }
