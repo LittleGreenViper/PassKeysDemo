@@ -330,12 +330,6 @@ open class PKD_Handler: NSObject, ObservableObject {
 
     /* ###################################################################### */
     /**
-     This is set to true, if we are registering a new user, before logging in.
-     */
-    private var _loginAfter = false
-
-    /* ###################################################################### */
-    /**
      We hold onto this, so we can calculate a "dirty" state.
      */
     var originalDisplayName = ""
@@ -556,10 +550,14 @@ extension PKD_Handler {
     /* ###################################################################### */
     /**
      */
-    private func _getCreateChallenge(completion inCompletion: @escaping (Result<_PublicKeyCredentialCreationOptionsStruct, Error>) -> Void) {
+    private func _getCreateChallenge(displayName inDisplayName: String? = nil, completion inCompletion: @escaping (Result<_PublicKeyCredentialCreationOptionsStruct, Error>) -> Void) {
         let userIdString = self._createNewUserIdString()
         if !userIdString.isEmpty {
-            let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)&userId=\(userIdString)"
+            var urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)&userId=\(userIdString)"
+            if let displayName = inDisplayName?.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
+               !displayName.isEmpty {
+                urlString += "&displayName=\(displayName)"
+            }
             guard let url = URL(string: urlString) else { return }
             self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
@@ -719,6 +717,8 @@ public extension PKD_Handler {
         swiftKeychainWrapper.synchronizable = true
         swiftKeychainWrapper.delete(Self._userIDKeychainKey)
         swiftKeychainWrapper.clear()
+        self._credentialID = nil
+        self._bearerToken = nil
     }
     
     /* ###################################################################### */
@@ -846,14 +846,15 @@ public extension PKD_Handler {
      
      > NOTE: The user cannot be logged in, and cannot have an existing account.
      
+     - parameter inDisplayName: A new display name. If omitted (or blank), then "New User" will be assigned.
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
      */
-    func create(completion inCompletion: @escaping TransactionCallback) {
+    func create(displayName inDisplayName: String? = nil, completion inCompletion: @escaping TransactionCallback) {
         self.lastOperation = .createUser
         DispatchQueue.main.async { self.lastError = nil }
         if !self.isRegistered {
             if !self.isLoggedIn {
-                self._getCreateChallenge { inCreateChallengeResponse in
+                self._getCreateChallenge(displayName: inDisplayName) { inCreateChallengeResponse in
                     if case .success(let value) = inCreateChallengeResponse {
                         self._nextStepInCreate(with: value) { inResponse in
                             DispatchQueue.main.async {

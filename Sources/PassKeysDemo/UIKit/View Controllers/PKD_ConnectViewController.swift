@@ -223,6 +223,12 @@ class PKD_ConnectViewController: UIViewController {
 
     /* ###################################################################### */
     /**
+     The button for registering (so it can be enabled or disabled).
+     */
+    private weak var _registerButton: UIButton?
+
+    /* ###################################################################### */
+    /**
      The button for updating (so it can be enabled or disabled).
      */
     private weak var _updateButton: UIButton?
@@ -307,7 +313,7 @@ extension PKD_ConnectViewController {
     /**
      */
     @objc func register() {
-        self._pkdInstance?.create { _, _ in self._setUpUI() }
+        self._pkdInstance?.create(displayName: self._displayNameTextField?.text) { _, _ in self._setUpUI() }
     }
     
     /* ###################################################################### */
@@ -374,6 +380,15 @@ extension PKD_ConnectViewController {
     @objc func logout() {
         self._pkdInstance?.logout { inResult in self._setUpUI() }
     }
+
+    /* ###################################################################### */
+    /**
+     This nukes all the login info.
+     */
+    @objc func clearAllLoginInfo() {
+        self._pkdInstance?.clearUserInfo()
+        self._setUpUI()
+    }
 }
 
 /* ###################################################################################################################################### */
@@ -430,10 +445,22 @@ extension PKD_ConnectViewController {
         
         if !(self._pkdInstance?.isRegistered ?? false) {
             let registerButton = UIButton(type: .system)
-            registerButton.setTitle("Register", for: .normal)
+            var config = UIButton.Configuration.plain()
+            let font = UIFont.systemFont(ofSize: 20, weight: .bold)
+            config.attributedTitle = AttributedString("Register", attributes: AttributeContainer([.font: font]))
+            registerButton.configuration = config
             registerButton.addTarget(self, action: #selector(register), for: .touchUpInside)
+            self._registerButton = registerButton
             
-            let stack = UIStackView(arrangedSubviews: [registerButton])
+            let displayNameEditField = UITextField()
+            displayNameEditField.text = ""
+            displayNameEditField.placeholder = "Enter A Display Name"
+            displayNameEditField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
+            displayNameEditField.clearButtonMode = .whileEditing
+            displayNameEditField.borderStyle = .roundedRect
+            self._displayNameTextField = displayNameEditField
+
+            let stack = UIStackView(arrangedSubviews: [displayNameEditField, registerButton])
             stack.axis = .vertical
             stack.spacing = 20
             stack.translatesAutoresizingMaskIntoConstraints = false
@@ -445,9 +472,11 @@ extension PKD_ConnectViewController {
             ])
         } else if !(self._pkdInstance?.isLoggedIn ?? false) {
             let loginButton = UIButton(type: .system)
-            loginButton.setTitle("Login", for: .normal)
+            var config = UIButton.Configuration.plain()
+            config.attributedTitle = AttributedString("Login", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 20, weight: .bold)]))
+            loginButton.configuration = config
             loginButton.addTarget(self, action: #selector(login), for: .touchUpInside)
-            
+
             let stack = UIStackView(arrangedSubviews: [loginButton])
             stack.axis = .vertical
             stack.spacing = 20
@@ -458,6 +487,17 @@ extension PKD_ConnectViewController {
                 stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
             ])
+
+            let nukeButton = UIButton(type: .system)
+            config = UIButton.Configuration.plain()
+            config.baseForegroundColor = .systemRed
+            config.attributedTitle = AttributedString("Clear All Login Info", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 20, weight: .bold)]))
+            nukeButton.configuration = config
+            nukeButton.addTarget(self, action: #selector(clearAllLoginInfo), for: .touchUpInside)
+            view.addSubview(nukeButton)
+            nukeButton.translatesAutoresizingMaskIntoConstraints = false
+            nukeButton.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
+            nukeButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor).isActive = true
         } else if self._pkdInstance?.isLoggedIn ?? false {
             let displayNameEditField = UITextField()
             displayNameEditField.text = ""
@@ -476,18 +516,22 @@ extension PKD_ConnectViewController {
             self._credoTextField = credoEditField
 
             let updateButton = UIButton(type: .system)
-            updateButton.setTitle("Update", for: .normal)
+            var config = UIButton.Configuration.plain()
+            config.attributedTitle = AttributedString("Update", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 20, weight: .bold)]))
+            updateButton.configuration = config
             updateButton.addTarget(self, action: #selector(update), for: .touchUpInside)
             self._updateButton = updateButton
 
             let logoutButton = UIButton(type: .system)
-            logoutButton.setTitle("Logout", for: .normal)
+            config = UIButton.Configuration.plain()
+            config.attributedTitle = AttributedString("Logout", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 20, weight: .bold)]))
+            logoutButton.configuration = config
             logoutButton.addTarget(self, action: #selector(logout), for: .touchUpInside)
 
             let deleteButton = UIButton(type: .system)
-            var config = UIButton.Configuration.plain()
-            config.title = "Delete"
+            config = UIButton.Configuration.plain()
             config.baseForegroundColor = .systemRed
+            config.attributedTitle = AttributedString("Delete", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 20, weight: .bold)]))
             deleteButton.configuration = config
             deleteButton.addTarget(self, action: #selector(deleteUser), for: .touchUpInside)
 
@@ -521,21 +565,25 @@ extension PKD_ConnectViewController {
                 }
             }
         }
+        
+        self._calculateUpdateButtonEnabledState()
     }
 
     /* ###################################################################### */
     /**
      This looks for a dirty value, and enables the update button, if we have had a change.
-     
-     - returns: the current enablement state.
      */
-    @discardableResult
-    private func _calculateUpdateButtonEnabledState() -> Bool {
-        let hasTextChanged = (self._displayName != self._pkdInstance?.originalDisplayName) || (self._credo != self._pkdInstance?.originalCredo)
-        let displayName = self._displayName ?? ""
-        let isLoggedIn = self._pkdInstance?.isLoggedIn ?? false
-        let isEnabled = isLoggedIn && !displayName.isEmpty && hasTextChanged
-        DispatchQueue.main.async { self._updateButton?.isEnabled = isEnabled }
-        return isEnabled
+    private func _calculateUpdateButtonEnabledState() {
+        DispatchQueue.main.async {
+            if !(self._pkdInstance?.isRegistered ?? false) {
+                self._registerButton?.isEnabled = !(self._displayName?.isEmpty ?? true)
+            } else {
+                let hasTextChanged = (self._displayName != self._pkdInstance?.originalDisplayName) || (self._credo != self._pkdInstance?.originalCredo)
+                let displayName = self._displayName ?? ""
+                let isLoggedIn = self._pkdInstance?.isLoggedIn ?? false
+                let isEnabled = isLoggedIn && !displayName.isEmpty && hasTextChanged
+                self._updateButton?.isEnabled = isEnabled
+            }
+        }
     }
 }
