@@ -127,18 +127,6 @@ class PKD_ConnectViewController: UIViewController {
      The font used for the "Clear All Login Info" button, at the bottom of the login screen.
      */
     static private let _clearLoginFont = UIFont.italicSystemFont(ofSize: 15)
-
-    /* ###################################################################### */
-    /**
-     The identifier for the relying party.
-     */
-    static private let _relyingParty = Bundle.main.defaultRelyingPartyString
-    
-    /* ###################################################################### */
-    /**
-     The main URI string for our transactions.
-     */
-    static private let _baseURIString = Bundle.main.defaultBaseURIString
     
     /* ###################################################################### */
     /**
@@ -148,27 +136,15 @@ class PKD_ConnectViewController: UIViewController {
 
     /* ###################################################################### */
     /**
-     This is used for the subscriptions.
+     This is used for the login subscription.
      */
-    private var _bag = Set<AnyCancellable>()
+    private var _loginBag = Set<AnyCancellable>()
 
     /* ###################################################################### */
     /**
-     We maintain a consistent session, because the challenges are set to work across a session.
+     This is used for the error subscription.
      */
-    private var _cachedSession: URLSession?
-
-    /* ###################################################################### */
-    /**
-     If we are currently logged in, this contains the bearer token. Nil, if not logged in.
-     */
-    private var _bearerToken: String?
-
-    /* ###################################################################### */
-    /**
-     If we are currently logged in, this contains the credential ID. Nil, if not logged in.
-     */
-    private var _credentialID: String?
+    private var _errorBag = Set<AnyCancellable>()
 
     /* ###################################################################### */
     /**
@@ -210,21 +186,6 @@ extension PKD_ConnectViewController {
      This contains a credo.
      */
     private var _credo: String? { self._credoTextField?.text }
-
-    /* ###################################################################### */
-    /**
-     Return our instance property session.
-     */
-    private var _session: URLSession {
-        self._cachedSession ?? {
-            let config = URLSessionConfiguration.default
-            config.httpCookieStorage = HTTPCookieStorage.shared
-            config.httpCookieAcceptPolicy = .always
-            let session = URLSession(configuration: config)
-            self._cachedSession = session
-            return session
-        }()
-    }
 }
 
 /* ###################################################################################################################################### */
@@ -233,27 +194,25 @@ extension PKD_ConnectViewController {
 extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
+     Called after the view appears. We use this to establish the handler and the subscriptions. We also initially set up the screen.
      */
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         guard let window = self.view.window else { return }
         
         if nil == self._pkdInstance {
-            let handler = PKD_Handler(relyingParty: Self._relyingParty,
-                                      baseURIString: Self._baseURIString,
-                                      presentationAnchor: window)
-            self._pkdInstance = handler
+            self._pkdInstance = PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString, baseURIString: Bundle.main.defaultBaseURIString, presentationAnchor: window)
 
-            handler.$isLoggedIn
+            self._pkdInstance?.$isLoggedIn
                 .removeDuplicates()
                 .receive(on: RunLoop.main)
                 .sink { [weak self] _ in self?._setUpUI() }
-                .store(in: &self._bag)
+                .store(in: &self._loginBag)
             
-            handler.$lastError
+            self._pkdInstance?.$lastError
                 .receive(on: RunLoop.main)
                 .sink { [weak self] _ in self?._handleError() }
-                .store(in: &self._bag)
+                .store(in: &self._errorBag)
         }
         
         self._setUpUI()
@@ -261,115 +220,14 @@ extension PKD_ConnectViewController {
 }
 
 /* ###################################################################################################################################### */
-// MARK: Callbacks
+// MARK: Instance Methods
 /* ###################################################################################################################################### */
-extension PKD_ConnectViewController {
+private extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
-     Called whenever the text in one of our edit fields changes.
-     
-     We just use this to manage the enablement of the update button.
+     Called if the handler error property changes.
      */
-    @objc func textFieldChanged() {
-        self._calculateUpdateButtonEnabledState()
-    }
-
-    /* ###################################################################### */
-    /**
-     Called to begin the process of registration.
-     
-     Whatever is in the displayName field will be used as the PassKey name.
-     */
-    @objc func register() {
-        self._pkdInstance?.create(displayName: self._displayNameTextField?.text) { _, _ in self._setUpUI() }
-    }
-    
-    /* ###################################################################### */
-    /**
-     Logs in the saved user (stored in the keychain).
-     */
-    @objc func login() {
-        self._pkdInstance?.login { [weak self] inResult in
-            switch inResult {
-            case .success:
-                break
-                
-            case .failure(let inError):
-                print("Error: \(inError.localizedDescription)")
-                break
-            }
-            self?._setUpUI()
-        }
-    }
-    
-    /* ###################################################################### */
-    /**
-     This is called when the user selects the "Delete" button. They are given a confirmation prompt, before the operation is done.
-     */
-    @objc func deleteUser() {
-        let alertController = UIAlertController(title: "Delete Your Account?", message: "If you select \"Delete Me, You Brute\", your account will be deleted permanently from the server, and you will need to manually remove your passkey.", preferredStyle: .alert)
-        
-        let deleteAction = UIAlertAction(title: "Delete Me, You Brute", style: UIAlertAction.Style.destructive) { [weak self] _ in self?._pkdInstance?.delete { _ in self?._setUpUI() } }
-        
-        alertController.addAction(deleteAction)
-        
-        let cancelAction = UIAlertAction(title: "No, I Changed My Mind", style: UIAlertAction.Style.default, handler: nil)
-        
-        alertController.addAction(cancelAction)
-        
-        self.present(alertController, animated: true, completion: nil)
-    }
-
-    /* ###################################################################### */
-    /**
-     Called when the "Update" button is hit.
-     */
-    @objc func update() {
-        if let displayName = self._displayName,
-           !displayName.isEmpty,
-           let credo = self._credo {
-            self._pkdInstance?.update(displayName: displayName, credo: credo) { _, _ in self._setUpUI() }
-        }
-    }
-
-    /* ###################################################################### */
-    /**
-     Called when the "Logout" button is hit.
-     */
-    @objc func logout() {
-        self._pkdInstance?.logout { inResult in self._setUpUI() }
-    }
-
-    /* ###################################################################### */
-    /**
-     This nukes all the login info.
-     */
-    @objc func clearAllLoginInfo() {
-        let alertController = UIAlertController(title: "Clear All Login Information?", message: "If you select \"YOLO, BRUH!\", this will clear the login data from the keychain (but not the server). This is really a debug operation.", preferredStyle: .alert)
-        
-        let deleteAction = UIAlertAction(title: "YOLO, BRUH!", style: UIAlertAction.Style.destructive) { [weak self] _ in
-            self?._pkdInstance?.clearUserInfo()
-            self?._setUpUI()
-        }
-        
-        alertController.addAction(deleteAction)
-        
-        let cancelAction = UIAlertAction(title: "No, I Changed My Mind", style: UIAlertAction.Style.default, handler: nil)
-        
-        alertController.addAction(cancelAction)
-        
-        self.present(alertController, animated: true, completion: nil)
-    }
-}
-
-/* ###################################################################################################################################### */
-// MARK: Private Instance Methods
-/* ###################################################################################################################################### */
-extension PKD_ConnectViewController {
-    /* ###################################################################### */
-    /**
-     */
-    private func _handleError() {
+    func _handleError() {
         if let error = self._pkdInstance?.lastError {
             let title = "Error"
             var message = ""
@@ -409,7 +267,7 @@ extension PKD_ConnectViewController {
     /**
      Sets up the screen to reflect the current app state.
      */
-    private func _setUpUI() {
+    func _setUpUI() {
         guard let view = self.view else { return }
         
         view.subviews.forEach { $0.removeFromSuperview() }
@@ -419,13 +277,13 @@ extension PKD_ConnectViewController {
             var config = UIButton.Configuration.plain()
             config.attributedTitle = AttributedString("Register", attributes: AttributeContainer([.font: Self._buttonFont]))
             registerButton.configuration = config
-            registerButton.addTarget(self, action: #selector(register), for: .touchUpInside)
+            registerButton.addTarget(self, action: #selector(_register), for: .touchUpInside)
             self._registerButton = registerButton
             
             let displayNameEditField = UITextField()
             displayNameEditField.text = ""
             displayNameEditField.placeholder = "Enter A Display Name"
-            displayNameEditField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
+            displayNameEditField.addTarget(self, action: #selector(_textFieldChanged), for: .editingChanged)
             displayNameEditField.clearButtonMode = .whileEditing
             displayNameEditField.borderStyle = .roundedRect
             self._displayNameTextField = displayNameEditField
@@ -445,7 +303,7 @@ extension PKD_ConnectViewController {
             var config = UIButton.Configuration.plain()
             config.attributedTitle = AttributedString("Login", attributes: AttributeContainer([.font: Self._buttonFont]))
             loginButton.configuration = config
-            loginButton.addTarget(self, action: #selector(login), for: .touchUpInside)
+            loginButton.addTarget(self, action: #selector(_login), for: .touchUpInside)
 
             let stack = UIStackView(arrangedSubviews: [loginButton])
             stack.axis = .vertical
@@ -463,7 +321,7 @@ extension PKD_ConnectViewController {
             config.baseForegroundColor = .systemRed
             config.attributedTitle = AttributedString("Clear All Login Info", attributes: AttributeContainer([.font: Self._clearLoginFont]))
             nukeButton.configuration = config
-            nukeButton.addTarget(self, action: #selector(clearAllLoginInfo), for: .touchUpInside)
+            nukeButton.addTarget(self, action: #selector(_clearAllLoginInfo), for: .touchUpInside)
             view.addSubview(nukeButton)
             nukeButton.translatesAutoresizingMaskIntoConstraints = false
             nukeButton.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
@@ -472,7 +330,7 @@ extension PKD_ConnectViewController {
             let displayNameEditField = UITextField()
             displayNameEditField.text = ""
             displayNameEditField.placeholder = "Enter A Display Name"
-            displayNameEditField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
+            displayNameEditField.addTarget(self, action: #selector(_textFieldChanged), for: .editingChanged)
             displayNameEditField.clearButtonMode = .whileEditing
             displayNameEditField.borderStyle = .roundedRect
             self._displayNameTextField = displayNameEditField
@@ -480,7 +338,7 @@ extension PKD_ConnectViewController {
             let credoEditField = UITextField()
             credoEditField.text = ""
             credoEditField.placeholder = "Enter A Credo"
-            credoEditField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
+            credoEditField.addTarget(self, action: #selector(_textFieldChanged), for: .editingChanged)
             credoEditField.clearButtonMode = .always
             credoEditField.borderStyle = .roundedRect
             self._credoTextField = credoEditField
@@ -489,21 +347,21 @@ extension PKD_ConnectViewController {
             var config = UIButton.Configuration.plain()
             config.attributedTitle = AttributedString("Update", attributes: AttributeContainer([.font: Self._buttonFont]))
             updateButton.configuration = config
-            updateButton.addTarget(self, action: #selector(update), for: .touchUpInside)
+            updateButton.addTarget(self, action: #selector(_update), for: .touchUpInside)
             self._updateButton = updateButton
 
             let logoutButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
             config.attributedTitle = AttributedString("Logout", attributes: AttributeContainer([.font: Self._buttonFont]))
             logoutButton.configuration = config
-            logoutButton.addTarget(self, action: #selector(logout), for: .touchUpInside)
+            logoutButton.addTarget(self, action: #selector(_logout), for: .touchUpInside)
 
             let deleteButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
             config.baseForegroundColor = .systemRed
             config.attributedTitle = AttributedString("Delete", attributes: AttributeContainer([.font: Self._buttonFont]))
             deleteButton.configuration = config
-            deleteButton.addTarget(self, action: #selector(deleteUser), for: .touchUpInside)
+            deleteButton.addTarget(self, action: #selector(_deleteUser), for: .touchUpInside)
 
             let buttonStack = UIStackView(arrangedSubviews: [deleteButton, logoutButton, updateButton])
             buttonStack.axis = .horizontal
@@ -543,7 +401,7 @@ extension PKD_ConnectViewController {
     /**
      This looks for a dirty value, and enables the update button, if we have had a change.
      */
-    private func _calculateUpdateButtonEnabledState() {
+    func _calculateUpdateButtonEnabledState() {
         DispatchQueue.main.async {
             if !(self._pkdInstance?.isRegistered ?? false) {
                 self._registerButton?.isEnabled = !(self._displayName?.isEmpty ?? true)
@@ -555,5 +413,102 @@ extension PKD_ConnectViewController {
                 self._updateButton?.isEnabled = isEnabled
             }
         }
+    }
+}
+
+/* ###################################################################################################################################### */
+// MARK: Text Field Callback
+/* ###################################################################################################################################### */
+private extension PKD_ConnectViewController {
+    /* ###################################################################### */
+    /**
+     Called whenever the text in one of our edit fields changes.
+     
+     We just use this to manage the enablement of the update button.
+     */
+    @objc func _textFieldChanged() {
+        self._calculateUpdateButtonEnabledState()
+    }
+}
+
+/* ###################################################################################################################################### */
+// MARK: Button Callbacks
+/* ###################################################################################################################################### */
+private extension PKD_ConnectViewController {
+    /* ###################################################################### */
+    /**
+     This nukes all the login info.
+     */
+    @objc func _clearAllLoginInfo() {
+        let alertController = UIAlertController(title: "Clear All Login Information?", message: "If you select \"YOLO, BRUH!\", this will clear the login data from the keychain (but not the server). This is really a debug operation.", preferredStyle: .alert)
+        
+        let deleteAction = UIAlertAction(title: "YOLO, BRUH!", style: UIAlertAction.Style.destructive) { [weak self] _ in
+            self?._pkdInstance?.clearUserInfo()
+            self?._setUpUI()
+        }
+        
+        alertController.addAction(deleteAction)
+        
+        let cancelAction = UIAlertAction(title: "No, I Changed My Mind", style: UIAlertAction.Style.default, handler: nil)
+        
+        alertController.addAction(cancelAction)
+        
+        self.present(alertController, animated: true, completion: nil)
+    }
+
+    /* ###################################################################### */
+    /**
+     Called to begin the process of registration.
+     
+     Whatever is in the displayName field will be used as the PassKey name.
+     */
+    @objc func _register() {
+        self._pkdInstance?.create(displayName: self._displayNameTextField?.text) { [weak self] _ in self?._setUpUI() }
+    }
+    
+    /* ###################################################################### */
+    /**
+     Logs in the saved user (stored in the keychain).
+     */
+    @objc func _login() {
+        self._pkdInstance?.login { [weak self] _ in self?._setUpUI() }
+    }
+    
+    /* ###################################################################### */
+    /**
+     This is called when the user selects the "Delete" button. They are given a confirmation prompt, before the operation is done.
+     */
+    @objc func _deleteUser() {
+        let alertController = UIAlertController(title: "Delete Your Account?", message: "If you select \"Delete Me, You Brute\", your account will be deleted permanently from the server, and you will need to manually remove your passkey.", preferredStyle: .alert)
+        
+        let deleteAction = UIAlertAction(title: "Delete Me, You Brute", style: UIAlertAction.Style.destructive) { [weak self] _ in self?._pkdInstance?.delete { _ in self?._setUpUI() } }
+        
+        alertController.addAction(deleteAction)
+        
+        let cancelAction = UIAlertAction(title: "No, I Changed My Mind", style: UIAlertAction.Style.default, handler: nil)
+        
+        alertController.addAction(cancelAction)
+        
+        self.present(alertController, animated: true, completion: nil)
+    }
+
+    /* ###################################################################### */
+    /**
+     Called when the "Update" button is hit.
+     */
+    @objc func _update() {
+        if let displayName = self._displayName,
+           !displayName.isEmpty,
+           let credo = self._credo {
+            self._pkdInstance?.update(displayName: displayName, credo: credo) { _, _ in self._setUpUI() }
+        }
+    }
+
+    /* ###################################################################### */
+    /**
+     Called when the "Logout" button is hit.
+     */
+    @objc func _logout() {
+        self._pkdInstance?.logout { inResult in self._setUpUI() }
     }
 }

@@ -845,7 +845,7 @@ public extension PKD_Handler {
      - parameter inDisplayName: A new display name. If omitted (or blank), then "New User" will be assigned.
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
      */
-    func create(displayName inDisplayName: String? = nil, completion inCompletion: @escaping TransactionCallback) {
+    func create(displayName inDisplayName: String? = nil, completion inCompletion: @escaping (ServerResponse) -> Void) {
         self.lastOperation = .createUser
         DispatchQueue.main.async { self.lastError = nil }
         if !self.isRegistered {
@@ -856,29 +856,29 @@ public extension PKD_Handler {
                             DispatchQueue.main.async {
                                 if case let .failure(inReason) = inResponse {
                                     self.lastError = inReason
-                                    inCompletion(nil, .failure(inReason))
+                                    inCompletion(.failure(inReason))
                                 } else {
-                                    inCompletion(nil, .success)
+                                    inCompletion(.success)
                                 }
                             }
                         }
                     } else {
                         DispatchQueue.main.async {
                             self.lastError = Errors.communicationError
-                            inCompletion(nil, .failure(Errors.communicationError))
+                            inCompletion(.failure(Errors.communicationError))
                         }
                     }
                 }
             } else {
                 DispatchQueue.main.async {
                     self.lastError = Errors.alreadyLoggedIn
-                    inCompletion(nil, .failure(Errors.alreadyLoggedIn))
+                    inCompletion(.failure(Errors.alreadyLoggedIn))
                 }
             }
         } else {
             DispatchQueue.main.async {
                 self.lastError = Errors.alreadyRegistered
-                inCompletion(nil, .failure(Errors.alreadyRegistered))
+                inCompletion(.failure(Errors.alreadyRegistered))
             }
         }
     }
