@@ -34,7 +34,7 @@ import Combine
 open class PKD_Handler: NSObject, ObservableObject {
     /* ###################################################################### */
     /**
-     The responding callback to the context.
+     The responding callback to the read method.
      
      This is always called in the main thread.
      
@@ -44,8 +44,14 @@ open class PKD_Handler: NSObject, ObservableObject {
      
      Both may be nil.
      */
-    public typealias TransactionCallback = ((displayName: String, credo: String)?, ServerResponse) -> Void
+    public typealias ReadCallback = ((displayName: String, credo: String)?, ServerResponse) -> Void
 
+    /* ###################################################################### */
+    /**
+     This is the callback from most server operations.
+     */
+    public typealias ServerResponseCallback = (ServerResponse) -> Void
+    
     /* ################################################################################################################################## */
     // MARK: Responses From Login Attempts
     /* ################################################################################################################################## */
@@ -725,7 +731,7 @@ public extension PKD_Handler {
 
      - parameter inCompletion: A tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
-    func login(completion inCompletion: @escaping (ServerResponse) -> Void) {
+    func login(completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .login
         DispatchQueue.main.async { self.lastError = nil }
         if self.isRegistered {
@@ -777,7 +783,7 @@ public extension PKD_Handler {
      - parameter inLocalOnly: If true (default is false), then the server will not be sent a logout command.
      - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
-    func logout(isLocalOnly inLocalOnly: Bool = false, completion inCompletion: ((ServerResponse) -> Void)? = nil) {
+    func logout(isLocalOnly inLocalOnly: Bool = false, completion inCompletion: ServerResponseCallback? = nil) {
         self.lastOperation = .logout
         guard !inLocalOnly else {
             self._bearerToken = nil
@@ -845,7 +851,7 @@ public extension PKD_Handler {
      - parameter inDisplayName: A new display name. If omitted (or blank), then "New User" will be assigned.
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
      */
-    func create(displayName inDisplayName: String? = nil, completion inCompletion: @escaping (ServerResponse) -> Void) {
+    func create(displayName inDisplayName: String? = nil, completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .createUser
         DispatchQueue.main.async { self.lastError = nil }
         if !self.isRegistered {
@@ -891,7 +897,7 @@ public extension PKD_Handler {
 
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
     */
-    func read(completion inCompletion: @escaping TransactionCallback) {
+    func read(completion inCompletion: @escaping ReadCallback) {
         self.lastOperation = .readUser
         DispatchQueue.main.async { self.lastError = nil }
         if self.isRegistered {
@@ -948,7 +954,7 @@ public extension PKD_Handler {
      - parameter inCredo: The new credo value.
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
           */
-    func update(displayName inDisplayName: String, credo inCredo: String, completion inCompletion: @escaping TransactionCallback) {
+    func update(displayName inDisplayName: String, credo inCredo: String, completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .updateUser
         DispatchQueue.main.async { self.lastError = nil }
         if self.isRegistered {
@@ -969,34 +975,34 @@ public extension PKD_Handler {
                         DispatchQueue.main.async {
                             if let error = inError {
                                 self.lastError = error
-                                inCompletion(nil, .failure(error))
+                                inCompletion(.failure(error))
                             } else if let response = inResponse as? HTTPURLResponse,
                                       200 == response.statusCode {
                                 self.originalDisplayName = displayName
                                 self.originalCredo = credo
-                                inCompletion((displayName, credo), .success)
+                                inCompletion(.success)
                             } else {
                                 self.lastError = Errors.communicationError
-                                inCompletion(nil, .failure(Errors.communicationError))
+                                inCompletion(.failure(Errors.communicationError))
                             }
                         }
                    }.resume()
                } else {
                    DispatchQueue.main.async {
                        self.lastError = Errors.badInputParameters
-                       inCompletion(nil, .failure(Errors.badInputParameters))
+                       inCompletion(.failure(Errors.badInputParameters))
                    }
                }
             } else {
                 DispatchQueue.main.async {
                     self.lastError = Errors.notLoggedIn
-                    inCompletion(nil, .failure(Errors.notLoggedIn))
+                    inCompletion(.failure(Errors.notLoggedIn))
                 }
             }
         } else {
             DispatchQueue.main.async {
                 self.lastError = Errors.noUserID
-                inCompletion(nil, .failure(Errors.noUserID))
+                inCompletion(.failure(Errors.noUserID))
             }
         }
     }
@@ -1011,7 +1017,7 @@ public extension PKD_Handler {
 
      - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
-    func delete(completion inCompletion: ((ServerResponse) -> Void)? = nil) {
+    func delete(completion inCompletion: ServerResponseCallback? = nil) {
         self.lastOperation = .deleteUser
         DispatchQueue.main.async { self.lastError = nil }
         if self.isRegistered {

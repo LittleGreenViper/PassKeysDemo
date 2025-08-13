@@ -204,7 +204,6 @@ extension PKD_ConnectViewController {
             self._pkdInstance = PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString, baseURIString: Bundle.main.defaultBaseURIString, presentationAnchor: window)
 
             self._pkdInstance?.$isLoggedIn
-                .removeDuplicates()
                 .receive(on: RunLoop.main)
                 .sink { [weak self] _ in self?._setUpUI() }
                 .store(in: &self._loginBag)
@@ -272,6 +271,7 @@ private extension PKD_ConnectViewController {
         
         view.subviews.forEach { $0.removeFromSuperview() }
         
+        // If not registered, we show a text item, for the initial display name, and a register button, that is only enabled, once there's something in the text box.
         if !(self._pkdInstance?.isRegistered ?? false) {
             let registerButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
@@ -298,6 +298,7 @@ private extension PKD_ConnectViewController {
                 stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
             ])
+        // If we are registered, but not logged in, we show a login button. At the bottom of the screen, is a debug button, to remove the keychain info.
         } else if !(self._pkdInstance?.isLoggedIn ?? false) {
             let loginButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
@@ -326,6 +327,7 @@ private extension PKD_ConnectViewController {
             nukeButton.translatesAutoresizingMaskIntoConstraints = false
             nukeButton.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
             nukeButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor).isActive = true
+        // If we are logged in, we read the data from the server, and show it in two text boxes. There are three buttons, below the text boxes, and the update button is enabled, if there has been a change in the text boxes.
         } else if self._pkdInstance?.isLoggedIn ?? false {
             let displayNameEditField = UITextField()
             displayNameEditField.text = ""
@@ -379,18 +381,14 @@ private extension PKD_ConnectViewController {
             ])
             
             self._pkdInstance?.read { [weak self] inResponseData, inResponseResult in
-                if let self = self {
-                    DispatchQueue.main.async {
-                        if let responseData = inResponseData {
-                            self._displayNameTextField?.text = responseData.0
-                            self._credoTextField?.text = responseData.1
-                        } else {
-                            self._displayNameTextField?.text = nil
-                            self._credoTextField?.text = nil
-                        }
-                        self._calculateUpdateButtonEnabledState()
-                    }
+                if let responseData = inResponseData {
+                    self?._displayNameTextField?.text = responseData.0
+                    self?._credoTextField?.text = responseData.1
+                } else {
+                    self?._displayNameTextField?.text = nil
+                    self?._credoTextField?.text = nil
                 }
+                self?._calculateUpdateButtonEnabledState()
             }
         }
         
@@ -425,8 +423,12 @@ private extension PKD_ConnectViewController {
      Called whenever the text in one of our edit fields changes.
      
      We just use this to manage the enablement of the update button.
+     
+     - parameter inTextField: The text field that changed. We also look for more than 255 characters, and truncate, if so.
      */
-    @objc func _textFieldChanged() {
+    @objc func _textFieldChanged(_ inTextField: UITextField) {
+        let oldText = inTextField.text ?? ""
+        inTextField.text = oldText.count > 255 ? String(oldText[inTextField.text!.startIndex..<inTextField.text!.index(inTextField.text!.startIndex, offsetBy: 255)]) : oldText
         self._calculateUpdateButtonEnabledState()
     }
 }
@@ -500,7 +502,7 @@ private extension PKD_ConnectViewController {
         if let displayName = self._displayName,
            !displayName.isEmpty,
            let credo = self._credo {
-            self._pkdInstance?.update(displayName: displayName, credo: credo) { _, _ in self._setUpUI() }
+            self._pkdInstance?.update(displayName: displayName, credo: credo) { [weak self] _ in self?._setUpUI() }
         }
     }
 
@@ -509,6 +511,6 @@ private extension PKD_ConnectViewController {
      Called when the "Logout" button is hit.
      */
     @objc func _logout() {
-        self._pkdInstance?.logout { inResult in self._setUpUI() }
+        self._pkdInstance?.logout { [weak self] _ in self?._setUpUI() }
     }
 }
