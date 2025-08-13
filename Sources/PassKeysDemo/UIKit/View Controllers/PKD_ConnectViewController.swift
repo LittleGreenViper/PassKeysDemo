@@ -119,6 +119,18 @@ class PKD_ConnectViewController: UIViewController {
     
     /* ###################################################################### */
     /**
+     The font used for the buttons in the screen.
+     */
+    static private let _buttonFont = UIFont.systemFont(ofSize: 20, weight: .bold)
+    
+    /* ###################################################################### */
+    /**
+     The font used for the "Clear All Login Info" button, at the bottom of the login screen.
+     */
+    static private let _clearLoginFont = UIFont.italicSystemFont(ofSize: 15)
+
+    /* ###################################################################### */
+    /**
      The identifier for the relying party.
      */
     static private let _relyingParty = Bundle.main.defaultRelyingPartyString
@@ -406,8 +418,7 @@ extension PKD_ConnectViewController {
         if !(self._pkdInstance?.isRegistered ?? false) {
             let registerButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
-            let font = UIFont.systemFont(ofSize: 20, weight: .bold)
-            config.attributedTitle = AttributedString("Register", attributes: AttributeContainer([.font: font]))
+            config.attributedTitle = AttributedString("Register", attributes: AttributeContainer([.font: Self._buttonFont]))
             registerButton.configuration = config
             registerButton.addTarget(self, action: #selector(register), for: .touchUpInside)
             self._registerButton = registerButton
@@ -433,7 +444,7 @@ extension PKD_ConnectViewController {
         } else if !(self._pkdInstance?.isLoggedIn ?? false) {
             let loginButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
-            config.attributedTitle = AttributedString("Login", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 20, weight: .bold)]))
+            config.attributedTitle = AttributedString("Login", attributes: AttributeContainer([.font: Self._buttonFont]))
             loginButton.configuration = config
             loginButton.addTarget(self, action: #selector(login), for: .touchUpInside)
 
@@ -451,7 +462,7 @@ extension PKD_ConnectViewController {
             let nukeButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
             config.baseForegroundColor = .systemRed
-            config.attributedTitle = AttributedString("Clear All Login Info", attributes: AttributeContainer([.font: UIFont.italicSystemFont(ofSize: 15)]))
+            config.attributedTitle = AttributedString("Clear All Login Info", attributes: AttributeContainer([.font: Self._clearLoginFont]))
             nukeButton.configuration = config
             nukeButton.addTarget(self, action: #selector(clearAllLoginInfo), for: .touchUpInside)
             view.addSubview(nukeButton)
@@ -477,21 +488,21 @@ extension PKD_ConnectViewController {
 
             let updateButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
-            config.attributedTitle = AttributedString("Update", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 20, weight: .bold)]))
+            config.attributedTitle = AttributedString("Update", attributes: AttributeContainer([.font: Self._buttonFont]))
             updateButton.configuration = config
             updateButton.addTarget(self, action: #selector(update), for: .touchUpInside)
             self._updateButton = updateButton
 
             let logoutButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
-            config.attributedTitle = AttributedString("Logout", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 20, weight: .bold)]))
+            config.attributedTitle = AttributedString("Logout", attributes: AttributeContainer([.font: Self._buttonFont]))
             logoutButton.configuration = config
             logoutButton.addTarget(self, action: #selector(logout), for: .touchUpInside)
 
             let deleteButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
             config.baseForegroundColor = .systemRed
-            config.attributedTitle = AttributedString("Delete", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 20, weight: .bold)]))
+            config.attributedTitle = AttributedString("Delete", attributes: AttributeContainer([.font: Self._buttonFont]))
             deleteButton.configuration = config
             deleteButton.addTarget(self, action: #selector(deleteUser), for: .touchUpInside)
 
