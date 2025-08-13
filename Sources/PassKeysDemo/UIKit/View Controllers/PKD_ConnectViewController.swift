@@ -27,7 +27,11 @@ import Combine
 /**
  This is the single view controller for the UIKit version of the PassKeys demo.
  
- If the user has not registerd a passkey, they are presented with a register button.
+ If the user has not registerd a passkey, they are presented with a register button, and a display name text field.
+ 
+ If they have registered, they are presented with a login button.
+ 
+ If they are logged in, they are presented with two text fields, and three buttons (Delete, Logout, and Update).
  */
 class PKD_ConnectViewController: UIViewController {
     /* ################################################################################################################################## */
@@ -203,11 +207,13 @@ extension PKD_ConnectViewController {
         if nil == self._pkdInstance {
             self._pkdInstance = PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString, baseURIString: Bundle.main.defaultBaseURIString, presentationAnchor: window)
 
+            // This listens for changes to the login state.
             self._pkdInstance?.$isLoggedIn
                 .receive(on: RunLoop.main)
                 .sink { [weak self] _ in self?._setUpUI() }
                 .store(in: &self._loginBag)
             
+            // This reacts to errors.
             self._pkdInstance?.$lastError
                 .receive(on: RunLoop.main)
                 .sink { [weak self] _ in self?._handleError() }

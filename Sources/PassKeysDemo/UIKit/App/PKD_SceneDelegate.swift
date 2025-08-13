@@ -24,15 +24,18 @@ import UIKit
 // MARK: - Main Scene Delegate Class -
 /* ###################################################################################################################################### */
 /**
+ This is the scene delegate. It also doesn't do much.
  */
 class PKD_SceneDelegate: UIResponder {
     /* ###################################################################### */
     /**
+     The required window object.
      */
     var window: UIWindow?
 
     /* ###################################################################### */
     /**
+     This allows us to easily access the scene's window (for the auth attachment).
      */
     static var currentWindow: UIWindow? {
         (UIApplication.shared.connectedScenes
@@ -49,8 +52,13 @@ class PKD_SceneDelegate: UIResponder {
 extension PKD_SceneDelegate: UIWindowSceneDelegate {
     /* ###################################################################### */
     /**
+     Called as the scene is about to connect.
+     
+     - parameter inScene: The scene instance that will connect.
+     - parameter willConnectTo: The session we're connecting to (ignored).
+     - parameter options: The connection options (also ignored).
      */
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        guard let _ = (scene as? UIWindowScene) else { return }
+    func scene(_ inScene: UIScene, willConnectTo: UISceneSession, options: UIScene.ConnectionOptions) {
+        guard let _ = (inScene as? UIWindowScene) else { return }
     }
 }

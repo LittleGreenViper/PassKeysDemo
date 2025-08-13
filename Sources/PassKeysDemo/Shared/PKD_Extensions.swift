@@ -58,16 +58,4 @@ public extension Bundle {
      This returns the bundle-provided base URL string.
      */
     var defaultBaseURIString: String { object(forInfoDictionaryKey: "PKDDefaultBaseURI") as? String ?? "" }
-    
-    /* ################################################################## */
-    /**
-     This returns the bundle-provided default user ID string.
-     */
-    var defaultUserIDString: String { object(forInfoDictionaryKey: "PKDDefaultUserID") as? String ?? "" }
-    
-    /* ################################################################## */
-    /**
-     This returns the bundle-provided default display name string.
-     */
-    var defaultUserNameString: String { object(forInfoDictionaryKey: "PKDDefaultUserName") as? String ?? "" }
 }
