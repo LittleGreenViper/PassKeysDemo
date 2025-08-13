@@ -38,18 +38,18 @@ The script is called via HTTP, and uses GET and POST query arguments (as require
 There will always be an "operation=" GET query argument. This is a dispatcher argument.
 
 Once logged in, the session must be maintained, and the bearer token returned by create or login, must
-be supplied in the authentication header.
+be supplied in the authentication header. This token is only valid while the session is contiguous.
 
 STRUCTURE:
 
-The server implements a database, with two tables:
+The server implements a database (currently MySQL/MariaDB), with two tables:
     - `webauthn_credentials`, which contains the authentication information.
         It has the PassKey public key, as well as the bearer token, once the session is logged in.
         
     - `passkeys_demo_users`, which has the actual user data.
         This is only accessed, once the session is authenticated.
         
-We implement an instance of lbuchs/WebAuthn, and use that for PassKey authentication, and we also instantiate
+We implement an instance of lbuchs/WebAuthn, and use that for PassKey authentication, and store
 an instance of PDO, for secure database interaction.
 */
 require 'vendor/autoload.php';  // This is the WebAuthn library.
@@ -74,6 +74,24 @@ Some of these denote a challenge/response pair of calls.
 enum Operation: String {
     /**************************************/
     /**
+    Create a new user (must be unique).
+    
+    This is a two-part operation, so it must be called twice. The first part accepts a displayName and userID.
+    
+    The second part requires POST parameters, with the PassKey authentication information.
+    
+    The login only lasts as long as the session.
+    
+    Requires a unique userId, and optional displayName GET arguments. Also, the session must not be logged in.
+    
+    Returns the displayName, and empty credo, and a bearer token.
+    
+    The token is required for the read, update, logout, and delete operations.
+     */
+    case createUser = 'create';
+
+    /**************************************/
+    /**
     Establish a logged-in connection.
     
     This is a two-part operation, so it must be called twice. The first part accepts a displayName and userID.
@@ -93,24 +111,6 @@ enum Operation: String {
     The session must be logged in, which requires the token be supplied in the authentication header.
      */
     case logout = 'logout';
-
-    /**************************************/
-    /**
-    Create a new user (must be unique).
-    
-    This is a two-part operation, so it must be called twice. The first part accepts a displayName and userID.
-    
-    The second part requires POST parameters, with the PassKey authentication information.
-    
-    The login only lasts as long as the session.
-    
-    Requires a unique userId, and optional displayName GET arguments. Also, the session must not be logged in.
-    
-    Returns the displayName, and empty credo, and a bearer token.
-    
-    The token is required for the read, update, logout, and delete operations.
-     */
-    case createUser = 'create';
 
     /**************************************/
     /**
@@ -192,7 +192,7 @@ class PKDServer {
         switch(Operation::from($this->getArgs->operation)) {
             // This is a two-part operation.
             // The first call generates a challenge string, that is signed and submitted in the second call.
-            // It also stashes the GET value for the userID, in the session variable.
+            // It also stashes the GET values for the userID and displayName, in the session variable.
             case Operation::login:
                 if (!empty($this->getArgs->userId)) {
                     $this->loginChallenge();
@@ -203,7 +203,6 @@ class PKDServer {
                 
             // This is a two-part operation.
             // The first call generates a challenge string, that is signed and submitted in the second call.
-            // It also stashes the GET values for the userID and displayName, in the session variable.
             case Operation::createUser:
                 if (!empty($this->getArgs->userId)) {
                     $this->createChallenge();
@@ -252,6 +251,7 @@ class PKDServer {
         $stmt->execute([$this->getArgs->userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
+        // If there is a user, we initiate a challenge.
         if (!empty($row)) {
             $challenge = random_bytes(32);  // Create a new challenge.
             // Pass these on to the next step.
@@ -299,7 +299,8 @@ class PKDServer {
                         $signCount
                     );
                     
-                    // Create a new token, as this is a new login. NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
+                    // Create a new token, as this is a new login.
+                    // NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
                     $bearerToken = base64url_encode(random_bytes(32));  
                     
                     // Increment the sign count and store the new bearer token.

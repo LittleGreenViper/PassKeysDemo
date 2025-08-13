@@ -451,7 +451,7 @@ extension PKD_ConnectViewController {
             let nukeButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
             config.baseForegroundColor = .systemRed
-            config.attributedTitle = AttributedString("Clear All Login Info", attributes: AttributeContainer([.font: UIFont.systemFont(ofSize: 20, weight: .bold)]))
+            config.attributedTitle = AttributedString("Clear All Login Info", attributes: AttributeContainer([.font: UIFont.italicSystemFont(ofSize: 15)]))
             nukeButton.configuration = config
             nukeButton.addTarget(self, action: #selector(clearAllLoginInfo), for: .touchUpInside)
             view.addSubview(nukeButton)

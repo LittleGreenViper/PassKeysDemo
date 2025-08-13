@@ -44,7 +44,7 @@ open class PKD_Handler: NSObject, ObservableObject {
      
      Both may be nil.
      */
-    public typealias TransactionCallback = ((displayName: String, credo: String)?, LoginResponse) -> Void
+    public typealias TransactionCallback = ((displayName: String, credo: String)?, ServerResponse) -> Void
 
     /* ################################################################################################################################## */
     // MARK: Responses From Login Attempts
@@ -180,9 +180,9 @@ open class PKD_Handler: NSObject, ObservableObject {
     // MARK: Responses From Login Attempts
     /* ################################################################################################################################## */
     /**
-     This is what is returned to the login callback.
+     This is what is returned to some of the server callbacks.
      */
-    public enum LoginResponse {
+    public enum ServerResponse {
         /* ################################################################## */
         /**
          There was an unrecoverable error.
@@ -191,7 +191,7 @@ open class PKD_Handler: NSObject, ObservableObject {
         
         /* ################################################################## */
         /**
-         No problems. Login successful.
+         No problems. Operation successful.
          */
         case success
     }
@@ -254,6 +254,8 @@ open class PKD_Handler: NSObject, ObservableObject {
                 /* ########################################################## */
                 /**
                  This is a Base64URL-encoded unique ID for the user.
+                 
+                 IDs are invisible to the user,a nd we generate a UUID for the ID.
                  */
                 let id: String
                 
@@ -295,12 +297,6 @@ open class PKD_Handler: NSObject, ObservableObject {
      The key that we use to store the user ID in the KeyChain.
      */
     static private let _userIDKeychainKey = "PKD_UserID"
-
-    /* ###################################################################### */
-    /**
-     The error returned, if the credential is not in the server store.
-     */
-    static private let _errorResponseString = "User not found"
 
     /* ###################################################################### */
     /**
@@ -729,7 +725,7 @@ public extension PKD_Handler {
 
      - parameter inCompletion: A tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
-    func login(completion inCompletion: @escaping (LoginResponse) -> Void) {
+    func login(completion inCompletion: @escaping (ServerResponse) -> Void) {
         self.lastOperation = .login
         DispatchQueue.main.async { self.lastError = nil }
         if self.isRegistered {
@@ -781,7 +777,7 @@ public extension PKD_Handler {
      - parameter inLocalOnly: If true (default is false), then the server will not be sent a logout command.
      - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
-    func logout(isLocalOnly inLocalOnly: Bool = false, completion inCompletion: ((LoginResponse) -> Void)? = nil) {
+    func logout(isLocalOnly inLocalOnly: Bool = false, completion inCompletion: ((ServerResponse) -> Void)? = nil) {
         self.lastOperation = .logout
         guard !inLocalOnly else {
             self._bearerToken = nil
@@ -1015,7 +1011,7 @@ public extension PKD_Handler {
 
      - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
-    func delete(completion inCompletion: ((LoginResponse) -> Void)? = nil) {
+    func delete(completion inCompletion: ((ServerResponse) -> Void)? = nil) {
         self.lastOperation = .deleteUser
         DispatchQueue.main.async { self.lastError = nil }
         if self.isRegistered {
