@@ -279,15 +279,8 @@ private extension PKD_ConnectViewController {
         
         view.subviews.forEach { $0.removeFromSuperview() }
         
-        // If not registered, we show a text item, for the initial display name, and a register button, that is only enabled, once there's something in the text box.
-        if !(self._pkdInstance?.isRegistered ?? false) {
-            let registerButton = UIButton(type: .system)
-            var config = UIButton.Configuration.plain()
-            config.attributedTitle = AttributedString("SLUG-REGISTER-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
-            registerButton.configuration = config
-            registerButton.addTarget(self, action: #selector(_register), for: .touchUpInside)
-            self._registerButton = registerButton
-            
+        // If we are registered, but not logged in, we show a login button. At the bottom of the screen, is a debug button, to remove the keychain info.
+        if !(self._pkdInstance?.isLoggedIn ?? false) {
             let displayNameEditField = UITextField()
             displayNameEditField.text = ""
             displayNameEditField.placeholder = "SLUG-DISPLAY-NAME-PLACEHOLDER".localizedVariant
@@ -295,31 +288,31 @@ private extension PKD_ConnectViewController {
             displayNameEditField.clearButtonMode = .whileEditing
             displayNameEditField.borderStyle = .roundedRect
             self._displayNameTextField = displayNameEditField
-
-            let stack = UIStackView(arrangedSubviews: [displayNameEditField, registerButton])
-            stack.axis = .vertical
-            stack.spacing = 20
-            stack.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(stack)
             
-            NSLayoutConstraint.activate([
-                stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-            ])
-        // If we are registered, but not logged in, we show a login button. At the bottom of the screen, is a debug button, to remove the keychain info.
-        } else if !(self._pkdInstance?.isLoggedIn ?? false) {
             let loginButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
             config.attributedTitle = AttributedString("SLUG-LOGIN-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             loginButton.configuration = config
             loginButton.addTarget(self, action: #selector(_login), for: .touchUpInside)
 
-            let stack = UIStackView(arrangedSubviews: [loginButton])
+            let registerButton = UIButton(type: .system)
+            config = UIButton.Configuration.plain()
+            config.attributedTitle = AttributedString("SLUG-REGISTER-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
+            registerButton.configuration = config
+            registerButton.addTarget(self, action: #selector(_register), for: .touchUpInside)
+            self._registerButton = registerButton
+            
+            let buttonStack = UIStackView(arrangedSubviews: [registerButton, loginButton])
+            buttonStack.axis = .horizontal
+            buttonStack.spacing = 20
+            buttonStack.translatesAutoresizingMaskIntoConstraints = false
+            
+            let stack = UIStackView(arrangedSubviews: [displayNameEditField, buttonStack])
             stack.axis = .vertical
             stack.spacing = 20
             stack.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(stack)
-            
+
             NSLayoutConstraint.activate([
                 stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
@@ -409,15 +402,12 @@ private extension PKD_ConnectViewController {
      */
     func _calculateUpdateButtonEnabledState() {
         DispatchQueue.main.async {
-            if !(self._pkdInstance?.isRegistered ?? false) {
-                self._registerButton?.isEnabled = !(self._displayName?.isEmpty ?? true)
-            } else {
-                let hasTextChanged = (self._displayName != self._pkdInstance?.originalDisplayName) || (self._credo != self._pkdInstance?.originalCredo)
-                let displayName = self._displayName ?? ""
-                let isLoggedIn = self._pkdInstance?.isLoggedIn ?? false
-                let isEnabled = isLoggedIn && !displayName.isEmpty && hasTextChanged
-                self._updateButton?.isEnabled = isEnabled
-            }
+            let hasTextChanged = (self._displayName != self._pkdInstance?.originalDisplayName) || (self._credo != self._pkdInstance?.originalCredo)
+            let displayName = self._displayName ?? ""
+            let isLoggedIn = self._pkdInstance?.isLoggedIn ?? false
+            let isEnabled = isLoggedIn && !displayName.isEmpty && hasTextChanged
+            self._updateButton?.isEnabled = isEnabled
+            self._registerButton?.isEnabled = !displayName.isEmpty
         }
     }
 }

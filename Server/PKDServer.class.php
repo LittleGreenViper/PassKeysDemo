@@ -194,10 +194,10 @@ class PKDServer {
             // The first call generates a challenge string, that is signed and submitted in the second call.
             // It also stashes the GET values for the userID and displayName, in the session variable.
             case Operation::login:
-                if (!empty($this->getArgs->userId)) {
-                    $this->loginChallenge();
-                } else {
+                if (!empty($this->getArgs->credentialId)) {
                     $this->loginCompletion();
+                } else {
+                    $this->loginChallenge();
                 }
                 break;
                 
@@ -247,22 +247,13 @@ class PKDServer {
     This is called with a userId, and returns the challenge string, as Base64 URL-encoded.
     */
     public function loginChallenge() {
-        $stmt = $this->pdoInstance->prepare('SELECT credentialId FROM webauthn_credentials WHERE userId = ?');
-        $stmt->execute([$this->getArgs->userId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // If there is a user, we initiate a challenge.
-        if (!empty($row)) {
-            $challenge = random_bytes(32);  // Create a new challenge.
-            // Pass these on to the next step.
-            $_SESSION['loginChallenge'] = $challenge;
+        $challenge = random_bytes(32);  // Create a new challenge.
+        // Pass these on to the next step.
+        $_SESSION['loginChallenge'] = $challenge;
+        if (isset($this->getArgs->userId) && !empty($this->getArgs->userId)) {
             $_SESSION['loginUserId'] = $this->getArgs->userId;
-            echo(base64url_encode($challenge));
-        } else {
-            http_response_code(404);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => 'User not found']);
         }
+        echo(base64url_encode($challenge));
     }
     
     /**************************************/
@@ -274,55 +265,64 @@ class PKDServer {
     It returns the bearerToken for the login.
     */
     public function loginCompletion() {
-        $userId = $_SESSION['loginUserId'];
+        $userId = $this->getArgs->userId;
+        $credentialId = base64_decode($this->getArgs->credentialId);
         $challenge = $_SESSION['loginChallenge'];
+        $row = [];
         if (!empty($userId)) {
             $stmt = $this->pdoInstance->prepare('SELECT credentialId, displayName, signCount, publicKey FROM webauthn_credentials WHERE userId = ?');
             $stmt->execute([$userId]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             $credentialId = $row['credentialId'];
-            $clientDataJSON = base64_decode($this->postArgs['clientDataJSON']);   // This is a signed record, with various user data.
-            $authenticatorData = base64_decode($this->postArgs['authenticatorData']); // A record, with any authenticator (YubiKey, etc. Not used for our demo).
-            $signature = base64_decode($this->postArgs['signature']); // The signature for the record, against the public key.
-            $publicKey = $row['publicKey'];
-            $signCount = intval($row['signCount']);
-            
-            if (!empty($credentialId)) {
-                // If there was no signed client data record, with a matching challenge, then game over, man.
-                try {
-                    $success = $this->webAuthnInstance->processGet(
-                        $clientDataJSON,
-                        $authenticatorData,
-                        $signature,
-                        $publicKey,
-                        $challenge,
-                        $signCount
-                    );
-                    
-                    // Create a new token, as this is a new login.
-                    // NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
-                    $bearerToken = base64url_encode(random_bytes(32));  
-                    
-                    // Increment the sign count and store the new bearer token.
-                    $newSignCount = intval($this->webAuthnInstance->getSignatureCounter());
-                    $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET signCount = ?, bearerToken = ? WHERE credentialId = ?');
-                    $stmt->execute([$newSignCount, $bearerToken, $credentialId]);
-                    
-                    $_SESSION['bearerToken'] = $bearerToken;    // Pass it on, in the session.
-                    echo($bearerToken);
-                } catch (Exception $e) {
-                    // Try to clear the token, if we end up here.
-                    $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE credentialId = ?');
-                    $stmt->execute([$credentialId]);
-                    
-                    http_response_code(401);
-                    header('Content-Type: application/json');
-                    echo json_encode(['error' => $e->getMessage()]);
-                }
-            } else {
-                http_response_code(404);
+        } elseif (!empty($credentialId)) {
+            $stmt = $this->pdoInstance->prepare('SELECT userId, displayName, signCount, publicKey FROM webauthn_credentials WHERE credentialId = ?');
+            $stmt->execute([$credentialId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $userId = $row['userId'];
+        } else {
+            http_response_code(404);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'User not found']);
+            exit;
+        }
+        
+        $clientDataJSON = base64_decode($this->postArgs['clientDataJSON']);   // This is a signed record, with various user data.
+        $authenticatorData = base64_decode($this->postArgs['authenticatorData']); // A record, with any authenticator (YubiKey, etc. Not used for our demo).
+        $signature = base64_decode($this->postArgs['signature']); // The signature for the record, against the public key.
+        $publicKey = $row['publicKey'];
+        $signCount = intval($row['signCount']);
+        
+        if (!empty($credentialId)) {
+            // If there was no signed client data record, with a matching challenge, then game over, man.
+            try {
+                $success = $this->webAuthnInstance->processGet(
+                    $clientDataJSON,
+                    $authenticatorData,
+                    $signature,
+                    $publicKey,
+                    $challenge,
+                    $signCount
+                );
+                
+                // Create a new token, as this is a new login.
+                // NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
+                $bearerToken = base64url_encode(random_bytes(32));  
+                
+                // Increment the sign count and store the new bearer token.
+                $newSignCount = intval($this->webAuthnInstance->getSignatureCounter());
+                $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET signCount = ?, bearerToken = ? WHERE credentialId = ?');
+                $stmt->execute([$newSignCount, $bearerToken, $credentialId]);
+                
+                $_SESSION['bearerToken'] = $bearerToken;    // Pass it on, in the session.
+                echo($bearerToken);
+            } catch (Exception $e) {
+                // Try to clear the token, if we end up here.
+                $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE credentialId = ?');
+                $stmt->execute([$credentialId]);
+                
+                http_response_code(401);
                 header('Content-Type: application/json');
-                echo json_encode(['error' => 'User not found']);
+                echo json_encode(['error' => $e->getMessage()]);
             }
         } else {
             http_response_code(400);

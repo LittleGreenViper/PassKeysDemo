@@ -405,17 +405,6 @@ open class PKD_Handler: NSObject, ObservableObject {
 extension PKD_Handler {
     /* ###################################################################### */
     /**
-     The User ID string, as stored in the keychain. Nil, if no string stored.
-     */
-    private var _keychainStoredUserIDString: String? {
-        let swiftKeychainWrapper = KeychainSwift()
-        swiftKeychainWrapper.synchronizable = true
-        
-        return swiftKeychainWrapper.get(Self._userIDKeychainKey)
-    }
-
-    /* ###################################################################### */
-    /**
      Return our instance property session.
      */
     private var _session: URLSession {
@@ -460,7 +449,6 @@ extension PKD_Handler {
                     if 200 == response.statusCode,
                        let token = String(data: data, encoding: .utf8),
                        !token.isEmpty {
-                        self._storeUserIdString()
                         self._bearerToken = token
                     } else {
                         self._credentialID = nil
@@ -506,7 +494,6 @@ extension PKD_Handler {
                         if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
                             displayName = userData.displayName
                             credo = userData.credo
-                            self._storeUserIdString()
                             self.originalDisplayName = displayName
                             self.originalCredo = credo
                         }
@@ -612,30 +599,25 @@ extension PKD_Handler {
      - parameter inCompletion: A tail completion proc. This may be called in any thread. A sucessful result contains the challenge string.
      */
     private func _getLoginChallenge(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
-        if let userIdString = self._storedUserIDString,
-           !userIdString.isEmpty {
-            let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)&userId=\(userIdString)"
-            guard let url = URL(string: urlString) else { return }
-            self._session.dataTask(with: url) { inData, inResponse, inError in
-                if let error = inError {
-                    inCompletion(.failure(error))
-                } else if let data = inData {
-                    if let responseString = String(data: data, encoding: .utf8),
-                       !responseString.isEmpty {
-                        if let jsonResponse = try? JSONDecoder().decode([String: String].self, from: data),
-                           let _ = jsonResponse["error"] {
-                            inCompletion(.failure(Errors.noUserID))
-                        } else {
-                            inCompletion(.success(responseString))
-                        }
+        let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)"
+        guard let url = URL(string: urlString) else { return }
+        self._session.dataTask(with: url) { inData, inResponse, inError in
+            if let error = inError {
+                inCompletion(.failure(error))
+            } else if let data = inData {
+                if let responseString = String(data: data, encoding: .utf8),
+                   !responseString.isEmpty {
+                    if let jsonResponse = try? JSONDecoder().decode([String: String].self, from: data),
+                       let _ = jsonResponse["error"] {
+                        inCompletion(.failure(Errors.noUserID))
                     } else {
-                        inCompletion(.failure(Errors.communicationError))
+                        inCompletion(.success(responseString))
                     }
+                } else {
+                    inCompletion(.failure(Errors.communicationError))
                 }
-            }.resume()
-        } else {
-            inCompletion(.failure(Errors.noUserID))
-        }
+            }
+        }.resume()
     }
     
     /* ###################################################################### */
@@ -649,18 +631,6 @@ extension PKD_Handler {
         self._storedUserIDString = ret
         
         return ret
-    }
-    
-    /* ###################################################################### */
-    /**
-     Stores the User ID string in the keychain.
-     */
-    private func _storeUserIdString() {
-        guard let idString = self._storedUserIDString else { return }
-        
-        let swiftKeychainWrapper = KeychainSwift()
-        swiftKeychainWrapper.synchronizable = true
-        swiftKeychainWrapper.set(idString, forKey: Self._userIDKeychainKey)
     }
 }
 
@@ -677,25 +647,25 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
      */
     public func authorizationController(controller inAuthController: ASAuthorizationController, didCompleteWithAuthorization inAuthorization: ASAuthorization) {
         if let credential = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration {
+            self._credentialID = credential.credentialID.base64EncodedString()
             let payload: [String: String] = [
                 "clientDataJSON": credential.rawClientDataJSON.base64EncodedString(),
                 "attestationObject": credential.rawAttestationObject?.base64EncodedString() ?? ""
             ]
-            self._credentialID = credential.credentialID.base64EncodedString()
+            
             self._postCreateResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)", payload: payload)
         } else if let assertion = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
-            if let idString = String(data: assertion.credentialID, encoding: .utf8) {
-                self._credentialID = assertion.credentialID.base64EncodedString()
-                self._storedUserIDString = idString
-                
+            self._credentialID = assertion.credentialID.base64EncodedString()
+            if let idString = self._credentialID,
+               !idString.isEmpty {
                 let payload: [String: String] = [
                     "clientDataJSON": assertion.rawClientDataJSON.base64EncodedString(),
                     "authenticatorData": assertion.rawAuthenticatorData.base64EncodedString(),
                     "signature": assertion.signature.base64EncodedString(),
-                    "credentialId": self._credentialID ?? ""
+                    "credentialId": idString
                 ]
                 
-                self._postLoginResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)", payload: payload)
+                self._postLoginResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)&credentialId=\(idString)", payload: payload)
             }
         }
     }
@@ -727,12 +697,6 @@ public extension PKD_Handler {
 
     /* ###################################################################### */
     /**
-     Returns true, if we are registered (have a stored user ID).
-     */
-    var isRegistered: Bool { !(self._keychainStoredUserIDString ?? "").isEmpty }
-
-    /* ###################################################################### */
-    /**
      This completely removes the user ID from the KeyChain.
      */
     func clearUserInfo() {
@@ -758,42 +722,35 @@ public extension PKD_Handler {
     func login(completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .login
         DispatchQueue.main.async { self.lastError = nil }
-        if self.isRegistered {
-            if !self.isLoggedIn {
-                self._getLoginChallenge { inResponse in
-                    DispatchQueue.main.async {
-                        switch inResponse {
-                        case .success(let inChallenge):
-                            if let challengeData = inChallenge.base64urlDecodedData {
-                                let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self.relyingParty)
-                                let request = provider.createCredentialAssertionRequest(challenge: challengeData)
-                                
-                                let controller = ASAuthorizationController(authorizationRequests: [request])
-                                controller.delegate = self
-                                controller.presentationContextProvider = self
-                                controller.performRequests()
-                            } else {
-                                self.lastError = Errors.communicationError
-                                inCompletion(.failure(Errors.communicationError))
-                            }
-                            break
-                            
-                        case .failure(let inError):
-                            self.lastError = inError
-                            inCompletion(.failure(inError))
-                        }
-                    }
-                }
-            } else {
+        if !self.isLoggedIn {
+            self._getLoginChallenge { inResponse in
                 DispatchQueue.main.async {
-                    self.lastError = Errors.alreadyLoggedIn
-                    inCompletion(.failure(Errors.alreadyLoggedIn))
+                    switch inResponse {
+                    case .success(let inChallenge):
+                        if let challengeData = inChallenge.base64urlDecodedData {
+                            let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self.relyingParty)
+                            let request = provider.createCredentialAssertionRequest(challenge: challengeData)
+                            
+                            let controller = ASAuthorizationController(authorizationRequests: [request])
+                            controller.delegate = self
+                            controller.presentationContextProvider = self
+                            controller.performRequests()
+                        } else {
+                            self.lastError = Errors.communicationError
+                            inCompletion(.failure(Errors.communicationError))
+                        }
+                        break
+                        
+                    case .failure(let inError):
+                        self.lastError = inError
+                        inCompletion(.failure(inError))
+                    }
                 }
             }
         } else {
             DispatchQueue.main.async {
-                self.lastError = Errors.noUserID
-                inCompletion(.failure(Errors.noUserID))
+                self.lastError = Errors.alreadyLoggedIn
+                inCompletion(.failure(Errors.alreadyLoggedIn))
             }
         }
     }
@@ -823,41 +780,36 @@ public extension PKD_Handler {
             self.lastError = nil
             if self.isLoggedIn {
                 self.lastOperation = .logout
-                if self.isRegistered {
-                    if self.isLoggedIn,
-                       let bearerToken = self._bearerToken,
-                       !bearerToken.isEmpty {
-                        let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.logout.rawValue)"
-                        guard let url = URL(string: urlString) else { return }
-                        
-                        var request = URLRequest(url: url)
-                        request.httpMethod = "GET"
-                        request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
-                        
-                        self._session.dataTask(with: request) { inData, inResponse, inError in
-                            DispatchQueue.main.async {
-                                if let error = inError {
-                                    self.lastError = error
-                                    inCompletion?(.failure(error))
-                                } else if let response = inResponse as? HTTPURLResponse,
-                                          200 == response.statusCode {
-                                    self.isLoggedIn = false
-                                    self._bearerToken = nil
-                                    self._cachedSession = nil
-                                    inCompletion?(.success)
-                                } else {
-                                    self.lastError = Errors.communicationError
-                                    inCompletion?(.failure(Errors.communicationError))
-                                }
+                if self.isLoggedIn,
+                   let bearerToken = self._bearerToken,
+                   !bearerToken.isEmpty {
+                    let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.logout.rawValue)"
+                    guard let url = URL(string: urlString) else { return }
+                    
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "GET"
+                    request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+                    
+                    self._session.dataTask(with: request) { inData, inResponse, inError in
+                        DispatchQueue.main.async {
+                            if let error = inError {
+                                self.lastError = error
+                                inCompletion?(.failure(error))
+                            } else if let response = inResponse as? HTTPURLResponse,
+                                      200 == response.statusCode {
+                                self.isLoggedIn = false
+                                self._bearerToken = nil
+                                self._cachedSession = nil
+                                inCompletion?(.success)
+                            } else {
+                                self.lastError = Errors.communicationError
+                                inCompletion?(.failure(Errors.communicationError))
                             }
-                       }.resume()
-                    } else {
-                        self.lastError = Errors.notLoggedIn
-                        inCompletion?(.failure(Errors.notLoggedIn))
-                    }
+                        }
+                   }.resume()
                 } else {
-                    self.lastError = Errors.noUserID
-                    inCompletion?(.failure(Errors.noUserID))
+                    self.lastError = Errors.notLoggedIn
+                    inCompletion?(.failure(Errors.notLoggedIn))
                 }
             } else {
                 self.lastError = Errors.notLoggedIn
@@ -878,37 +830,30 @@ public extension PKD_Handler {
     func create(displayName inDisplayName: String? = nil, completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .createUser
         DispatchQueue.main.async { self.lastError = nil }
-        if !self.isRegistered {
-            if !self.isLoggedIn {
-                self._getCreateChallenge(displayName: inDisplayName) { inCreateChallengeResponse in
-                    if case .success(let value) = inCreateChallengeResponse {
-                        self._nextStepInCreate(with: value) { inResponse in
-                            DispatchQueue.main.async {
-                                if case let .failure(inReason) = inResponse {
-                                    self.lastError = inReason
-                                    inCompletion(.failure(inReason))
-                                } else {
-                                    inCompletion(.success)
-                                }
+        if !self.isLoggedIn {
+            self._getCreateChallenge(displayName: inDisplayName) { inCreateChallengeResponse in
+                if case .success(let value) = inCreateChallengeResponse {
+                    self._nextStepInCreate(with: value) { inResponse in
+                        DispatchQueue.main.async {
+                            if case let .failure(inReason) = inResponse {
+                                self.lastError = inReason
+                                inCompletion(.failure(inReason))
+                            } else {
+                                inCompletion(.success)
                             }
                         }
-                    } else {
-                        DispatchQueue.main.async {
-                            self.lastError = Errors.communicationError
-                            inCompletion(.failure(Errors.communicationError))
-                        }
                     }
-                }
-            } else {
-                DispatchQueue.main.async {
-                    self.lastError = Errors.alreadyLoggedIn
-                    inCompletion(.failure(Errors.alreadyLoggedIn))
+                } else {
+                    DispatchQueue.main.async {
+                        self.lastError = Errors.communicationError
+                        inCompletion(.failure(Errors.communicationError))
+                    }
                 }
             }
         } else {
             DispatchQueue.main.async {
-                self.lastError = Errors.alreadyRegistered
-                inCompletion(.failure(Errors.alreadyRegistered))
+                self.lastError = Errors.alreadyLoggedIn
+                inCompletion(.failure(Errors.alreadyLoggedIn))
             }
         }
     }
@@ -924,46 +869,40 @@ public extension PKD_Handler {
     func read(completion inCompletion: @escaping ReadCallback) {
         self.lastOperation = .readUser
         DispatchQueue.main.async { self.lastError = nil }
-        if self.isRegistered {
-            if self.isLoggedIn,
-            let bearerToken = self._bearerToken,
-               !bearerToken.isEmpty {
-                let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.readUser.rawValue)"
-                guard let url = URL(string: urlString) else { return }
+        if self.isLoggedIn,
+        let bearerToken = self._bearerToken,
+           !bearerToken.isEmpty {
+            let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.readUser.rawValue)"
+            guard let url = URL(string: urlString) else { return }
 
-                var request = URLRequest(url: url)
-                request.httpMethod = "GET"
-                request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
 
-                self._session.dataTask(with: request) { inData, inResponse, inError in
-                    DispatchQueue.main.async {
-                        if let error = inError {
-                            inCompletion(nil, .failure(error))
-                        } else if let response = inResponse as? HTTPURLResponse,
-                                  200 == response.statusCode,
-                                  let data = inData, !data.isEmpty,
-                                  let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
-                                  let displayName = dict["displayName"],
-                                  let credo = dict["credo"] {
-                            self.originalDisplayName = displayName
-                            self.originalCredo = credo
-                            inCompletion((displayName, credo), .success)
-                        } else {
-                            self.lastError = Errors.communicationError
-                            inCompletion(nil, .failure(Errors.communicationError))
-                        }
-                    }
-                }.resume()
-            } else {
+            self._session.dataTask(with: request) { inData, inResponse, inError in
+                print("Response: \((inResponse as? HTTPURLResponse)?.statusCode ?? -1)")
                 DispatchQueue.main.async {
-                    self.lastError = Errors.notLoggedIn
-                    inCompletion(nil, .failure(Errors.notLoggedIn))
+                    if let error = inError {
+                        inCompletion(nil, .failure(error))
+                    } else if let response = inResponse as? HTTPURLResponse,
+                              200 == response.statusCode,
+                              let data = inData, !data.isEmpty,
+                              let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
+                              let displayName = dict["displayName"],
+                              let credo = dict["credo"] {
+                        self.originalDisplayName = displayName
+                        self.originalCredo = credo
+                        inCompletion((displayName, credo), .success)
+                    } else {
+                        self.lastError = Errors.communicationError
+                        inCompletion(nil, .failure(Errors.communicationError))
+                    }
                 }
-            }
+            }.resume()
         } else {
             DispatchQueue.main.async {
-                self.lastError = Errors.noUserID
-                inCompletion(nil, .failure(Errors.noUserID))
+                self.lastError = Errors.notLoggedIn
+                inCompletion(nil, .failure(Errors.notLoggedIn))
             }
         }
     }
@@ -981,52 +920,45 @@ public extension PKD_Handler {
     func update(displayName inDisplayName: String, credo inCredo: String, completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .updateUser
         DispatchQueue.main.async { self.lastError = nil }
-        if self.isRegistered {
-            if self.isLoggedIn,
-               let bearerToken = self._bearerToken,
-               !bearerToken.isEmpty {
-                if let displayName = inDisplayName.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
-                   !displayName.isEmpty {
-                    let credo = inCredo.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? ""
-                    let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.updateUser.rawValue)&displayName=\(displayName)&credo=\(credo)"
-                    guard let url = URL(string: urlString) else { return }
-                    
-                    var request = URLRequest(url: url)
-                    request.httpMethod = "GET"
-                    request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
-                    
-                    self._session.dataTask(with: request) { _, inResponse, inError in
-                        DispatchQueue.main.async {
-                            if let error = inError {
-                                self.lastError = error
-                                inCompletion(.failure(error))
-                            } else if let response = inResponse as? HTTPURLResponse,
-                                      200 == response.statusCode {
-                                self.originalDisplayName = displayName
-                                self.originalCredo = credo
-                                inCompletion(.success)
-                            } else {
-                                self.lastError = Errors.communicationError
-                                inCompletion(.failure(Errors.communicationError))
-                            }
+        if self.isLoggedIn,
+           let bearerToken = self._bearerToken,
+           !bearerToken.isEmpty {
+            if let displayName = inDisplayName.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
+               !displayName.isEmpty {
+                let credo = inCredo.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? ""
+                let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.updateUser.rawValue)&displayName=\(displayName)&credo=\(credo)"
+                guard let url = URL(string: urlString) else { return }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "GET"
+                request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+                
+                self._session.dataTask(with: request) { _, inResponse, inError in
+                    DispatchQueue.main.async {
+                        if let error = inError {
+                            self.lastError = error
+                            inCompletion(.failure(error))
+                        } else if let response = inResponse as? HTTPURLResponse,
+                                  200 == response.statusCode {
+                            self.originalDisplayName = displayName
+                            self.originalCredo = credo
+                            inCompletion(.success)
+                        } else {
+                            self.lastError = Errors.communicationError
+                            inCompletion(.failure(Errors.communicationError))
                         }
-                   }.resume()
-               } else {
-                   DispatchQueue.main.async {
-                       self.lastError = Errors.badInputParameters
-                       inCompletion(.failure(Errors.badInputParameters))
-                   }
+                    }
+               }.resume()
+           } else {
+               DispatchQueue.main.async {
+                   self.lastError = Errors.badInputParameters
+                   inCompletion(.failure(Errors.badInputParameters))
                }
-            } else {
-                DispatchQueue.main.async {
-                    self.lastError = Errors.notLoggedIn
-                    inCompletion(.failure(Errors.notLoggedIn))
-                }
-            }
+           }
         } else {
             DispatchQueue.main.async {
-                self.lastError = Errors.noUserID
-                inCompletion(.failure(Errors.noUserID))
+                self.lastError = Errors.notLoggedIn
+                inCompletion(.failure(Errors.notLoggedIn))
             }
         }
     }
@@ -1044,51 +976,44 @@ public extension PKD_Handler {
     func delete(completion inCompletion: ServerResponseCallback? = nil) {
         self.lastOperation = .deleteUser
         DispatchQueue.main.async { self.lastError = nil }
-        if self.isRegistered {
-            if self.isLoggedIn,
-               let bearerToken = self._bearerToken,
-               !bearerToken.isEmpty {
-                let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.deleteUser.rawValue)"
-                guard let url = URL(string: urlString) else { return }
-                
-                var request = URLRequest(url: url)
-                request.httpMethod = "GET"
-                request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
-                
-                self._session.dataTask(with: request) { _, inResponse, inError in
-                    DispatchQueue.main.async {
-                        if let error = inError {
-                            self.lastError = error
-                            inCompletion?(.failure(error))
-                        } else if let response = inResponse as? HTTPURLResponse,
-                                  200 == response.statusCode {
-                            self.logout(isLocalOnly: true) { inResult in
-                                DispatchQueue.main.async {
-                                    if case let .failure(error) = inResult {
-                                        self.lastError = error
-                                        inCompletion?(.failure(error))
-                                    } else {
-                                        self.clearUserInfo()
-                                        inCompletion?(.success)
-                                    }
+        if self.isLoggedIn,
+           let bearerToken = self._bearerToken,
+           !bearerToken.isEmpty {
+            let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.deleteUser.rawValue)"
+            guard let url = URL(string: urlString) else { return }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+            
+            self._session.dataTask(with: request) { _, inResponse, inError in
+                DispatchQueue.main.async {
+                    if let error = inError {
+                        self.lastError = error
+                        inCompletion?(.failure(error))
+                    } else if let response = inResponse as? HTTPURLResponse,
+                              200 == response.statusCode {
+                        self.logout(isLocalOnly: true) { inResult in
+                            DispatchQueue.main.async {
+                                if case let .failure(error) = inResult {
+                                    self.lastError = error
+                                    inCompletion?(.failure(error))
+                                } else {
+                                    self.clearUserInfo()
+                                    inCompletion?(.success)
                                 }
                             }
-                        } else {
-                            self.lastError = Errors.communicationError
-                            inCompletion?(.failure(Errors.communicationError))
                         }
+                    } else {
+                        self.lastError = Errors.communicationError
+                        inCompletion?(.failure(Errors.communicationError))
                     }
-               }.resume()
-            } else {
-                DispatchQueue.main.async {
-                    self.lastError = Errors.notLoggedIn
-                    inCompletion?(.failure(Errors.notLoggedIn))
                 }
-            }
+           }.resume()
         } else {
             DispatchQueue.main.async {
-                self.lastError = Errors.noUserID
-                inCompletion?(.failure(Errors.noUserID))
+                self.lastError = Errors.notLoggedIn
+                inCompletion?(.failure(Errors.notLoggedIn))
             }
         }
     }
