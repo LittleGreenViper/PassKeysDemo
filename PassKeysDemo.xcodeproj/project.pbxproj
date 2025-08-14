@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D406C8A62E4DFDC400D7AC43 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D406C8A42E4DFDC400D7AC43 /* Localizable.strings */; };
+		D406C8A72E4DFDC400D7AC43 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D406C8A42E4DFDC400D7AC43 /* Localizable.strings */; };
 		D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */; };
 		D4137C4F2E3E9E0D0039AFC3 /* KeychainSwift in Frameworks */ = {isa = PBXBuildFile; productRef = D4137C4E2E3E9E0D0039AFC3 /* KeychainSwift */; };
 		D42C349B2E3CF300002C325B /* PKD_Handler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42C349A2E3CF300002C325B /* PKD_Handler.swift */; };
@@ -26,13 +28,15 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		D406C8A02E4DFB7600D7AC43 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D406C8A32E4DFCF200D7AC43 /* PassKeysDemoSwiftUI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PassKeysDemoSwiftUI.entitlements; sourceTree = "<group>"; };
+		D406C8A52E4DFDC400D7AC43 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Base; path = Base.lproj/Localizable.strings; sourceTree = "<group>"; };
 		D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_ConnectViewController.swift; sourceTree = "<group>"; };
 		D40941472E34FDE8001431EB /* PassKeysDemoUIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PassKeysDemoUIKit.entitlements; sourceTree = "<group>"; };
 		D42C349A2E3CF300002C325B /* PKD_Handler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_Handler.swift; sourceTree = "<group>"; };
 		D43C32662E4D3BF300F3B374 /* PassKeysDemoSwiftUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PassKeysDemoSwiftUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D43C32722E4D3C1400F3B374 /* PKD_MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_MainView.swift; sourceTree = "<group>"; };
 		D43C32732E4D3C1400F3B374 /* PKD_SwiftUIApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_SwiftUIApp.swift; sourceTree = "<group>"; };
-		D43C327F2E4D3EA900F3B374 /* PassKeysDemoSwiftUI-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "PassKeysDemoSwiftUI-Info.plist"; sourceTree = "<group>"; };
 		D44C20692E355029000C8BD0 /* PKD_Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_Extensions.swift; sourceTree = "<group>"; };
 		D499A5A82E33ACF4001593B7 /* PassKeysDemoUIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PassKeysDemoUIKit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D499A5C12E33AD1A001593B7 /* PKD_AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_AppDelegate.swift; sourceTree = "<group>"; };
@@ -69,11 +73,56 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		D43C32742E4D3C1400F3B374 /* SwiftUI */ = {
+		D406C89F2E4DFB5B00D7AC43 /* Meta */ = {
+			isa = PBXGroup;
+			children = (
+				D406C8A32E4DFCF200D7AC43 /* PassKeysDemoSwiftUI.entitlements */,
+				D406C8A02E4DFB7600D7AC43 /* Info.plist */,
+			);
+			path = Meta;
+			sourceTree = "<group>";
+		};
+		D406C8A12E4DFBF900D7AC43 /* App */ = {
 			isa = PBXGroup;
 			children = (
 				D43C32732E4D3C1400F3B374 /* PKD_SwiftUIApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		D406C8A22E4DFC0000D7AC43 /* Views */ = {
+			isa = PBXGroup;
+			children = (
 				D43C32722E4D3C1400F3B374 /* PKD_MainView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		D406C8A82E4DFDDC00D7AC43 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				D499A5C52E33AD1A001593B7 /* LaunchScreen.storyboard */,
+				D499A5C22E33AD1A001593B7 /* Assets.xcassets */,
+				D406C8A42E4DFDC400D7AC43 /* Localizable.strings */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		D406C8A92E4DFDE600D7AC43 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				D42C349A2E3CF300002C325B /* PKD_Handler.swift */,
+				D44C20692E355029000C8BD0 /* PKD_Extensions.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		D43C32742E4D3C1400F3B374 /* SwiftUI */ = {
+			isa = PBXGroup;
+			children = (
+				D406C8A12E4DFBF900D7AC43 /* App */,
+				D406C8A22E4DFC0000D7AC43 /* Views */,
+				D406C89F2E4DFB5B00D7AC43 /* Meta */,
 			);
 			path = SwiftUI;
 			sourceTree = "<group>";
@@ -97,10 +146,8 @@
 		D44C206B2E3550F8000C8BD0 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
-				D44C20692E355029000C8BD0 /* PKD_Extensions.swift */,
-				D42C349A2E3CF300002C325B /* PKD_Handler.swift */,
-				D499A5C52E33AD1A001593B7 /* LaunchScreen.storyboard */,
-				D499A5C22E33AD1A001593B7 /* Assets.xcassets */,
+				D406C8A92E4DFDE600D7AC43 /* Sources */,
+				D406C8A82E4DFDDC00D7AC43 /* Resources */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -108,7 +155,6 @@
 		D499A59F2E33ACF4001593B7 = {
 			isa = PBXGroup;
 			children = (
-				D43C327F2E4D3EA900F3B374 /* PassKeysDemoSwiftUI-Info.plist */,
 				D499A5C02E33ACFD001593B7 /* Sources */,
 				D4C8B7E72E4D39140018C9DD /* README.md */,
 				D4C8B7E12E4D39140018C9DD /* CHANGELOG.md */,
@@ -274,6 +320,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D43C32782E4D3C2B00F3B374 /* Assets.xcassets in Resources */,
+				D406C8A72E4DFDC400D7AC43 /* Localizable.strings in Resources */,
 				D43C327B2E4D3CD500F3B374 /* LaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -283,6 +330,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D499A5CE2E33AD1A001593B7 /* Assets.xcassets in Resources */,
+				D406C8A62E4DFDC400D7AC43 /* Localizable.strings in Resources */,
 				D499A5D02E33AD1A001593B7 /* LaunchScreen.storyboard in Resources */,
 				D499A5D12E33AD1A001593B7 /* Main.storyboard in Resources */,
 			);
@@ -317,6 +365,14 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
+		D406C8A42E4DFDC400D7AC43 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				D406C8A52E4DFDC400D7AC43 /* Base */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
 		D499A5C52E33AD1A001593B7 /* LaunchScreen.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -341,12 +397,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Sources/PassKeysDemo/SwiftUI/Meta/PassKeysDemoSwiftUI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = P53V4JS928;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "PassKeysDemoSwiftUI-Info.plist";
+				INFOPLIST_FILE = Sources/PassKeysDemo/SwiftUI/Meta/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -372,12 +429,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Sources/PassKeysDemo/SwiftUI/Meta/PassKeysDemoSwiftUI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = P53V4JS928;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "PassKeysDemoSwiftUI-Info.plist";
+				INFOPLIST_FILE = Sources/PassKeysDemo/SwiftUI/Meta/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

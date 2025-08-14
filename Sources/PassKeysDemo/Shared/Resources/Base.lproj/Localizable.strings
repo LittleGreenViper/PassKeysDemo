@@ -1,0 +1,78 @@
+/*
+    © Copyright 2025, Little Green Viper Software Development LLC
+
+    LICENSE:
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
+    files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
+    modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+    OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+    CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+// MARK: - BUTTONS -
+
+// The title of the register new user button.
+"SLUG-REGISTER-BUTTON"                  =   "Register";
+// The title of the login button.
+"SLUG-LOGIN-BUTTON"                     =   "Login";
+// The title of the clear login button (at the bottom of the screen).
+"SLUG-CLEAR-LOGIN-BUTTON"               =   "Clear All Login Info";
+// The title of the update button.
+"SLUG-UPDATE-BUTTON"                    =   "Update";
+// The title of the logout button.
+"SLUG-LOGOUT-BUTTON"                    =   "Logout";
+// The title of the delete button.
+"SLUG-DELETE-BUTTON"                    =   "Delete";
+
+// MARK: - TEXT ITEMS -
+
+// The placeholder text for the display name text field.
+"SLUG-DISPLAY-NAME-PLACEHOLDER"         =   "Enter A Display Name";
+// The placeholder text for the credo text field.
+"SLUG-CREDO-PLACEHOLDER"                =   "Enter A Credo";
+
+// MARK: - CLEAR LOGIN DATA CONFIRM ALERT -
+
+// The header for the clear login info confirmation alert.
+"SLUG-CLEAR-CONFIRM-HEADER"             =   "CLEAR LOCAL LOGIN INFORMATION?";
+// The body for the clear login info confirmation alert. This is a format. The placeholder is the text for the OK button.
+"SLUG-CLEAR-CONFIRM-MESSAGE-FORMAT"     =   "If you select \"%@\", this will clear the login data from the keychain (but not the server or the passkey). This is really a debug operation.";
+// The OK button for the clear login info alert.
+"SLUG-CLEAR-CONFIRM-OK-BUTTON"          =   "Delete the Local Login Info";
+// The cancel button.
+"SLUG-CLEAR-CONFIRM-CANCEL-BUTTON"      =   "Cancel";
+
+// MARK: - DELETE CONFIRM ALERT -
+
+// The header for the delete confirmation alert.
+"SLUG-DELETE-CONFIRM-HEADER"            =   "DELETE THIS ACCOUNT?";
+// The body for the delete confirmation alert. This is a format. The placeholder is the text for the OK button.
+"SLUG-DELETE-CONFIRM-MESSAGE-FORMAT"    =   "If you select \"%@\", your account will be deleted permanently from the server, but you will need to manually remove your passkey.";
+// The OK button for the delete confirm alert.
+"SLUG-DELETE-CONFIRM-OK-BUTTON"         =   "Delete this User Completely";
+// The cancel button.
+"SLUG-DELETE-CONFIRM-CANCEL-BUTTON"     =   "Cancel";
+
+// MARK: - ERROR ALERT -
+
+// The header for the error alert.
+"SLUG-ERROR-ALERT-HEADER"               =   "ERROR";
+// The error alert OK button.
+"SLUG-OK-BUTTON"                        =   "OK";
+// Various error strings.
+"SLUG-ERROR-0"                          =   "Login failed.";
+"SLUG-ERROR-1"                          =   "Logout failed.";
+"SLUG-ERROR-2"                          =   "Registration failed.";
+"SLUG-ERROR-3"                          =   "User data retrieval failed.";
+"SLUG-ERROR-4"                          =   "User data update failed.";
+"SLUG-ERROR-5"                          =   "User deletion failed.";
+"SLUG-ERROR-6"                          =   "Unknown Error";

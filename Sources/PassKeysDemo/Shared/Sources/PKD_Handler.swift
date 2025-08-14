@@ -302,7 +302,7 @@ open class PKD_Handler: NSObject, ObservableObject {
     /**
      The key that we use to store the user ID in the KeyChain.
      */
-    static private let _userIDKeychainKey = "PKD_UserID"
+    static private let _userIDKeychainKey = "\(Bundle.main.bundleIdentifier ?? "").PKD_UserID"
 
     /* ###################################################################### */
     /**
@@ -359,6 +359,12 @@ open class PKD_Handler: NSObject, ObservableObject {
      The last operation.
      */
     var lastOperation = UserOperation.none
+    
+    /* ###################################################################### */
+    /**
+     The User ID string. Nil, if no string stored.
+     */
+    private var _storedUserIDString: String?
 
     /* ###################################################################### */
     /**
@@ -401,7 +407,7 @@ extension PKD_Handler {
     /**
      The User ID string, as stored in the keychain. Nil, if no string stored.
      */
-    private var _storedUserIDString: String? {
+    private var _keychainStoredUserIDString: String? {
         let swiftKeychainWrapper = KeychainSwift()
         swiftKeychainWrapper.synchronizable = true
         
@@ -454,6 +460,7 @@ extension PKD_Handler {
                     if 200 == response.statusCode,
                        let token = String(data: data, encoding: .utf8),
                        !token.isEmpty {
+                        self._storeUserIdString()
                         self._bearerToken = token
                     } else {
                         self._credentialID = nil
@@ -499,6 +506,7 @@ extension PKD_Handler {
                         if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
                             displayName = userData.displayName
                             credo = userData.credo
+                            self._storeUserIdString()
                             self.originalDisplayName = displayName
                             self.originalCredo = credo
                         }
@@ -584,7 +592,7 @@ extension PKD_Handler {
                 name: inOptions.publicKey.user.displayName,
                 userID: userIDData
             )
-
+            
             let controller = ASAuthorizationController(authorizationRequests: [request])
             controller.delegate = self
             controller.presentationContextProvider = self
@@ -632,17 +640,27 @@ extension PKD_Handler {
     
     /* ###################################################################### */
     /**
-     Creates a new random User ID string. This is stored in the keychain.
+     Creates a new random User ID string.
      It will not overwrite a preexisting string.
      */
     private func _createNewUserIdString() -> String {
         let ret = self._storedUserIDString ?? UUID().uuidString
         
-        let swiftKeychainWrapper = KeychainSwift()
-        swiftKeychainWrapper.synchronizable = true
-        swiftKeychainWrapper.set(ret, forKey: Self._userIDKeychainKey)
+        self._storedUserIDString = ret
         
         return ret
+    }
+    
+    /* ###################################################################### */
+    /**
+     Stores the User ID string in the keychain.
+     */
+    private func _storeUserIdString() {
+        guard let idString = self._storedUserIDString else { return }
+        
+        let swiftKeychainWrapper = KeychainSwift()
+        swiftKeychainWrapper.synchronizable = true
+        swiftKeychainWrapper.set(idString, forKey: Self._userIDKeychainKey)
     }
 }
 
@@ -666,16 +684,19 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
             self._credentialID = credential.credentialID.base64EncodedString()
             self._postCreateResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)", payload: payload)
         } else if let assertion = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
-            self._credentialID = assertion.credentialID.base64EncodedString()
-            
-            let payload: [String: String] = [
-                "clientDataJSON": assertion.rawClientDataJSON.base64EncodedString(),
-                "authenticatorData": assertion.rawAuthenticatorData.base64EncodedString(),
-                "signature": assertion.signature.base64EncodedString(),
-                "credentialId": self._credentialID ?? ""
-            ]
-            
-            self._postLoginResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)", payload: payload)
+            if let idString = String(data: assertion.credentialID, encoding: .utf8) {
+                self._credentialID = assertion.credentialID.base64EncodedString()
+                self._storedUserIDString = idString
+                
+                let payload: [String: String] = [
+                    "clientDataJSON": assertion.rawClientDataJSON.base64EncodedString(),
+                    "authenticatorData": assertion.rawAuthenticatorData.base64EncodedString(),
+                    "signature": assertion.signature.base64EncodedString(),
+                    "credentialId": self._credentialID ?? ""
+                ]
+                
+                self._postLoginResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)", payload: payload)
+            }
         }
     }
 }
@@ -708,7 +729,7 @@ public extension PKD_Handler {
     /**
      Returns true, if we are registered (have a stored user ID).
      */
-    var isRegistered: Bool { !(self._storedUserIDString ?? "").isEmpty }
+    var isRegistered: Bool { !(self._keychainStoredUserIDString ?? "").isEmpty }
 
     /* ###################################################################### */
     /**
@@ -719,6 +740,9 @@ public extension PKD_Handler {
         swiftKeychainWrapper.synchronizable = true
         swiftKeychainWrapper.delete(Self._userIDKeychainKey)
         swiftKeychainWrapper.clear()
+        self.originalCredo = ""
+        self.originalDisplayName = ""
+        self._storedUserIDString = nil
         self._credentialID = nil
         self._bearerToken = nil
     }

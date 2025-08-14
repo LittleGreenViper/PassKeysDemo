@@ -19,7 +19,7 @@
 */
 
 import UIKit
-import Combine
+import Combine  // For the subscriptions in viewDidAppear
 
 /* ###################################################################################################################################### */
 // MARK: - Passkeys Interaction View Controller -
@@ -207,6 +207,8 @@ extension PKD_ConnectViewController {
         if nil == self._pkdInstance {
             self._pkdInstance = PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString, baseURIString: Bundle.main.defaultBaseURIString, presentationAnchor: window)
 
+            // Combine Subscriptions
+            
             // This listens for changes to the login state.
             self._pkdInstance?.$isLoggedIn
                 .receive(on: RunLoop.main)
@@ -234,36 +236,36 @@ private extension PKD_ConnectViewController {
      */
     func _handleError() {
         if let error = self._pkdInstance?.lastError {
-            let title = "Error"
+            let title = "SLUG-ERROR-ALERT-HEADER".localizedVariant
             var message = ""
             
             switch self._pkdInstance?.lastOperation ?? .none {
             case .login:
-                message = "Login failed."
+                message = "SLUG-ERROR-0"
                 
             case .logout:
-                message = "Logout failed."
+                message = "SLUG-ERROR-1"
                 
             case .createUser:
-                message = "Registration failed."
+                message = "SLUG-ERROR-2"
         
             case .readUser:
-                message = "User data retrieval failed."
+                message = "SLUG-ERROR-3"
                 
             case .updateUser:
-                message = "User data update failed."
+                message = "SLUG-ERROR-4"
                 
             case .deleteUser:
-                message = "User deletion failed."
+                message = "SLUG-ERROR-5"
                 
             case .none:
-                message = "Unknown Error"
+                message = "SLUG-ERROR-6"
             }
             
             message += "\n\(error.localizedDescription)"
             
             let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
-            alertController.addAction(UIAlertAction(title: "OK", style: .default))
+            alertController.addAction(UIAlertAction(title: "SLUG-OK-BUTTON".localizedVariant, style: .default))
             self.present(alertController, animated: true)
         }
     }
@@ -281,14 +283,14 @@ private extension PKD_ConnectViewController {
         if !(self._pkdInstance?.isRegistered ?? false) {
             let registerButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
-            config.attributedTitle = AttributedString("Register", attributes: AttributeContainer([.font: Self._buttonFont]))
+            config.attributedTitle = AttributedString("SLUG-REGISTER-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             registerButton.configuration = config
             registerButton.addTarget(self, action: #selector(_register), for: .touchUpInside)
             self._registerButton = registerButton
             
             let displayNameEditField = UITextField()
             displayNameEditField.text = ""
-            displayNameEditField.placeholder = "Enter A Display Name"
+            displayNameEditField.placeholder = "SLUG-DISPLAY-NAME-PLACEHOLDER".localizedVariant
             displayNameEditField.addTarget(self, action: #selector(_textFieldChanged), for: .editingChanged)
             displayNameEditField.clearButtonMode = .whileEditing
             displayNameEditField.borderStyle = .roundedRect
@@ -308,7 +310,7 @@ private extension PKD_ConnectViewController {
         } else if !(self._pkdInstance?.isLoggedIn ?? false) {
             let loginButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
-            config.attributedTitle = AttributedString("Login", attributes: AttributeContainer([.font: Self._buttonFont]))
+            config.attributedTitle = AttributedString("SLUG-LOGIN-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             loginButton.configuration = config
             loginButton.addTarget(self, action: #selector(_login), for: .touchUpInside)
 
@@ -326,7 +328,7 @@ private extension PKD_ConnectViewController {
             let nukeButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
             config.baseForegroundColor = .systemRed
-            config.attributedTitle = AttributedString("Clear All Login Info", attributes: AttributeContainer([.font: Self._clearLoginFont]))
+            config.attributedTitle = AttributedString("SLUG-CLEAR-LOGIN-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._clearLoginFont]))
             nukeButton.configuration = config
             nukeButton.addTarget(self, action: #selector(_clearAllLoginInfo), for: .touchUpInside)
             view.addSubview(nukeButton)
@@ -337,7 +339,7 @@ private extension PKD_ConnectViewController {
         } else if self._pkdInstance?.isLoggedIn ?? false {
             let displayNameEditField = UITextField()
             displayNameEditField.text = ""
-            displayNameEditField.placeholder = "Enter A Display Name"
+            displayNameEditField.placeholder = "SLUG-DISPLAY-NAME-PLACEHOLDER".localizedVariant
             displayNameEditField.addTarget(self, action: #selector(_textFieldChanged), for: .editingChanged)
             displayNameEditField.clearButtonMode = .whileEditing
             displayNameEditField.borderStyle = .roundedRect
@@ -345,7 +347,7 @@ private extension PKD_ConnectViewController {
             
             let credoEditField = UITextField()
             credoEditField.text = ""
-            credoEditField.placeholder = "Enter A Credo"
+            credoEditField.placeholder = "SLUG-CREDO-PLACEHOLDER".localizedVariant
             credoEditField.addTarget(self, action: #selector(_textFieldChanged), for: .editingChanged)
             credoEditField.clearButtonMode = .always
             credoEditField.borderStyle = .roundedRect
@@ -353,21 +355,21 @@ private extension PKD_ConnectViewController {
 
             let updateButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
-            config.attributedTitle = AttributedString("Update", attributes: AttributeContainer([.font: Self._buttonFont]))
+            config.attributedTitle = AttributedString("SLUG-UPDATE-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             updateButton.configuration = config
             updateButton.addTarget(self, action: #selector(_update), for: .touchUpInside)
             self._updateButton = updateButton
 
             let logoutButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
-            config.attributedTitle = AttributedString("Logout", attributes: AttributeContainer([.font: Self._buttonFont]))
+            config.attributedTitle = AttributedString("SLUG-LOGOUT-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             logoutButton.configuration = config
             logoutButton.addTarget(self, action: #selector(_logout), for: .touchUpInside)
 
             let deleteButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
             config.baseForegroundColor = .systemRed
-            config.attributedTitle = AttributedString("Delete", attributes: AttributeContainer([.font: Self._buttonFont]))
+            config.attributedTitle = AttributedString("SLUG-DELETE-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             deleteButton.configuration = config
             deleteButton.addTarget(self, action: #selector(_deleteUser), for: .touchUpInside)
 
@@ -448,16 +450,16 @@ private extension PKD_ConnectViewController {
      This nukes all the login info.
      */
     @objc func _clearAllLoginInfo() {
-        let alertController = UIAlertController(title: "Clear All Login Information?", message: "If you select \"YOLO, BRUH!\", this will clear the login data from the keychain (but not the server). This is really a debug operation.", preferredStyle: .alert)
+        let alertController = UIAlertController(title: "SLUG-CLEAR-CONFIRM-HEADER".localizedVariant, message: String(format: "SLUG-CLEAR-CONFIRM-MESSAGE-FORMAT".localizedVariant, "SLUG-CLEAR-CONFIRM-OK-BUTTON".localizedVariant), preferredStyle: .alert)
         
-        let deleteAction = UIAlertAction(title: "YOLO, BRUH!", style: UIAlertAction.Style.destructive) { [weak self] _ in
+                                                let deleteAction = UIAlertAction(title: "SLUG-CLEAR-CONFIRM-OK-BUTTON".localizedVariant, style: UIAlertAction.Style.destructive) { [weak self] _ in
             self?._pkdInstance?.clearUserInfo()
             self?._setUpUI()
         }
         
         alertController.addAction(deleteAction)
         
-        let cancelAction = UIAlertAction(title: "No, I Changed My Mind", style: UIAlertAction.Style.default, handler: nil)
+        let cancelAction = UIAlertAction(title: "SLUG-CLEAR-CONFIRM-CANCEL-BUTTON".localizedVariant, style: UIAlertAction.Style.default, handler: nil)
         
         alertController.addAction(cancelAction)
         
@@ -487,13 +489,13 @@ private extension PKD_ConnectViewController {
      This is called when the user selects the "Delete" button. They are given a confirmation prompt, before the operation is done.
      */
     @objc func _deleteUser() {
-        let alertController = UIAlertController(title: "Delete Your Account?", message: "If you select \"Delete Me, You Brute\", your account will be deleted permanently from the server, and you will need to manually remove your passkey.", preferredStyle: .alert)
-        
-        let deleteAction = UIAlertAction(title: "Delete Me, You Brute", style: UIAlertAction.Style.destructive) { [weak self] _ in self?._pkdInstance?.delete { _ in self?._setUpUI() } }
+        let alertController = UIAlertController(title: "SLUG-DELETE-CONFIRM-HEADER".localizedVariant, message: String(format: "SLUG-CLEAR-CONFIRM-MESSAGE-FORMAT".localizedVariant, "SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant), preferredStyle: .alert)
+
+        let deleteAction = UIAlertAction(title: "SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant, style: UIAlertAction.Style.destructive) { [weak self] _ in self?._pkdInstance?.delete { _ in self?._setUpUI() } }
         
         alertController.addAction(deleteAction)
         
-        let cancelAction = UIAlertAction(title: "No, I Changed My Mind", style: UIAlertAction.Style.default, handler: nil)
+        let cancelAction = UIAlertAction(title: "SLUG-DELETE-CONFIRM-CANCEL-BUTTON".localizedVariant, style: UIAlertAction.Style.default, handler: nil)
         
         alertController.addAction(cancelAction)
         

@@ -59,3 +59,14 @@ public extension Bundle {
      */
     var defaultBaseURIString: String { object(forInfoDictionaryKey: "PKDDefaultBaseURI") as? String ?? "" }
 }
+
+/* ###################################################################################################################################### */
+// MARK: - String Extension -
+/* ###################################################################################################################################### */
+public extension StringProtocol {
+    /* ################################################################## */
+    /**
+     - returns: the localized string (main bundle) for this string.
+     */
+    var localizedVariant: String { NSLocalizedString(self as? String ?? "", comment: "") }
+}
