@@ -20,7 +20,6 @@
 
 import Foundation
 import AuthenticationServices
-import KeychainSwift
 import Combine
 
 /* ###################################################################################################################################### */
@@ -297,13 +296,6 @@ open class PKD_Handler: NSObject, ObservableObject {
          */
         let publicKey: PublicKeyStruct
     }
-
-    /* ###################################################################### */
-    /**
-     The key that we use to store the user ID in the KeyChain.
-     */
-    static private let _userIDKeychainKey = "\(Bundle.main.bundleIdentifier ?? "").PKD_UserID"
-
     /* ###################################################################### */
     /**
      We maintain a consistent session, because the challenges are set to work across a session.
@@ -723,10 +715,6 @@ public extension PKD_Handler {
      This completely removes the user ID from the KeyChain.
      */
     func clearUserInfo() {
-        let swiftKeychainWrapper = KeychainSwift()
-        swiftKeychainWrapper.synchronizable = true
-        swiftKeychainWrapper.delete(Self._userIDKeychainKey)
-        swiftKeychainWrapper.clear()
         self.originalCredo = ""
         self.originalDisplayName = ""
         self._storedUserIDString = nil

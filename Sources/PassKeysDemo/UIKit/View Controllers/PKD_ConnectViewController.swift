@@ -183,13 +183,13 @@ extension PKD_ConnectViewController {
     /**
      This contains a display name.
      */
-    private var _displayName: String? { self._displayNameTextField?.text }
+    private var _displayName: String? { self._displayNameTextField?.text?.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     /* ###################################################################### */
     /**
      This contains a credo.
      */
-    private var _credo: String? { self._credoTextField?.text }
+    private var _credo: String? { self._credoTextField?.text?.trimmingCharacters(in: .whitespacesAndNewlines) }
 }
 
 /* ###################################################################################################################################### */
@@ -262,7 +262,7 @@ private extension PKD_ConnectViewController {
                 message = "SLUG-ERROR-6"
             }
             
-            message += "\n\(error.localizedDescription)"
+            message = message.localizedVariant + "\n\(error.localizedDescription)"
             
             let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
             alertController.addAction(UIAlertAction(title: "SLUG-OK-BUTTON".localizedVariant, style: .default))
@@ -279,7 +279,7 @@ private extension PKD_ConnectViewController {
         
         view.subviews.forEach { $0.removeFromSuperview() }
         
-        // If we are registered, but not logged in, we show a login button. At the bottom of the screen, is a debug button, to remove the keychain info.
+        // If we are not logged in, we show a login button, and a text field and a register button.
         if !(self._pkdInstance?.isLoggedIn ?? false) {
             let displayNameEditField = UITextField()
             displayNameEditField.text = ""
@@ -317,17 +317,6 @@ private extension PKD_ConnectViewController {
                 stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
             ])
-
-            let nukeButton = UIButton(type: .system)
-            config = UIButton.Configuration.plain()
-            config.baseForegroundColor = .systemRed
-            config.attributedTitle = AttributedString("SLUG-CLEAR-LOGIN-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._clearLoginFont]))
-            nukeButton.configuration = config
-            nukeButton.addTarget(self, action: #selector(_clearAllLoginInfo), for: .touchUpInside)
-            view.addSubview(nukeButton)
-            nukeButton.translatesAutoresizingMaskIntoConstraints = false
-            nukeButton.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
-            nukeButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor).isActive = true
         // If we are logged in, we read the data from the server, and show it in two text boxes. There are three buttons, below the text boxes, and the update button is enabled, if there has been a change in the text boxes.
         } else if self._pkdInstance?.isLoggedIn ?? false {
             let displayNameEditField = UITextField()
@@ -437,33 +426,12 @@ private extension PKD_ConnectViewController {
 private extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
-     This nukes all the login info.
-     */
-    @objc func _clearAllLoginInfo() {
-        let alertController = UIAlertController(title: "SLUG-CLEAR-CONFIRM-HEADER".localizedVariant, message: String(format: "SLUG-CLEAR-CONFIRM-MESSAGE-FORMAT".localizedVariant, "SLUG-CLEAR-CONFIRM-OK-BUTTON".localizedVariant), preferredStyle: .alert)
-        
-                                                let deleteAction = UIAlertAction(title: "SLUG-CLEAR-CONFIRM-OK-BUTTON".localizedVariant, style: UIAlertAction.Style.destructive) { [weak self] _ in
-            self?._pkdInstance?.clearUserInfo()
-            self?._setUpUI()
-        }
-        
-        alertController.addAction(deleteAction)
-        
-        let cancelAction = UIAlertAction(title: "SLUG-CLEAR-CONFIRM-CANCEL-BUTTON".localizedVariant, style: UIAlertAction.Style.default, handler: nil)
-        
-        alertController.addAction(cancelAction)
-        
-        self.present(alertController, animated: true, completion: nil)
-    }
-
-    /* ###################################################################### */
-    /**
      Called to begin the process of registration.
      
      Whatever is in the displayName field will be used as the PassKey name.
      */
     @objc func _register() {
-        self._pkdInstance?.create(displayName: self._displayNameTextField?.text) { [weak self] _ in self?._setUpUI() }
+        self._pkdInstance?.create(displayName: self._displayName) { [weak self] _ in self?._setUpUI() }
     }
     
     /* ###################################################################### */
@@ -479,7 +447,7 @@ private extension PKD_ConnectViewController {
      This is called when the user selects the "Delete" button. They are given a confirmation prompt, before the operation is done.
      */
     @objc func _deleteUser() {
-        let alertController = UIAlertController(title: "SLUG-DELETE-CONFIRM-HEADER".localizedVariant, message: String(format: "SLUG-CLEAR-CONFIRM-MESSAGE-FORMAT".localizedVariant, "SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant), preferredStyle: .alert)
+        let alertController = UIAlertController(title: "SLUG-DELETE-CONFIRM-HEADER".localizedVariant, message: String(format: "SLUG-DELETE-CONFIRM-MESSAGE-FORMAT".localizedVariant, "SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant), preferredStyle: .alert)
 
         let deleteAction = UIAlertAction(title: "SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant, style: UIAlertAction.Style.destructive) { [weak self] _ in self?._pkdInstance?.delete { _ in self?._setUpUI() } }
         

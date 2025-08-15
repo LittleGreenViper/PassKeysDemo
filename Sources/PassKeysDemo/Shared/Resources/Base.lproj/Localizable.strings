@@ -24,8 +24,6 @@
 "SLUG-REGISTER-BUTTON"                  =   "Register";
 // The title of the login button.
 "SLUG-LOGIN-BUTTON"                     =   "Login";
-// The title of the clear login button (at the bottom of the screen).
-"SLUG-CLEAR-LOGIN-BUTTON"               =   "Clear All Login Info";
 // The title of the update button.
 "SLUG-UPDATE-BUTTON"                    =   "Update";
 // The title of the logout button.
@@ -39,17 +37,6 @@
 "SLUG-DISPLAY-NAME-PLACEHOLDER"         =   "Enter A Display Name";
 // The placeholder text for the credo text field.
 "SLUG-CREDO-PLACEHOLDER"                =   "Enter A Credo";
-
-// MARK: - CLEAR LOGIN DATA CONFIRM ALERT -
-
-// The header for the clear login info confirmation alert.
-"SLUG-CLEAR-CONFIRM-HEADER"             =   "CLEAR LOCAL LOGIN INFORMATION?";
-// The body for the clear login info confirmation alert. This is a format. The placeholder is the text for the OK button.
-"SLUG-CLEAR-CONFIRM-MESSAGE-FORMAT"     =   "If you select \"%@\", this will clear the login data from the keychain (but not the server or the passkey). This is really a debug operation.";
-// The OK button for the clear login info alert.
-"SLUG-CLEAR-CONFIRM-OK-BUTTON"          =   "Delete the Local Login Info";
-// The cancel button.
-"SLUG-CLEAR-CONFIRM-CANCEL-BUTTON"      =   "Cancel";
 
 // MARK: - DELETE CONFIRM ALERT -
 

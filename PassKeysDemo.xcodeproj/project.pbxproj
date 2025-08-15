@@ -10,7 +10,6 @@
 		D406C8A62E4DFDC400D7AC43 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D406C8A42E4DFDC400D7AC43 /* Localizable.strings */; };
 		D406C8A72E4DFDC400D7AC43 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D406C8A42E4DFDC400D7AC43 /* Localizable.strings */; };
 		D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */; };
-		D4137C4F2E3E9E0D0039AFC3 /* KeychainSwift in Frameworks */ = {isa = PBXBuildFile; productRef = D4137C4E2E3E9E0D0039AFC3 /* KeychainSwift */; };
 		D42C349B2E3CF300002C325B /* PKD_Handler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42C349A2E3CF300002C325B /* PKD_Handler.swift */; };
 		D43C32752E4D3C1400F3B374 /* PKD_MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D43C32722E4D3C1400F3B374 /* PKD_MainView.swift */; };
 		D43C32762E4D3C1400F3B374 /* PKD_SwiftUIApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D43C32732E4D3C1400F3B374 /* PKD_SwiftUIApp.swift */; };
@@ -18,7 +17,6 @@
 		D43C32792E4D3CCE00F3B374 /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
 		D43C327A2E4D3CCE00F3B374 /* PKD_Handler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42C349A2E3CF300002C325B /* PKD_Handler.swift */; };
 		D43C327B2E4D3CD500F3B374 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C52E33AD1A001593B7 /* LaunchScreen.storyboard */; };
-		D43C327E2E4D3D3800F3B374 /* KeychainSwift in Frameworks */ = {isa = PBXBuildFile; productRef = D43C327D2E4D3D3800F3B374 /* KeychainSwift */; };
 		D44C206A2E35502C000C8BD0 /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
 		D499A5CB2E33AD1A001593B7 /* PKD_AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C12E33AD1A001593B7 /* PKD_AppDelegate.swift */; };
 		D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C82E33AD1A001593B7 /* PKD_SceneDelegate.swift */; };
@@ -58,7 +56,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D43C327E2E4D3D3800F3B374 /* KeychainSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -66,7 +63,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D4137C4F2E3E9E0D0039AFC3 /* KeychainSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -247,7 +243,6 @@
 			);
 			name = PassKeysDemoSwiftUI;
 			packageProductDependencies = (
-				D43C327D2E4D3D3800F3B374 /* KeychainSwift */,
 			);
 			productName = PassKeysDemoSwiftUI;
 			productReference = D43C32662E4D3BF300F3B374 /* PassKeysDemoSwiftUI.app */;
@@ -267,7 +262,6 @@
 			);
 			name = PassKeysDemoUIKit;
 			packageProductDependencies = (
-				D4137C4E2E3E9E0D0039AFC3 /* KeychainSwift */,
 			);
 			productName = PassKeysDemo;
 			productReference = D499A5A82E33ACF4001593B7 /* PassKeysDemoUIKit.app */;
@@ -301,7 +295,6 @@
 			mainGroup = D499A59F2E33ACF4001593B7;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				D4137C4D2E3E9E0D0039AFC3 /* XCRemoteSwiftPackageReference "keychain-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D499A5A92E33ACF4001593B7 /* Products */;
@@ -670,30 +663,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		D4137C4D2E3E9E0D0039AFC3 /* XCRemoteSwiftPackageReference "keychain-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/evgenyneu/keychain-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 24.0.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		D4137C4E2E3E9E0D0039AFC3 /* KeychainSwift */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = D4137C4D2E3E9E0D0039AFC3 /* XCRemoteSwiftPackageReference "keychain-swift" */;
-			productName = KeychainSwift;
-		};
-		D43C327D2E4D3D3800F3B374 /* KeychainSwift */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = D4137C4D2E3E9E0D0039AFC3 /* XCRemoteSwiftPackageReference "keychain-swift" */;
-			productName = KeychainSwift;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D499A5A02E33ACF4001593B7 /* Project object */;
 }

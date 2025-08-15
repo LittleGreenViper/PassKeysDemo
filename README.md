@@ -4,8 +4,6 @@
 
 - The server side of this project relies on the well-established [WebAuthn PHP Library](https://github.com/lbuchs/WebAuthn), to provide authentication services.
 
-- The client side of this project relies on the [KeychainSwift Library](https://github.com/evgenyneu/keychain-swift), to ease integration into the iOS keychain.
-
 - The client requires iOS 17 or greater.
 
 - The server requires a simple LAMP server, with PHP 8 or greater.
