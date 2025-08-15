@@ -57,7 +57,13 @@ open class PKD_Handler: NSObject, ObservableObject {
     /**
      This is what is returned to the login callback.
      */
-    public enum Errors: Error {
+    public enum PKD_Errors: Error {
+        /* ################################################################## */
+        /**
+         No error.
+         */
+        case none
+        
         /* ################################################################## */
         /**
          Failed, because we have no local userID registered.
@@ -86,7 +92,7 @@ open class PKD_Handler: NSObject, ObservableObject {
         /**
          Failed, because of a communication issue.
          */
-        case communicationError
+        case communicationError(Error?)
 
         /* ################################################################## */
         /**
@@ -98,32 +104,41 @@ open class PKD_Handler: NSObject, ObservableObject {
         /**
          Returns a localized string, with the error description.
          */
-        var localizedDescription: String {
-            var ret = "Unknown error"
+        var localizedDescripion: String {
+            var ret = "SLUG-ERROR-PKDH-6".localizedVariant
             
             switch self {
+            case .none:
+                ret = ""
+                break
+                
             case .noUserID:
-                ret = "No user with this ID registered"
+                ret = "SLUG-ERROR-PKDH-0".localizedVariant
                 break
                 
             case .alreadyRegistered:
-                ret = "A user with this ID is already registered"
+                ret = "SLUG-ERROR-PKDH-1".localizedVariant
                 break
                 
             case .notLoggedIn:
-                ret = "Not logged in"
+                ret = "SLUG-ERROR-PKDH-2".localizedVariant
                 break
                 
             case .alreadyLoggedIn:
-                ret = "Already logged in"
+                ret = "SLUG-ERROR-PKDH-3".localizedVariant
                 break
                 
-            case .communicationError:
-                ret = "Communication Error"
+            case .communicationError(let inError):
+                ret = "SLUG-ERROR-PKDH-4".localizedVariant
+                
+                if let err = inError,
+                   !err.localizedDescription.isEmpty {
+                    ret += ": " + err.localizedDescription
+                }
                 break
                 
             case .badInputParameters:
-                ret = "Bad Input Parameters"
+                ret = "SLUG-ERROR-PKDH-5".localizedVariant
                 break
            }
             
@@ -388,7 +403,7 @@ open class PKD_Handler: NSObject, ObservableObject {
     /**
      If the handler encounters an error, it sets this.
      */
-    @Published public private(set) var lastError: Error?
+    @Published public private(set) var lastError: PKD_Errors = .none
 }
 
 /* ###################################################################################################################################### */
@@ -417,55 +432,6 @@ extension PKD_Handler {
 extension PKD_Handler {
     /* ###################################################################### */
     /**
-     Called to log in a user, via a POST transaction.
-     
-     - parameter inURLString: The URL String we are calling.
-     - parameter inPayload: The POST arguments.
-     */
-    private func _postLoginResponse(to inURLString: String, payload inPayload: [String: Any]) {
-        guard let url = URL(string: inURLString),
-              let responseData = try? JSONSerialization.data(withJSONObject: inPayload),
-              !responseData.isEmpty
-        else { return }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.httpBody = responseData
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
-        
-        DispatchQueue.main.async {
-            self.lastError = nil
-            self._session.dataTask(with: request) { inData, inResponse, inError in
-                guard let response = inResponse as? HTTPURLResponse else { return }
-                if let data = inData {
-                    if 200 == response.statusCode,
-                       let token = String(data: data, encoding: .utf8),
-                       !token.isEmpty {
-                        self._bearerToken = token
-                        DispatchQueue.main.async { self.isLoggedIn = true }
-                    } else {
-                        self._credentialID = nil
-                        self._bearerToken = nil
-                        DispatchQueue.main.async {
-                            self.lastError = Errors.communicationError
-                            self.isLoggedIn = false
-                        }
-                    }
-                } else {
-                    self._credentialID = nil
-                    self._bearerToken = nil
-                    DispatchQueue.main.async {
-                        self.lastError = Errors.communicationError
-                        self.isLoggedIn = false
-                    }
-                }
-            }.resume()
-        }
-    }
-    
-    /* ###################################################################### */
-    /**
      Called to create a new user, via a POST transaction.
      
      - parameter inURLString: The URL String we are calling.
@@ -483,7 +449,7 @@ extension PKD_Handler {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
         DispatchQueue.main.async {
-            self.lastError = nil
+            self.lastError = .none
             self._session.dataTask(with: request) { inData, inResponse, inError in
                 guard let response = inResponse as? HTTPURLResponse else { return }
                 if let data = inData {
@@ -505,7 +471,7 @@ extension PKD_Handler {
                             self._credentialID = nil
                             self._bearerToken = nil
                             DispatchQueue.main.async {
-                                self.lastError = Errors.communicationError
+                                self.lastError = PKD_Errors.communicationError(nil)
                                 self.isLoggedIn = false
                             }
                         }
@@ -513,9 +479,66 @@ extension PKD_Handler {
                         self._credentialID = nil
                         self._bearerToken = nil
                         DispatchQueue.main.async {
-                            self.lastError = Errors.communicationError
+                            self.lastError = PKD_Errors.communicationError(nil)
                             self.isLoggedIn = false
                         }
+                    }
+                }
+            }.resume()
+        }
+    }
+    
+    /* ###################################################################### */
+    /**
+     Called to log in a user, via a POST transaction.
+     
+     - parameter inURLString: The URL String we are calling.
+     - parameter inPayload: The POST arguments.
+     */
+    private func _postLoginResponse(to inURLString: String, payload inPayload: [String: Any]) {
+        guard let url = URL(string: inURLString),
+              let responseData = try? JSONSerialization.data(withJSONObject: inPayload),
+              !responseData.isEmpty
+        else { return }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = responseData
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
+        
+        DispatchQueue.main.async {
+            self.lastError = .none
+            self._session.dataTask(with: request) { inData, inResponse, inError in
+                guard let response = inResponse as? HTTPURLResponse else { return }
+                print(response.statusCode)
+                if let data = inData {
+                    if 200 == response.statusCode,
+                       let token = String(data: data, encoding: .utf8),
+                       !token.isEmpty {
+                        self._bearerToken = token
+                        DispatchQueue.main.async { self.isLoggedIn = true }
+                    } else if 404 == response.statusCode {
+                        self._credentialID = nil
+                        self._bearerToken = nil
+                        DispatchQueue.main.async {
+                            self.lastError = PKD_Errors.noUserID
+                            self.isLoggedIn = false
+                        }
+                    } else {
+                        self._credentialID = nil
+                        self._bearerToken = nil
+                        DispatchQueue.main.async {
+                            self.lastError = PKD_Errors.communicationError(nil)
+                            self.isLoggedIn = false
+                        }
+                    }
+                } else {
+                    self._credentialID = nil
+                    self._bearerToken = nil
+                    DispatchQueue.main.async {
+                        self.lastError = PKD_Errors.communicationError(nil)
+                        self.isLoggedIn = false
                     }
                 }
             }.resume()
@@ -555,21 +578,21 @@ extension PKD_Handler {
                         inCompletion(.success(options))
                     } catch {
                         self.clearUserInfo()
-                        inCompletion(.failure(Errors.communicationError))
+                        inCompletion(.failure(PKD_Errors.communicationError(nil)))
                     }
                 } else {
                     self.clearUserInfo()
                     if let error = inError {
                         inCompletion(.failure(error))
                     } else {
-                        inCompletion(.failure(Errors.communicationError))
+                        inCompletion(.failure(PKD_Errors.communicationError(nil)))
                     }
                     return
                 }
             }.resume()
         } else {
             self.clearUserInfo()
-            inCompletion(.failure(Errors.noUserID))
+            inCompletion(.failure(PKD_Errors.noUserID))
         }
     }
     
@@ -601,7 +624,7 @@ extension PKD_Handler {
             controller.performRequests()
         } else {
             self.clearUserInfo()
-            inCompletion(.failure(Errors.noUserID))
+            inCompletion(.failure(PKD_Errors.noUserID))
         }
     }
     
@@ -624,12 +647,12 @@ extension PKD_Handler {
                    !responseString.isEmpty {
                     if let jsonResponse = try? JSONDecoder().decode([String: String].self, from: data),
                        let _ = jsonResponse["error"] {
-                        inCompletion(.failure(Errors.noUserID))
+                        inCompletion(.failure(PKD_Errors.noUserID))
                     } else {
                         inCompletion(.success(responseString))
                     }
                 } else {
-                    inCompletion(.failure(Errors.communicationError))
+                    inCompletion(.failure(PKD_Errors.communicationError(nil)))
                 }
             }
         }.resume()
@@ -732,7 +755,7 @@ public extension PKD_Handler {
      */
     func login(completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .login
-        DispatchQueue.main.async { self.lastError = nil }
+        DispatchQueue.main.async { self.lastError = .none }
         if !self.isLoggedIn {
             self._getLoginChallenge { inResponse in
                 DispatchQueue.main.async {
@@ -747,21 +770,21 @@ public extension PKD_Handler {
                             controller.presentationContextProvider = self
                             controller.performRequests()
                         } else {
-                            self.lastError = Errors.communicationError
-                            inCompletion(.failure(Errors.communicationError))
+                            self.lastError = PKD_Errors.communicationError(nil)
+                            inCompletion(.failure(PKD_Errors.communicationError(nil)))
                         }
                         break
                         
                     case .failure(let inError):
-                        self.lastError = inError
-                        inCompletion(.failure(inError))
+                        self.lastError = PKD_Errors.communicationError(inError)
+                        inCompletion(.failure(PKD_Errors.communicationError(inError)))
                     }
                 }
             }
         } else {
             DispatchQueue.main.async {
-                self.lastError = Errors.alreadyLoggedIn
-                inCompletion(.failure(Errors.alreadyLoggedIn))
+                self.lastError = PKD_Errors.alreadyLoggedIn
+                inCompletion(.failure(PKD_Errors.alreadyLoggedIn))
             }
         }
     }
@@ -781,14 +804,14 @@ public extension PKD_Handler {
             self._bearerToken = nil
             self._cachedSession = nil
             DispatchQueue.main.async {
-                self.lastError = nil
+                self.lastError = .none
                 self.isLoggedIn = false
                 inCompletion?(.success)
             }
             return
         }
         DispatchQueue.main.async {
-            self.lastError = nil
+            self.lastError = .none
             if self.isLoggedIn {
                 self.lastOperation = .logout
                 if self.isLoggedIn,
@@ -804,8 +827,8 @@ public extension PKD_Handler {
                     self._session.dataTask(with: request) { inData, inResponse, inError in
                         DispatchQueue.main.async {
                             if let error = inError {
-                                self.lastError = error
-                                inCompletion?(.failure(error))
+                                self.lastError = PKD_Errors.communicationError(error)
+                                inCompletion?(.failure(PKD_Errors.communicationError(error)))
                             } else if let response = inResponse as? HTTPURLResponse,
                                       200 == response.statusCode {
                                 self.isLoggedIn = false
@@ -813,18 +836,18 @@ public extension PKD_Handler {
                                 self._cachedSession = nil
                                 inCompletion?(.success)
                             } else {
-                                self.lastError = Errors.communicationError
-                                inCompletion?(.failure(Errors.communicationError))
+                                self.lastError = PKD_Errors.communicationError(nil)
+                                inCompletion?(.failure(PKD_Errors.communicationError(nil)))
                             }
                         }
                    }.resume()
                 } else {
-                    self.lastError = Errors.notLoggedIn
-                    inCompletion?(.failure(Errors.notLoggedIn))
+                    self.lastError = PKD_Errors.notLoggedIn
+                    inCompletion?(.failure(PKD_Errors.notLoggedIn))
                 }
             } else {
-                self.lastError = Errors.notLoggedIn
-                inCompletion?(.failure(Errors.notLoggedIn))
+                self.lastError = PKD_Errors.notLoggedIn
+                inCompletion?(.failure(PKD_Errors.notLoggedIn))
             }
         }
     }
@@ -840,15 +863,15 @@ public extension PKD_Handler {
      */
     func create(displayName inDisplayName: String? = nil, completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .createUser
-        DispatchQueue.main.async { self.lastError = nil }
+        DispatchQueue.main.async { self.lastError = .none }
         if !self.isLoggedIn {
             self._getCreateChallenge(displayName: inDisplayName) { inCreateChallengeResponse in
                 if case .success(let value) = inCreateChallengeResponse {
                     self._nextStepInCreate(with: value) { inResponse in
                         DispatchQueue.main.async {
                             if case let .failure(inReason) = inResponse {
-                                self.lastError = inReason
-                                inCompletion(.failure(inReason))
+                                self.lastError = PKD_Errors.communicationError(inReason)
+                                inCompletion(.failure(PKD_Errors.communicationError(inReason)))
                             } else {
                                 inCompletion(.success)
                             }
@@ -856,15 +879,15 @@ public extension PKD_Handler {
                     }
                 } else {
                     DispatchQueue.main.async {
-                        self.lastError = Errors.communicationError
-                        inCompletion(.failure(Errors.communicationError))
+                        self.lastError = PKD_Errors.communicationError(nil)
+                        inCompletion(.failure(PKD_Errors.communicationError(nil)))
                     }
                 }
             }
         } else {
             DispatchQueue.main.async {
-                self.lastError = Errors.alreadyLoggedIn
-                inCompletion(.failure(Errors.alreadyLoggedIn))
+                self.lastError = PKD_Errors.alreadyLoggedIn
+                inCompletion(.failure(PKD_Errors.alreadyLoggedIn))
             }
         }
     }
@@ -879,7 +902,7 @@ public extension PKD_Handler {
     */
     func read(completion inCompletion: @escaping ReadCallback) {
         self.lastOperation = .readUser
-        DispatchQueue.main.async { self.lastError = nil }
+        DispatchQueue.main.async { self.lastError = .none }
         if self.isLoggedIn,
         let bearerToken = self._bearerToken,
            !bearerToken.isEmpty {
@@ -905,15 +928,15 @@ public extension PKD_Handler {
                         self.originalCredo = credo
                         inCompletion((displayName, credo), .success)
                     } else {
-                        self.lastError = Errors.communicationError
-                        inCompletion(nil, .failure(Errors.communicationError))
+                        self.lastError = PKD_Errors.communicationError(nil)
+                        inCompletion(nil, .failure(PKD_Errors.communicationError(nil)))
                     }
                 }
             }.resume()
         } else {
             DispatchQueue.main.async {
-                self.lastError = Errors.notLoggedIn
-                inCompletion(nil, .failure(Errors.notLoggedIn))
+                self.lastError = PKD_Errors.notLoggedIn
+                inCompletion(nil, .failure(PKD_Errors.notLoggedIn))
             }
         }
     }
@@ -930,7 +953,7 @@ public extension PKD_Handler {
           */
     func update(displayName inDisplayName: String, credo inCredo: String, completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .updateUser
-        DispatchQueue.main.async { self.lastError = nil }
+        DispatchQueue.main.async { self.lastError = .none }
         if self.isLoggedIn,
            let bearerToken = self._bearerToken,
            !bearerToken.isEmpty {
@@ -947,29 +970,29 @@ public extension PKD_Handler {
                 self._session.dataTask(with: request) { _, inResponse, inError in
                     DispatchQueue.main.async {
                         if let error = inError {
-                            self.lastError = error
-                            inCompletion(.failure(error))
+                            self.lastError = PKD_Errors.communicationError(error)
+                            inCompletion(.failure(PKD_Errors.communicationError(error)))
                         } else if let response = inResponse as? HTTPURLResponse,
                                   200 == response.statusCode {
                             self.originalDisplayName = displayName
                             self.originalCredo = credo
                             inCompletion(.success)
                         } else {
-                            self.lastError = Errors.communicationError
-                            inCompletion(.failure(Errors.communicationError))
+                            self.lastError = PKD_Errors.communicationError(nil)
+                            inCompletion(.failure(PKD_Errors.communicationError(nil)))
                         }
                     }
                }.resume()
            } else {
                DispatchQueue.main.async {
-                   self.lastError = Errors.badInputParameters
-                   inCompletion(.failure(Errors.badInputParameters))
+                   self.lastError = PKD_Errors.badInputParameters
+                   inCompletion(.failure(PKD_Errors.badInputParameters))
                }
            }
         } else {
             DispatchQueue.main.async {
-                self.lastError = Errors.notLoggedIn
-                inCompletion(.failure(Errors.notLoggedIn))
+                self.lastError = PKD_Errors.notLoggedIn
+                inCompletion(.failure(PKD_Errors.notLoggedIn))
             }
         }
     }
@@ -986,7 +1009,7 @@ public extension PKD_Handler {
      */
     func delete(completion inCompletion: ServerResponseCallback? = nil) {
         self.lastOperation = .deleteUser
-        DispatchQueue.main.async { self.lastError = nil }
+        DispatchQueue.main.async { self.lastError = .none }
         if self.isLoggedIn,
            let bearerToken = self._bearerToken,
            !bearerToken.isEmpty {
@@ -1000,15 +1023,15 @@ public extension PKD_Handler {
             self._session.dataTask(with: request) { _, inResponse, inError in
                 DispatchQueue.main.async {
                     if let error = inError {
-                        self.lastError = error
-                        inCompletion?(.failure(error))
+                        self.lastError = PKD_Errors.communicationError(error)
+                        inCompletion?(.failure(PKD_Errors.communicationError(error)))
                     } else if let response = inResponse as? HTTPURLResponse,
                               200 == response.statusCode {
                         self.logout(isLocalOnly: true) { inResult in
                             DispatchQueue.main.async {
                                 if case let .failure(error) = inResult {
-                                    self.lastError = error
-                                    inCompletion?(.failure(error))
+                                    self.lastError = PKD_Errors.communicationError(error)
+                                    inCompletion?(.failure(PKD_Errors.communicationError(error)))
                                 } else {
                                     self.clearUserInfo()
                                     inCompletion?(.success)
@@ -1016,15 +1039,15 @@ public extension PKD_Handler {
                             }
                         }
                     } else {
-                        self.lastError = Errors.communicationError
-                        inCompletion?(.failure(Errors.communicationError))
+                        self.lastError = PKD_Errors.communicationError(nil)
+                        inCompletion?(.failure(PKD_Errors.communicationError(nil)))
                     }
                 }
            }.resume()
         } else {
             DispatchQueue.main.async {
-                self.lastError = Errors.notLoggedIn
-                inCompletion?(.failure(Errors.notLoggedIn))
+                self.lastError = PKD_Errors.notLoggedIn
+                inCompletion?(.failure(PKD_Errors.notLoggedIn))
             }
         }
     }

@@ -247,8 +247,8 @@ class PKDServer {
     This is called with a userId, and returns the challenge string, as Base64 URL-encoded.
     */
     public function loginChallenge() {
-        $challenge = random_bytes(32);  // Create a new challenge.
-        // Pass these on to the next step.
+        $challenge = random_bytes(32);
+        // Pass on to the next step.
         $_SESSION['loginChallenge'] = $challenge;
         echo(base64url_encode($challenge));
     }
@@ -264,6 +264,13 @@ class PKDServer {
     public function loginCompletion() {
         $userId = $this->getArgs->userId;
         $credentialId = $this->getArgs->credentialId;
+        
+        if (empty($credentialId) && empty($userId)) {
+            http_response_code(400);
+            echo '&#128169;';   // Oh, poo.
+            exit;
+        }
+        
         $row = [];
         if (!empty($userId)) {
             $stmt = $this->pdoInstance->prepare('SELECT credentialId, displayName, signCount, publicKey FROM webauthn_credentials WHERE userId = ?');
@@ -328,8 +335,9 @@ class PKDServer {
                 echo json_encode(['error' => $e->getMessage()]);
             }
         } else {
-            http_response_code(400);
-            echo '&#128169;';   // Oh, poo.
+            http_response_code(404);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'User Not Found']);
         }
     }
     

@@ -63,3 +63,13 @@
 "SLUG-ERROR-4"                          =   "User data update failed.";
 "SLUG-ERROR-5"                          =   "User deletion failed.";
 "SLUG-ERROR-6"                          =   "Unknown Error";
+
+// MARK: -PKDHandler Errors -
+
+"SLUG-ERROR-PKDH-0"                     =   "No user with this ID registered";
+"SLUG-ERROR-PKDH-1"                     =   "A user with this ID is already registered";
+"SLUG-ERROR-PKDH-2"                     =   "Not logged in";
+"SLUG-ERROR-PKDH-3"                     =   "Already logged in";
+"SLUG-ERROR-PKDH-4"                     =   "Communication Error";
+"SLUG-ERROR-PKDH-5"                     =   "Bad Input Parameters";
+"SLUG-ERROR-PKDH-6"                     =   "Unknown Error";

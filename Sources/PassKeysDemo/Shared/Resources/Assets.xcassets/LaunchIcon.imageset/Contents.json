@@ -1,7 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "Icon.pdf",
+      "filename" : "LaunchScreenLight.pdf",
+      "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "LaunchScreenDark.pdf",
       "idiom" : "universal"
     }
   ],

@@ -27,10 +27,9 @@
 
 /* Begin PBXFileReference section */
 		D406C8A02E4DFB7600D7AC43 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		D406C8A32E4DFCF200D7AC43 /* PassKeysDemoSwiftUI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PassKeysDemoSwiftUI.entitlements; sourceTree = "<group>"; };
 		D406C8A52E4DFDC400D7AC43 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Base; path = Base.lproj/Localizable.strings; sourceTree = "<group>"; };
 		D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_ConnectViewController.swift; sourceTree = "<group>"; };
-		D40941472E34FDE8001431EB /* PassKeysDemoUIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PassKeysDemoUIKit.entitlements; sourceTree = "<group>"; };
+		D40941472E34FDE8001431EB /* PassKeysDemo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PassKeysDemo.entitlements; sourceTree = "<group>"; };
 		D42C349A2E3CF300002C325B /* PKD_Handler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_Handler.swift; sourceTree = "<group>"; };
 		D43C32662E4D3BF300F3B374 /* PassKeysDemoSwiftUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PassKeysDemoSwiftUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D43C32722E4D3C1400F3B374 /* PKD_MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_MainView.swift; sourceTree = "<group>"; };
@@ -72,7 +71,6 @@
 		D406C89F2E4DFB5B00D7AC43 /* Meta */ = {
 			isa = PBXGroup;
 			children = (
-				D406C8A32E4DFCF200D7AC43 /* PassKeysDemoSwiftUI.entitlements */,
 				D406C8A02E4DFB7600D7AC43 /* Info.plist */,
 			);
 			path = Meta;
@@ -113,6 +111,14 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		D41CECF42E4F4E6300F8C457 /* Meta */ = {
+			isa = PBXGroup;
+			children = (
+				D40941472E34FDE8001431EB /* PassKeysDemo.entitlements */,
+			);
+			path = Meta;
+			sourceTree = "<group>";
+		};
 		D43C32742E4D3C1400F3B374 /* SwiftUI */ = {
 			isa = PBXGroup;
 			children = (
@@ -144,6 +150,7 @@
 			children = (
 				D406C8A92E4DFDE600D7AC43 /* Sources */,
 				D406C8A82E4DFDDC00D7AC43 /* Resources */,
+				D41CECF42E4F4E6300F8C457 /* Meta */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -194,7 +201,6 @@
 		D499A5D22E33AD1F001593B7 /* Meta */ = {
 			isa = PBXGroup;
 			children = (
-				D40941472E34FDE8001431EB /* PassKeysDemoUIKit.entitlements */,
 				D499A5C32E33AD1A001593B7 /* Info.plist */,
 			);
 			path = Meta;
@@ -390,7 +396,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Sources/PassKeysDemo/SwiftUI/Meta/PassKeysDemoSwiftUI.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Sources/PassKeysDemo/Shared/Meta/PassKeysDemo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = P53V4JS928;
@@ -422,7 +428,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Sources/PassKeysDemo/SwiftUI/Meta/PassKeysDemoSwiftUI.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Sources/PassKeysDemo/Shared/Meta/PassKeysDemo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = P53V4JS928;
@@ -454,7 +460,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Sources/PassKeysDemo/UIKit/Meta/PassKeysDemoUIKit.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Sources/PassKeysDemo/Shared/Meta/PassKeysDemo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = P53V4JS928;
@@ -485,7 +491,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Sources/PassKeysDemo/UIKit/Meta/PassKeysDemoUIKit.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Sources/PassKeysDemo/Shared/Meta/PassKeysDemo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = P53V4JS928;

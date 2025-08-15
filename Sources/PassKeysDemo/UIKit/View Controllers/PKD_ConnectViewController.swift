@@ -236,6 +236,9 @@ private extension PKD_ConnectViewController {
      */
     func _handleError() {
         if let error = self._pkdInstance?.lastError {
+            if case .none = error {
+                return
+            }
             let title = "SLUG-ERROR-ALERT-HEADER".localizedVariant
             var message = ""
             
@@ -262,7 +265,45 @@ private extension PKD_ConnectViewController {
                 message = "SLUG-ERROR-6"
             }
             
-            message = message.localizedVariant + "\n\(error.localizedDescription)"
+            // We need to create the error string locally, because it looks like Combine screws with the casting of the enum, and we get a generic localizedDescription.
+            var localizedErrorDescripion = "SLUG-ERROR-PKDH-6".localizedVariant
+            
+            switch error {
+            case .none:
+                localizedErrorDescripion = ""
+                break
+                
+            case .noUserID:
+                localizedErrorDescripion = "SLUG-ERROR-PKDH-0".localizedVariant
+                break
+                
+            case .alreadyRegistered:
+                localizedErrorDescripion = "SLUG-ERROR-PKDH-1".localizedVariant
+                break
+                
+            case .notLoggedIn:
+                localizedErrorDescripion = "SLUG-ERROR-PKDH-2".localizedVariant
+                break
+                
+            case .alreadyLoggedIn:
+                localizedErrorDescripion = "SLUG-ERROR-PKDH-3".localizedVariant
+                break
+                
+            case .communicationError(let inError):
+                localizedErrorDescripion = "SLUG-ERROR-PKDH-4".localizedVariant
+                
+                if let err = inError,
+                   !err.localizedDescription.isEmpty {
+                    localizedErrorDescripion += ": " + err.localizedDescription
+                }
+                break
+                
+            case .badInputParameters:
+                localizedErrorDescripion = "SLUG-ERROR-PKDH-5".localizedVariant
+                break
+            }
+            
+            message = message.localizedVariant + (!localizedErrorDescripion.isEmpty ? "\n\(localizedErrorDescripion)" : "")
             
             let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
             alertController.addAction(UIAlertAction(title: "SLUG-OK-BUTTON".localizedVariant, style: .default))
