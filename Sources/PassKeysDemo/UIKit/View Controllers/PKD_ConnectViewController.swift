@@ -126,12 +126,6 @@ class PKD_ConnectViewController: UIViewController {
     
     /* ###################################################################### */
     /**
-     The font used for the "Clear All Login Info" button, at the bottom of the login screen.
-     */
-    static private let _clearLoginFont = UIFont.italicSystemFont(ofSize: 15)
-    
-    /* ###################################################################### */
-    /**
      This is the instance of the PKD API Handler that we use to communicate with the server.
      */
     private var _pkdInstance: PKD_Handler?
@@ -353,6 +347,7 @@ private extension PKD_ConnectViewController {
             view.addSubview(stack)
 
             NSLayoutConstraint.activate([
+                stack.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.6),
                 stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
             ])
@@ -405,6 +400,7 @@ private extension PKD_ConnectViewController {
             view.addSubview(stack)
             
             NSLayoutConstraint.activate([
+                stack.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.6),
                 stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             ])

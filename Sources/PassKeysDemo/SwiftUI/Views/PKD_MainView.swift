@@ -29,6 +29,12 @@ import AuthenticationServices
 struct PKD_MainView: View {
     /* ###################################################################### */
     /**
+     The font used for the buttons in the screen.
+     */
+    static private let _buttonFont = Font.system(size: 20, weight: .bold)
+    
+    /* ###################################################################### */
+    /**
      */
     @State private var _pkdInstance: PKD_Handler?
 
@@ -36,47 +42,67 @@ struct PKD_MainView: View {
     /**
      */
     var body: some View {
-        VStack {
-            if let pkdInstance = _pkdInstance {
-                TextField("SLUG-DISPLAY-NAME-PLACEHOLDER".localizedVariant, text: .constant(""))
-                if pkdInstance.isLoggedIn {
-                    TextField("SLUG-CREDO-PLACEHOLDER".localizedVariant, text: .constant(""))
-                    HStack {
-                        Button("SLUG-DELETE-BUTTON".localizedVariant) {
-                            pkdInstance.delete()
+        GeometryReader { inProxy in
+            let columnWidth = inProxy.size.width * 0.6
+            let spacing = CGFloat(30)
+            
+            VStack(spacing: spacing) {
+                if let pkdInstance = _pkdInstance {
+                    TextField("SLUG-DISPLAY-NAME-PLACEHOLDER".localizedVariant, text: .constant(""))
+                        .textFieldStyle(.roundedBorder)
+                        .controlSize(.regular)
+                    if pkdInstance.isLoggedIn {
+                        TextField("SLUG-CREDO-PLACEHOLDER".localizedVariant, text: .constant(""))
+                            .textFieldStyle(.roundedBorder)
+                            .controlSize(.regular)
+                        HStack(alignment: .center) {
+                            Button("SLUG-DELETE-BUTTON".localizedVariant) {
+                                pkdInstance.delete()
+                            }
+                            .font(Self._buttonFont)
+                            .frame(width: columnWidth / 3)
+                            .foregroundStyle(.red)
+                            Spacer()
+                            Button("SLUG-LOGOUT-BUTTON".localizedVariant) {
+                                pkdInstance.logout()
+                            }
+                            .font(Self._buttonFont)
+                            .frame(width: columnWidth / 3)
+                            Spacer()
+                            Button("SLUG-UPDATE-BUTTON".localizedVariant) {
+                            }
+                            .font(Self._buttonFont)
+                            .frame(width: columnWidth / 3)
                         }
-                        Spacer()
-                        Button("SLUG-LOGOUT-BUTTON".localizedVariant) {
-                            pkdInstance.logout()
-                        }
-                        Spacer()
-                        Button("SLUG-UPDATE-BUTTON".localizedVariant) {
+                    } else {
+                        HStack(alignment: .center) {
+                            Button("SLUG-REGISTER-BUTTON".localizedVariant) {
+                            }
+                            .font(Self._buttonFont)
+                            .frame(width: columnWidth / 2)
+                            Button("SLUG-LOGIN-BUTTON".localizedVariant) {
+                                pkdInstance.login { inSuccess in
+                                    
+                                }
+                            }
+                            .frame(width: columnWidth / 2)
+                            .font(Self._buttonFont)
                         }
                     }
                 } else {
-                    HStack {
-                        Button("SLUG-REGISTER-BUTTON".localizedVariant) {
-                        }
-                        Spacer()
-                        Button("SLUG-LOGIN-BUTTON".localizedVariant) {
-                            pkdInstance.login { inSuccess in
-                                
-                            }
-                        }
-                    }
+                    Text("ERROR!")
                 }
-            } else {
-                Text("ERROR!")
             }
+            .frame(width: columnWidth)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .padding()
         .onAppear {
             let presentationAnchor = UIApplication.shared
-                    .connectedScenes
-                    .compactMap { $0 as? UIWindowScene }
-                    .flatMap { $0.windows }
-                    .first { $0.isKeyWindow } ?? UIWindow()
-
+                .connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap { $0.windows }
+                .first { $0.isKeyWindow } ?? UIWindow()
+            
             self._pkdInstance = self._pkdInstance ?? PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString, baseURIString: Bundle.main.defaultBaseURIString, presentationAnchor: presentationAnchor)
         }
     }
