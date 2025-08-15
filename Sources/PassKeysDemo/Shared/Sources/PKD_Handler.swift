@@ -314,7 +314,7 @@ open class PKD_Handler: NSObject, ObservableObject {
     /**
      If we are currently logged in, this contains the bearer token. Nil, if not logged in.
      */
-    private var _bearerToken: String? { didSet { DispatchQueue.main.async { self.isLoggedIn = !(self._bearerToken ?? "").isEmpty } } }
+    private var _bearerToken: String?
 
     /* ###################################################################### */
     /**
@@ -441,6 +441,7 @@ extension PKD_Handler {
         request.httpBody = responseData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
+        
         DispatchQueue.main.async {
             self.lastError = nil
             self._session.dataTask(with: request) { inData, inResponse, inError in
@@ -450,10 +451,21 @@ extension PKD_Handler {
                        let token = String(data: data, encoding: .utf8),
                        !token.isEmpty {
                         self._bearerToken = token
+                        DispatchQueue.main.async { self.isLoggedIn = true }
                     } else {
                         self._credentialID = nil
                         self._bearerToken = nil
-                        DispatchQueue.main.async { self.lastError = Errors.communicationError }
+                        DispatchQueue.main.async {
+                            self.lastError = Errors.communicationError
+                            self.isLoggedIn = false
+                        }
+                    }
+                } else {
+                    self._credentialID = nil
+                    self._bearerToken = nil
+                    DispatchQueue.main.async {
+                        self.lastError = Errors.communicationError
+                        self.isLoggedIn = false
                     }
                 }
             }.resume()
@@ -496,11 +508,22 @@ extension PKD_Handler {
                             credo = userData.credo
                             self.originalDisplayName = displayName
                             self.originalCredo = credo
+                            DispatchQueue.main.async { self.isLoggedIn = true }
+                        } else {
+                            self._credentialID = nil
+                            self._bearerToken = nil
+                            DispatchQueue.main.async {
+                                self.lastError = Errors.communicationError
+                                self.isLoggedIn = false
+                            }
                         }
                     } else {
                         self._credentialID = nil
                         self._bearerToken = nil
-                        DispatchQueue.main.async { self.lastError = Errors.communicationError }
+                        DispatchQueue.main.async {
+                            self.lastError = Errors.communicationError
+                            self.isLoggedIn = false
+                        }
                     }
                 }
             }.resume()

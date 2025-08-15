@@ -194,17 +194,17 @@ class PKDServer {
             // The first call generates a challenge string, that is signed and submitted in the second call.
             // It also stashes the GET values for the userID and displayName, in the session variable.
             case Operation::login:
-                if (!empty($this->getArgs->credentialId)) {
-                    $this->loginCompletion();
-                } else {
+                if (empty($this->postArgs)) {
                     $this->loginChallenge();
+                } else {
+                    $this->loginCompletion();
                 }
                 break;
                 
             // This is a two-part operation.
             // The first call generates a challenge string, that is signed and submitted in the second call.
             case Operation::createUser:
-                if (!empty($this->getArgs->userId)) {
+                if (empty($this->postArgs)) {
                     $this->createChallenge();
                 } else {
                     $this->createCompletion();
@@ -250,9 +250,6 @@ class PKDServer {
         $challenge = random_bytes(32);  // Create a new challenge.
         // Pass these on to the next step.
         $_SESSION['loginChallenge'] = $challenge;
-        if (isset($this->getArgs->userId) && !empty($this->getArgs->userId)) {
-            $_SESSION['loginUserId'] = $this->getArgs->userId;
-        }
         echo(base64url_encode($challenge));
     }
     
@@ -266,8 +263,7 @@ class PKDServer {
     */
     public function loginCompletion() {
         $userId = $this->getArgs->userId;
-        $credentialId = base64_decode($this->getArgs->credentialId);
-        $challenge = $_SESSION['loginChallenge'];
+        $credentialId = $this->getArgs->credentialId;
         $row = [];
         if (!empty($userId)) {
             $stmt = $this->pdoInstance->prepare('SELECT credentialId, displayName, signCount, publicKey FROM webauthn_credentials WHERE userId = ?');
@@ -286,14 +282,21 @@ class PKDServer {
             exit;
         }
         
-        $clientDataJSON = base64_decode($this->postArgs['clientDataJSON']);   // This is a signed record, with various user data.
-        $authenticatorData = base64_decode($this->postArgs['authenticatorData']); // A record, with any authenticator (YubiKey, etc. Not used for our demo).
-        $signature = base64_decode($this->postArgs['signature']); // The signature for the record, against the public key.
+        // This is a signed record, with various user data.
+        $clientDataJSON = base64_decode($this->postArgs['clientDataJSON']);
+        // A record, with any authenticator (YubiKey, etc. Not used for our demo). 
+        $authenticatorData = base64_decode($this->postArgs['authenticatorData']);
+        // The signature for the record, against the public key.
+        $signature = base64_decode($this->postArgs['signature']); 
+        // The public key for the passkey.
         $publicKey = $row['publicKey'];
+        // The challenge that was returned to the client, for signing.
+        $challenge = $_SESSION['loginChallenge'];
+        // The number of times it has been validated.
         $signCount = intval($row['signCount']);
         
-        if (!empty($credentialId)) {
-            // If there was no signed client data record, with a matching challenge, then game over, man.
+        // If there was no signed client data record, with a matching challenge, then game over, man.
+        if (!empty($publicKey) && !empty($credentialId) && !empty($userId)) {
             try {
                 $success = $this->webAuthnInstance->processGet(
                     $clientDataJSON,
@@ -405,7 +408,7 @@ class PKDServer {
                 // We will be storing all this into the database.
                 $params = [
                     $userId,
-                    $data->credentialId,
+                    base64_encode($data->credentialId),
                     $displayName,
                     intval($data->signCount),
                     $bearerToken,
