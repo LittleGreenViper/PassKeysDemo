@@ -1,5 +1,7 @@
 {
   "webcredentials": {
-    "apps": [ "<YOUR TEAM ID>.<APP BUNDLE ID>" ]
+    "apps": [   "P53V4JS928.com.litlegreenviper.PassKeysDemoUIKit",
+                "P53V4JS928.com.litlegreenviper.PassKeysDemoSwiftUI"
+            ]
   }
 }

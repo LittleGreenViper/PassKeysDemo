@@ -31,7 +31,7 @@ struct PKD_MainView: View {
     /**
      The font used for the buttons in the screen.
      */
-    static private let _buttonFont = Font.system(size: 20, weight: .bold)
+    static private let _buttonFont = Font.system(size: 15, weight: .bold)
     
     /* ###################################################################### */
     /**

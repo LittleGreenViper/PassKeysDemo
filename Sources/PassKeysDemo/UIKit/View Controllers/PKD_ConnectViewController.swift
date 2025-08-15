@@ -122,7 +122,7 @@ class PKD_ConnectViewController: UIViewController {
     /**
      The font used for the buttons in the screen.
      */
-    static private let _buttonFont = UIFont.systemFont(ofSize: 20, weight: .bold)
+    static private let _buttonFont = UIFont.systemFont(ofSize: 15, weight: .bold)
     
     /* ###################################################################### */
     /**
@@ -258,31 +258,35 @@ private extension PKD_ConnectViewController {
             }
             
             // We need to create the error string locally, because it looks like Combine screws with the casting of the enum, and we get a generic localizedDescription.
-            var localizedErrorDescripion = "SLUG-ERROR-PKDH-6".localizedVariant
+            var localizedErrorDescripion = "SLUG-ERROR-PKDH-0".localizedVariant
             
             switch error {
             case .none:
                 localizedErrorDescripion = ""
                 break
                 
-            case .noUserID:
-                localizedErrorDescripion = "SLUG-ERROR-PKDH-0".localizedVariant
-                break
-                
-            case .alreadyRegistered:
+            case .noAvailablePassKeys:
                 localizedErrorDescripion = "SLUG-ERROR-PKDH-1".localizedVariant
                 break
                 
-            case .notLoggedIn:
+            case .noUserID:
                 localizedErrorDescripion = "SLUG-ERROR-PKDH-2".localizedVariant
                 break
-                
-            case .alreadyLoggedIn:
+
+            case .alreadyRegistered:
                 localizedErrorDescripion = "SLUG-ERROR-PKDH-3".localizedVariant
                 break
                 
-            case .communicationError(let inError):
+            case .notLoggedIn:
                 localizedErrorDescripion = "SLUG-ERROR-PKDH-4".localizedVariant
+                break
+                
+            case .alreadyLoggedIn:
+                localizedErrorDescripion = "SLUG-ERROR-PKDH-5".localizedVariant
+                break
+                
+            case .communicationError(let inError):
+                localizedErrorDescripion = "SLUG-ERROR-PKDH-6".localizedVariant
                 
                 if let err = inError,
                    !err.localizedDescription.isEmpty {
@@ -291,7 +295,11 @@ private extension PKD_ConnectViewController {
                 break
                 
             case .badInputParameters:
-                localizedErrorDescripion = "SLUG-ERROR-PKDH-5".localizedVariant
+                localizedErrorDescripion = "SLUG-ERROR-PKDH-7".localizedVariant
+                break
+                
+            case .biometricsNotAvailable:
+                localizedErrorDescripion = "SLUG-ERROR-PKDH-8".localizedVariant
                 break
             }
             

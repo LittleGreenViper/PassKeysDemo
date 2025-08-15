@@ -66,10 +66,12 @@
 "SLUG-ERROR-6"                          =   "Unknown Error";
 
 // PKD_Handler Errors
-"SLUG-ERROR-PKDH-0"                     =   "No user with this ID registered";
-"SLUG-ERROR-PKDH-1"                     =   "A user with this ID is already registered";
-"SLUG-ERROR-PKDH-2"                     =   "Not logged in";
-"SLUG-ERROR-PKDH-3"                     =   "Already logged in";
-"SLUG-ERROR-PKDH-4"                     =   "Communication Error";
-"SLUG-ERROR-PKDH-5"                     =   "Bad Input Parameters";
-"SLUG-ERROR-PKDH-6"                     =   "Unknown Error";
+"SLUG-ERROR-PKDH-0"                     =   "Unknown Error";
+"SLUG-ERROR-PKDH-1"                     =   "There are no available PassKeys";
+"SLUG-ERROR-PKDH-2"                     =   "No user with this ID registered";
+"SLUG-ERROR-PKDH-3"                     =   "A user with this ID is already registered";
+"SLUG-ERROR-PKDH-4"                     =   "Not logged in";
+"SLUG-ERROR-PKDH-5"                     =   "Already logged in";
+"SLUG-ERROR-PKDH-6"                     =   "Communication Error";
+"SLUG-ERROR-PKDH-7"                     =   "Bad Input Parameters";
+"SLUG-ERROR-PKDH-8"                     =   "You must fave Face ID or Touch ID enabled";

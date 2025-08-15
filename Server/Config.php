@@ -19,25 +19,3 @@ class Config {
     /// This is the database user password.
     static $g_db_password = '<DB PASSWORD>';
 }
-
-// MARK: - Global Utility Functions
-
-/***********************/
-/**
-    Converts a binary value to a Base64 URL string.
-    @param string $data The data (can be binary) to be converted to Base64URL
-    @return the data provided, as a Base64URL-encoded string.
- */
-function base64url_encode(string $data): string {
-    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
-}
-
-/***********************/
-/**
-    Converts a Base64URL string back to its original form.
-    @param string $data The Base64URL-encoded string to be converted to its original data.
-    @return the Base64URL-encoded string provided, as the original (possibly binary) data. FALSE, if the conversion fails.
- */
-function base64url_decode(string $data): string|false {
-    return base64_decode(str_pad(strtr($data, '-_', '+/'), strlen($data) % 4, '=', STR_PAD_RIGHT));
-}
