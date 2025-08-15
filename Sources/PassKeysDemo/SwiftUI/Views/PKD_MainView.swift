@@ -19,6 +19,7 @@
 */
 
 import SwiftUI
+import AuthenticationServices
 
 /* ###################################################################################################################################### */
 // MARK: - Main Screen View -
@@ -29,13 +30,54 @@ struct PKD_MainView: View {
     /* ###################################################################### */
     /**
      */
+    @State private var _pkdInstance: PKD_Handler?
+
+    /* ###################################################################### */
+    /**
+     */
     var body: some View {
         VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+            if let pkdInstance = _pkdInstance {
+                TextField("SLUG-DISPLAY-NAME-PLACEHOLDER".localizedVariant, text: .constant(""))
+                if pkdInstance.isLoggedIn {
+                    TextField("SLUG-CREDO-PLACEHOLDER".localizedVariant, text: .constant(""))
+                    HStack {
+                        Button("SLUG-DELETE-BUTTON".localizedVariant) {
+                            pkdInstance.delete()
+                        }
+                        Spacer()
+                        Button("SLUG-LOGOUT-BUTTON".localizedVariant) {
+                            pkdInstance.logout()
+                        }
+                        Spacer()
+                        Button("SLUG-UPDATE-BUTTON".localizedVariant) {
+                        }
+                    }
+                } else {
+                    HStack {
+                        Button("SLUG-REGISTER-BUTTON".localizedVariant) {
+                        }
+                        Spacer()
+                        Button("SLUG-LOGIN-BUTTON".localizedVariant) {
+                            pkdInstance.login { inSuccess in
+                                
+                            }
+                        }
+                    }
+                }
+            } else {
+                Text("ERROR!")
+            }
         }
         .padding()
+        .onAppear {
+            let presentationAnchor = UIApplication.shared
+                    .connectedScenes
+                    .compactMap { $0 as? UIWindowScene }
+                    .flatMap { $0.windows }
+                    .first { $0.isKeyWindow } ?? UIWindow()
+
+            self._pkdInstance = self._pkdInstance ?? PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString, baseURIString: Bundle.main.defaultBaseURIString, presentationAnchor: presentationAnchor)
+        }
     }
 }

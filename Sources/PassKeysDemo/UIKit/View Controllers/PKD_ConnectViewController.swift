@@ -27,9 +27,7 @@ import Combine  // For the subscriptions in viewDidAppear
 /**
  This is the single view controller for the UIKit version of the PassKeys demo.
  
- If the user has not registerd a passkey, they are presented with a register button, and a display name text field.
- 
- If they have registered, they are presented with a login button.
+ If the user has not logge in, they are presented with a register button, and a display name text field, along with a login button.
  
  If they are logged in, they are presented with two text fields, and three buttons (Delete, Logout, and Update).
  */
