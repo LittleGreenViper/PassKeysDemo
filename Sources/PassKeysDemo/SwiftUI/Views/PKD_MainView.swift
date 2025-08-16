@@ -67,10 +67,20 @@ struct PKD_MainView: View {
                 TextField("SLUG-DISPLAY-NAME-PLACEHOLDER".localizedVariant, text: self.$_displayNameText)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.regular)
+                    .onChange(of: _displayNameText) {
+                        if _displayNameText.count > 255 {
+                            _displayNameText = String(_displayNameText.prefix(255))
+                        }
+                    }
                 if self._pkdInstance.isLoggedIn {
                     TextField("SLUG-CREDO-PLACEHOLDER".localizedVariant, text: self.$_credoText)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.regular)
+                        .onChange(of: _credoText) {
+                            if _credoText.count > 255 {
+                                _credoText = String(_credoText.prefix(255))
+                            }
+                        }
                     HStack(alignment: .center) {
                         Button("SLUG-DELETE-BUTTON".localizedVariant) {
                             self._pkdInstance.delete()
