@@ -303,18 +303,6 @@ open class PKD_Handler: NSObject, ObservableObject {
 
     /* ###################################################################### */
     /**
-     We hold onto this, so we can calculate a "dirty" state.
-     */
-    var originalDisplayName = ""
-
-    /* ###################################################################### */
-    /**
-     We hold onto this, so we can calculate a "dirty" state.
-     */
-    var originalCredo = ""
-
-    /* ###################################################################### */
-    /**
      The identifier for the relying party.
      */
     let relyingParty: String
@@ -364,7 +352,19 @@ open class PKD_Handler: NSObject, ObservableObject {
     }
     
     // MARK: Public Observable Properties
-    
+
+    /* ###################################################################### */
+    /**
+     We hold onto this, so we can calculate a "dirty" state.
+     */
+    @Published public private(set) var originalDisplayName = ""
+
+    /* ###################################################################### */
+    /**
+     We hold onto this, so we can calculate a "dirty" state.
+     */
+    @Published public private(set) var originalCredo = ""
+
     /* ###################################################################### */
     /**
      True, if we are currently logged in.
@@ -454,9 +454,11 @@ extension PKD_Handler {
                         if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
                             displayName = userData.displayName
                             credo = userData.credo
-                            self.originalDisplayName = displayName
-                            self.originalCredo = credo
-                            DispatchQueue.main.async { self.isLoggedIn = true }
+                            DispatchQueue.main.async {
+                                self.originalDisplayName = displayName
+                                self.originalCredo = credo
+                                self.isLoggedIn = true
+                            }
                         } else {
                             self._credentialID = nil
                             self._bearerToken = nil

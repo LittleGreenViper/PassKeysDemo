@@ -36,7 +36,24 @@ struct PKD_MainView: View {
     /* ###################################################################### */
     /**
      */
-    @State private var _pkdInstance: PKD_Handler?
+    @StateObject private var _pkdInstance = PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString,
+                                                        baseURIString: Bundle.main.defaultBaseURIString,
+                                                        presentationAnchor: UIApplication.shared
+                                                                                            .connectedScenes
+                                                                                            .compactMap { $0 as? UIWindowScene }
+                                                                                            .flatMap { $0.windows }
+                                                                                            .first { $0.isKeyWindow } ?? UIWindow()
+    )
+
+    /* ###################################################################### */
+    /**
+     */
+    @State private var _displayNameText = ""
+
+    /* ###################################################################### */
+    /**
+     */
+    @State private var _credoText = ""
 
     /* ###################################################################### */
     /**
@@ -47,63 +64,66 @@ struct PKD_MainView: View {
             let spacing = CGFloat(30)
             
             VStack(spacing: spacing) {
-                if let pkdInstance = _pkdInstance {
-                    TextField("SLUG-DISPLAY-NAME-PLACEHOLDER".localizedVariant, text: .constant(""))
+                TextField("SLUG-DISPLAY-NAME-PLACEHOLDER".localizedVariant, text: self.$_displayNameText)
+                    .textFieldStyle(.roundedBorder)
+                    .controlSize(.regular)
+                if self._pkdInstance.isLoggedIn {
+                    TextField("SLUG-CREDO-PLACEHOLDER".localizedVariant, text: self.$_credoText)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.regular)
-                    if pkdInstance.isLoggedIn {
-                        TextField("SLUG-CREDO-PLACEHOLDER".localizedVariant, text: .constant(""))
-                            .textFieldStyle(.roundedBorder)
-                            .controlSize(.regular)
-                        HStack(alignment: .center) {
-                            Button("SLUG-DELETE-BUTTON".localizedVariant) {
-                                pkdInstance.delete()
-                            }
-                            .font(Self._buttonFont)
-                            .frame(width: columnWidth / 3)
-                            .foregroundStyle(.red)
-                            Spacer()
-                            Button("SLUG-LOGOUT-BUTTON".localizedVariant) {
-                                pkdInstance.logout()
-                            }
-                            .font(Self._buttonFont)
-                            .frame(width: columnWidth / 3)
-                            Spacer()
-                            Button("SLUG-UPDATE-BUTTON".localizedVariant) {
-                            }
-                            .font(Self._buttonFont)
-                            .frame(width: columnWidth / 3)
+                    HStack(alignment: .center) {
+                        Button("SLUG-DELETE-BUTTON".localizedVariant) {
+                            self._pkdInstance.delete()
                         }
-                    } else {
-                        HStack(alignment: .center) {
-                            Button("SLUG-REGISTER-BUTTON".localizedVariant) {
-                            }
-                            .font(Self._buttonFont)
-                            .frame(width: columnWidth / 2)
-                            Button("SLUG-LOGIN-BUTTON".localizedVariant) {
-                                pkdInstance.login { inSuccess in
-                                    
+                        .font(Self._buttonFont)
+                        .frame(width: columnWidth / 3)
+                        .foregroundStyle(.red)
+                        Spacer()
+                        Button("SLUG-LOGOUT-BUTTON".localizedVariant) {
+                            self._pkdInstance.logout()
+                        }
+                        .font(Self._buttonFont)
+                        .frame(width: columnWidth / 3)
+                        Spacer()
+                        Button("SLUG-UPDATE-BUTTON".localizedVariant) {
+                            if !self._displayNameText.isEmpty {
+                                self._pkdInstance.update(displayName: self._displayNameText, credo: self._credoText) { _ in
+                                    self._displayNameText = self._pkdInstance.originalDisplayName
+                                    self._credoText = self._pkdInstance.originalCredo
                                 }
                             }
-                            .frame(width: columnWidth / 2)
-                            .font(Self._buttonFont)
+                        }
+                        .font(Self._buttonFont)
+                        .frame(width: columnWidth / 3)
+                        .disabled(self._displayNameText.isEmpty || ((self._pkdInstance.originalCredo == self._credoText) && (self._pkdInstance.originalDisplayName == self._displayNameText)))
+                    }
+                    .onAppear {
+                        self._pkdInstance.read { inData, _  in
+                            self._displayNameText = inData?.displayName ?? ""
+                            self._credoText = inData?.credo ?? ""
                         }
                     }
                 } else {
-                    Text("ERROR!")
+                    HStack(alignment: .center) {
+                        Button("SLUG-REGISTER-BUTTON".localizedVariant) {
+                        }
+                        .font(Self._buttonFont)
+                        .frame(width: columnWidth / 2)
+                        .disabled(self._displayNameText.isEmpty)
+                        Button("SLUG-LOGIN-BUTTON".localizedVariant) {
+                            self._pkdInstance.login { _ in }
+                        }
+                        .frame(width: columnWidth / 2)
+                        .font(Self._buttonFont)
+                    }
+                    .onAppear {
+                        self._displayNameText = ""
+                        self._credoText = ""
+                    }
                 }
             }
             .frame(width: columnWidth)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        }
-        .onAppear {
-            let presentationAnchor = UIApplication.shared
-                .connectedScenes
-                .compactMap { $0 as? UIWindowScene }
-                .flatMap { $0.windows }
-                .first { $0.isKeyWindow } ?? UIWindow()
-            
-            self._pkdInstance = self._pkdInstance ?? PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString, baseURIString: Bundle.main.defaultBaseURIString, presentationAnchor: presentationAnchor)
         }
     }
 }
