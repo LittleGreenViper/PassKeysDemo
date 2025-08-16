@@ -122,7 +122,13 @@ class PKD_ConnectViewController: UIViewController {
     /**
      The font used for the buttons in the screen.
      */
-    static private let _buttonFont = UIFont.systemFont(ofSize: 15, weight: .bold)
+    static private let _buttonFont = UIFont.systemFont(ofSize: 16, weight: .bold)
+    
+    /* ###################################################################### */
+    /**
+     The insets for the button titles.
+     */
+    static private let _buttonInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
     
     /* ###################################################################### */
     /**
@@ -257,7 +263,8 @@ private extension PKD_ConnectViewController {
                 message = "SLUG-ERROR-6"
             }
             
-            // We need to create the error string locally, because it looks like Combine screws with the casting of the enum, and we get a generic localizedDescription.
+            // We need to create the error string locally, because it looks like Combine screws with the casting of the enum,
+            // and we get a generic localizedDescription, so I can't do the usual, where I implement it in the enum.
             var localizedErrorDescripion = "SLUG-ERROR-PKDH-0".localizedVariant
             
             switch error {
@@ -332,12 +339,14 @@ private extension PKD_ConnectViewController {
             
             let loginButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
+            config.contentInsets = Self._buttonInsets
             config.attributedTitle = AttributedString("SLUG-LOGIN-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             loginButton.configuration = config
             loginButton.addTarget(self, action: #selector(_login), for: .touchUpInside)
 
             let registerButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
+            config.contentInsets = Self._buttonInsets
             config.attributedTitle = AttributedString("SLUG-REGISTER-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             registerButton.configuration = config
             registerButton.addTarget(self, action: #selector(_register), for: .touchUpInside)
@@ -379,6 +388,7 @@ private extension PKD_ConnectViewController {
 
             let updateButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
+            config.contentInsets = Self._buttonInsets
             config.attributedTitle = AttributedString("SLUG-UPDATE-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             updateButton.configuration = config
             updateButton.addTarget(self, action: #selector(_update), for: .touchUpInside)
@@ -386,6 +396,7 @@ private extension PKD_ConnectViewController {
 
             let logoutButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
+            config.contentInsets = Self._buttonInsets
             config.attributedTitle = AttributedString("SLUG-LOGOUT-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             logoutButton.configuration = config
             logoutButton.addTarget(self, action: #selector(_logout), for: .touchUpInside)
@@ -393,6 +404,7 @@ private extension PKD_ConnectViewController {
             let deleteButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
             config.baseForegroundColor = .systemRed
+            config.contentInsets = Self._buttonInsets
             config.attributedTitle = AttributedString("SLUG-DELETE-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             deleteButton.configuration = config
             deleteButton.addTarget(self, action: #selector(_deleteUser), for: .touchUpInside)
