@@ -33,6 +33,8 @@
 
 // MARK: - TEXT ITEMS -
 
+// The placeholder text for the display name text field, when logged out (It's a passkey name, then).
+"SLUG-PASSKEY-NAME-PLACEHOLDER"         =   "Enter A PassKey Name";
 // The placeholder text for the display name text field.
 "SLUG-DISPLAY-NAME-PLACEHOLDER"         =   "Enter A Display Name";
 // The placeholder text for the credo text field.

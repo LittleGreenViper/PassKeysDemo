@@ -35,6 +35,7 @@ struct PKD_MainView: View {
     
     /* ###################################################################### */
     /**
+     This is our observable ``PKD_Handler`` instance.
      */
     @StateObject private var _pkdInstance = PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString,
                                                         baseURIString: Bundle.main.defaultBaseURIString,
@@ -47,11 +48,13 @@ struct PKD_MainView: View {
 
     /* ###################################################################### */
     /**
+     We track the text in the display name text field, here.
      */
     @State private var _displayNameText = ""
 
     /* ###################################################################### */
     /**
+     We track the text in the credo text field, here.
      */
     @State private var _credoText = ""
 
@@ -64,7 +67,7 @@ struct PKD_MainView: View {
             let spacing = CGFloat(30)
             
             VStack(spacing: spacing) {
-                TextField("SLUG-DISPLAY-NAME-PLACEHOLDER".localizedVariant, text: self.$_displayNameText)
+                TextField("SLUG-\(self._pkdInstance.isLoggedIn ? "DISPLAY" : "PASSKEY")-NAME-PLACEHOLDER".localizedVariant, text: self.$_displayNameText)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.regular)
                     .onChange(of: _displayNameText) {
@@ -72,6 +75,7 @@ struct PKD_MainView: View {
                             _displayNameText = String(_displayNameText.prefix(255))
                         }
                     }
+                // If we are logged in, we read the data from the server, and show it in two text boxes. There are three buttons, below the text boxes, and the update button is enabled, if there has been a change in the text boxes.
                 if self._pkdInstance.isLoggedIn {
                     TextField("SLUG-CREDO-PLACEHOLDER".localizedVariant, text: self.$_credoText)
                         .textFieldStyle(.roundedBorder)
@@ -113,9 +117,10 @@ struct PKD_MainView: View {
                             self._credoText = inData?.credo ?? ""
                         }
                     }
-                } else {
+                } else {    // If we are not logged in, we show a text field, a register button, and a login button.
                     HStack(alignment: .center) {
                         Button("SLUG-REGISTER-BUTTON".localizedVariant) {
+                            self._pkdInstance.create(displayName: self._displayNameText) { _ in }
                         }
                         .font(Self._buttonFont)
                         .frame(width: columnWidth / 2)

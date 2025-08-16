@@ -327,30 +327,30 @@ private extension PKD_ConnectViewController {
         
         view.subviews.forEach { $0.removeFromSuperview() }
         
-        // If we are not logged in, we show a login button, and a text field and a register button.
+        // If we are not logged in, we show a text field, a register button, and a login button.
         if !(self._pkdInstance?.isLoggedIn ?? false) {
             let displayNameEditField = UITextField()
             displayNameEditField.text = ""
-            displayNameEditField.placeholder = "SLUG-DISPLAY-NAME-PLACEHOLDER".localizedVariant
+            displayNameEditField.placeholder = "SLUG-PASSKEY-NAME-PLACEHOLDER".localizedVariant
             displayNameEditField.addTarget(self, action: #selector(_textFieldChanged), for: .editingChanged)
             displayNameEditField.clearButtonMode = .whileEditing
             displayNameEditField.borderStyle = .roundedRect
             self._displayNameTextField = displayNameEditField
-            
-            let loginButton = UIButton(type: .system)
-            var config = UIButton.Configuration.plain()
-            config.contentInsets = Self._buttonInsets
-            config.attributedTitle = AttributedString("SLUG-LOGIN-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
-            loginButton.configuration = config
-            loginButton.addTarget(self, action: #selector(_login), for: .touchUpInside)
 
             let registerButton = UIButton(type: .system)
-            config = UIButton.Configuration.plain()
+            var config = UIButton.Configuration.plain()
             config.contentInsets = Self._buttonInsets
             config.attributedTitle = AttributedString("SLUG-REGISTER-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             registerButton.configuration = config
             registerButton.addTarget(self, action: #selector(_register), for: .touchUpInside)
             self._registerButton = registerButton
+
+            let loginButton = UIButton(type: .system)
+            config = UIButton.Configuration.plain()
+            config.contentInsets = Self._buttonInsets
+            config.attributedTitle = AttributedString("SLUG-LOGIN-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
+            loginButton.configuration = config
+            loginButton.addTarget(self, action: #selector(_login), for: .touchUpInside)
             
             let buttonStack = UIStackView(arrangedSubviews: [registerButton, loginButton])
             buttonStack.axis = .horizontal
@@ -386,13 +386,13 @@ private extension PKD_ConnectViewController {
             credoEditField.borderStyle = .roundedRect
             self._credoTextField = credoEditField
 
-            let updateButton = UIButton(type: .system)
+            let deleteButton = UIButton(type: .system)
             var config = UIButton.Configuration.plain()
+            config.baseForegroundColor = .systemRed
             config.contentInsets = Self._buttonInsets
-            config.attributedTitle = AttributedString("SLUG-UPDATE-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
-            updateButton.configuration = config
-            updateButton.addTarget(self, action: #selector(_update), for: .touchUpInside)
-            self._updateButton = updateButton
+            config.attributedTitle = AttributedString("SLUG-DELETE-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
+            deleteButton.configuration = config
+            deleteButton.addTarget(self, action: #selector(_deleteUser), for: .touchUpInside)
 
             let logoutButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
@@ -401,13 +401,13 @@ private extension PKD_ConnectViewController {
             logoutButton.configuration = config
             logoutButton.addTarget(self, action: #selector(_logout), for: .touchUpInside)
 
-            let deleteButton = UIButton(type: .system)
+            let updateButton = UIButton(type: .system)
             config = UIButton.Configuration.plain()
-            config.baseForegroundColor = .systemRed
             config.contentInsets = Self._buttonInsets
-            config.attributedTitle = AttributedString("SLUG-DELETE-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
-            deleteButton.configuration = config
-            deleteButton.addTarget(self, action: #selector(_deleteUser), for: .touchUpInside)
+            config.attributedTitle = AttributedString("SLUG-UPDATE-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
+            updateButton.configuration = config
+            updateButton.addTarget(self, action: #selector(_update), for: .touchUpInside)
+            self._updateButton = updateButton
 
             let buttonStack = UIStackView(arrangedSubviews: [deleteButton, logoutButton, updateButton])
             buttonStack.axis = .horizontal
