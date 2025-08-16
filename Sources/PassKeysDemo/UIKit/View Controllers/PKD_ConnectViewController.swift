@@ -128,7 +128,7 @@ class PKD_ConnectViewController: UIViewController {
     /**
      The insets for the button titles.
      */
-    static private let _buttonInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+    static private let _buttonInsets = NSDirectionalEdgeInsets(top: 8, leading: 4, bottom: 8, trailing: 4)
     
     /* ###################################################################### */
     /**

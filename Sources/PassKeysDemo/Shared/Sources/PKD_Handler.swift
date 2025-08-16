@@ -551,8 +551,9 @@ extension PKD_Handler {
      */
     private func _getCreateChallenge(displayName inDisplayName: String? = nil, completion inCompletion: @escaping (Result<_PublicKeyCredentialCreationOptionsStruct, Error>) -> Void) {
         let userIdString = self._createNewUserIdString()
-        if !userIdString.isEmpty {
-            var urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)&userId=\(userIdString)"
+        if !userIdString.isEmpty,
+           let urlIDString = userIdString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+            var urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)&userId=\(urlIDString)"
             if let displayName = inDisplayName?.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
                !displayName.isEmpty {
                 urlString += "&displayName=\(displayName)"
@@ -685,7 +686,8 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
         } else if let assertion = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
             self._credentialID = assertion.credentialID.base64EncodedString()
             if let idString = self._credentialID,
-               !idString.isEmpty {
+               !idString.isEmpty,
+               let urlIDString = idString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
                 let payload: [String: String] = [
                     "clientDataJSON": assertion.rawClientDataJSON.base64EncodedString(),
                     "authenticatorData": assertion.rawAuthenticatorData.base64EncodedString(),
@@ -693,7 +695,7 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
                     "credentialId": idString
                 ]
                 
-                self._postLoginResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)&credentialId=\(idString)", payload: payload)
+                self._postLoginResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)&credentialId=\(urlIDString)", payload: payload)
             }
         }
     }

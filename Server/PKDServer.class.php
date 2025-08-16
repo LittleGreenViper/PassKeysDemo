@@ -61,6 +61,30 @@ session_start();
 // We rely on the WebAuthn library.
 use lbuchs\WebAuthn\WebAuthn;
 
+// MARK: - Global Utility Functions
+
+/***********************/
+/**
+    Converts a binary value to a Base64 URL string.
+    @param string $data The data (can be binary) to be converted to Base64URL
+    @return the data provided, as a Base64URL-encoded string.
+ */
+function base64url_encode(string $data): string {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+/***********************/
+/**
+    Converts a Base64URL string back to its original form.
+    @param string $data The Base64URL-encoded string to be converted to its original data.
+    @return the Base64URL-encoded string provided, as the original (possibly binary) data. FALSE, if the conversion fails.
+ */
+function base64url_decode(string $data): string|false {
+    return base64_decode(str_pad(strtr($data, '-_', '+/'), strlen($data) % 4, '=', STR_PAD_RIGHT));
+}
+
+// MARK: - Operation Keys
+
 /******************************************/
 /**
 These are the various operation keys.
@@ -138,6 +162,8 @@ enum Operation: String {
      */
     case deleteUser = 'delete';
 }
+
+// MARK: - Main Class
 
 /******************************************/
 /**
@@ -264,7 +290,6 @@ class PKDServer {
     public function loginCompletion() {
         $userId = $this->getArgs->userId;
         $credentialId = $this->getArgs->credentialId;
-        
         if (empty($credentialId) && empty($userId)) {
             http_response_code(400);
             echo '&#128169;';   // Oh, poo.
@@ -381,6 +406,9 @@ class PKDServer {
         
             header('Content-Type: application/json');
             echo json_encode(['publicKey' => $args->publicKey]);
+        } elseif (!empty($row)) {
+            http_response_code(409);
+            echo json_encode(['error' => 'User Already Registered']);
         } else {
             http_response_code(400);
             echo '&#128169;';   // Oh, poo.
