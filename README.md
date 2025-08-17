@@ -1,4 +1,4 @@
-![Icon](icon.png)
+![Icon](./icon.png)
 
 # Passkeys Demo Project
 
