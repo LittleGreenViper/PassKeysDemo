@@ -25,11 +25,15 @@ import Combine  // For the subscriptions in viewDidAppear
 // MARK: - Passkeys Interaction View Controller -
 /* ###################################################################################################################################### */
 /**
- This is the single view controller for the UIKit version of the PassKeys demo.
+ This is the main display of the app.
  
- If the user has not logge in, they are presented with a register button, and a display name text field, along with a login button.
+ If we have not logged in, then a text field (PassKey title) is presented, and two buttons (Register and Login) are presented under it.
  
- If they are logged in, they are presented with two text fields, and three buttons (Delete, Logout, and Update).
+ These are the two PassKey operations. All the rest are only valid, once we have used a passkey to login (or create a new account, via the Register button).
+ 
+ If we are logged in, then two text fields (display name and credo) are presented, with three buttons under (Delete, Logout, and Update).
+ 
+ These do not involve the passkey.
  */
 class PKD_ConnectViewController: UIViewController {
     /* ################################################################################################################################## */

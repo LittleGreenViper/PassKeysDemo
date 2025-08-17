@@ -25,6 +25,15 @@ import AuthenticationServices
 // MARK: - Main Screen View -
 /* ###################################################################################################################################### */
 /**
+ This is the main display of the app.
+ 
+ If we have not logged in, then a text field (PassKey title) is presented, and two buttons (Register and Login) are presented under it.
+ 
+ These are the two PassKey operations. All the rest are only valid, once we have used a passkey to login (or create a new account, via the Register button).
+ 
+ If we are logged in, then two text fields (display name and credo) are presented, with three buttons under (Delete, Logout, and Update).
+ 
+ These do not involve the passkey.
  */
 struct PKD_MainView: View {
     /* ###################################################################### */
@@ -66,11 +75,16 @@ struct PKD_MainView: View {
     
     /* ###################################################################### */
     /**
+     This generates the error body message, based on the state of the ``PKD_Handler`` instance.
+     
+     - parameter inError: The error being displayed.
+     - parameter inLastOperation: The last operation performed by the handler.
+     - returns: A string, with the localized error message.
      */
-    private func _errorMessage(for err: PKD_Handler.PKD_Errors, lastOp: PKD_Handler.UserOperation) -> String {
-        // Map last operation to a base slug
+    private func _errorMessage(for inError: PKD_Handler.PKD_Errors, lastOp inLastOperation: PKD_Handler.UserOperation) -> String {
+        // Map the last operation to a base slug
         let opSlug: String = {
-            switch lastOp {
+            switch inLastOperation {
             case .login:
                 return "SLUG-ERROR-0"
                 
@@ -92,13 +106,15 @@ struct PKD_MainView: View {
             case .none:
                 return "SLUG-ERROR-6"
             }
-        }()
+        }().localizedVariant
 
-        // Map error to description
+        // Map the error to a localized description
         var detail = "SLUG-ERROR-PKDH-0".localizedVariant
-        switch err {
+        
+        switch inError {
         case .none:
             detail = ""
+            
         case .noAvailablePassKeys:
             detail = "SLUG-ERROR-PKDH-1".localizedVariant
             
@@ -114,25 +130,27 @@ struct PKD_MainView: View {
         case .alreadyLoggedIn:
             detail = "SLUG-ERROR-PKDH-5".localizedVariant
             
-        case .communicationError(let underlying):
+        case .communicationError(let inUnderlyingError):
             detail = "SLUG-ERROR-PKDH-6".localizedVariant
             
-            if let u = underlying, !u.localizedDescription.isEmpty {
-                detail += ": " + u.localizedDescription
+            if let err = inUnderlyingError,
+               !err.localizedDescription.isEmpty {
+                detail += ": " + err.localizedDescription
             }
+            
         case .badInputParameters:
             detail = "SLUG-ERROR-PKDH-7".localizedVariant
             
         case .biometricsNotAvailable:
             detail = "SLUG-ERROR-PKDH-8".localizedVariant
         }
-
-        let base = opSlug.localizedVariant
-        return detail.isEmpty ? base : "\(base)\n\(detail)"
+        
+        return detail.isEmpty ? opSlug : "\(opSlug)\n\(detail)"
     }
     
     /* ###################################################################### */
     /**
+     All the action happens in this View.
      */
     var body: some View {
         GeometryReader { inProxy in
@@ -211,6 +229,7 @@ struct PKD_MainView: View {
             }
             .frame(width: columnWidth)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            // This is the "are you sure?" confirmation dialog, if the user selects the Delete button.
             .confirmationDialog(
                 "SLUG-DELETE-CONFIRM-HEADER".localizedVariant,
                 isPresented: $_showDeleteConfirm,
@@ -223,6 +242,7 @@ struct PKD_MainView: View {
             } message: {
                 Text(String(format: "SLUG-DELETE-CONFIRM-MESSAGE-FORMAT".localizedVariant, "SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant))
             }
+            // This is the error alert, shown if the handler encounters an error.
             .alert(
                 "SLUG-ERROR-ALERT-HEADER".localizedVariant,
                 isPresented: Binding(
