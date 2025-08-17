@@ -19,9 +19,9 @@
 */
 
 import Foundation
-import AuthenticationServices
-import LocalAuthentication
-import Combine
+import AuthenticationServices   // PassKey Access
+import LocalAuthentication      // To test whether or not biometrics are enabled
+import Combine                  // To make the class observable.
 
 /* ###################################################################################################################################### */
 // MARK: - PassKeys Interaction Handling Class -
@@ -29,11 +29,66 @@ import Combine
 /**
  This class abstracts the communication infrastructure with the server, and acts as a model for the user interface.
  
- This implements a fairly basic CRUD functionality, with PassKeys being used for the create and login steps.
+ It can be integrated into either a UIKit app, or a SwiftUI one.
+ 
+ This is a Combine ObservableObject, and can be observed for changes.
+ 
+ ## FUNCTIONALITY:
+ 
+ This uses a shared `URLSession` (stored locally in ``PKD_Handler._cachedSession``) to interact with the server component of this demonstration app.
+ 
+ In order to access PassKeys, it uses an `AuthenticationServices` `ASAuthorizationController` Instance, to create a new PassKey (Create),
+ or it instantiates an `ASAuthorizationPlatformPublicKeyCredentialProvider` instance, to access existing PassKeys (Login).
+ 
+ PassKey use is a two-step interaction with the server. We only use them in Create and Login.
  
  Once logged in, we use a bearer token, and maintain the session.
+ The server matches the token in its session variable, against the one sent by the client, and also stores a copy in the credential database table.
+
+ The first step in either of the PassKey operations, is to fetch a "challenge" from the server. This is a simple numeric token, generated randomly by the server.
+ The client then uses `AuthenticationServices` to integrate this challenge into a signed credential payload, that is returned to the server.
+ The server then validates the signed credential, and also verifies that the challenge is the same one that it just sent.
  
- This is a Combine ObservableObject, and can be used to subscribe for changes.
+ In the case of Create, the server challenge is somewhat involved, as it returns some other data to be used by the client.
+ 
+ For login, it is just a simple number.
+ 
+ ## USAGE:
+ 
+ Use the methods exposed as public, at the end of this file:
+ 
+ ### PassKey Operations:
+ 
+ These operations will involve PassKeys, and use `AuthenticationServices` to access them.
+ 
+ - ``PKD_Handler.create()``: This expects a name for the passKey. It must be unique for the server. Once set, it cannot be changed, and will be displayed as the PassKey name.
+ 
+ - ``PKD_Handler.login()``: This uses the `AuthenticationServices` to present a PassKey selection screen to the user. If there is only one passkey, it will be named, otherwise, a list is presented. The user then executes a biometric authentication, and the login begins. A successful login operation returns a bearer token, to be returned, in subsequent operations, via the authentication header.
+ 
+ ### Post-Login Operations:
+ 
+ These operations require a successful login, and that the URL session be retained (the app is not quit).
+ 
+ - ``PKD_Handler.logout()``: This logs the user out, deletes the local credentials, and closes the session. It will usually contact the server, to ensure that the bearer token is removed, but can also be local-only.
+ 
+ - ``PKD_Handler.read()``: This reads the user data from the data table, and returns it to the calling context.
+ 
+ - ``PKD_Handler.update()``: This changes the user data.
+ 
+ - ``PKD_Handler.delete()``: This deletes the user data from the server, and also performs a logout.
+ 
+ ### Published Observable Properties:
+ 
+ These properties can be observed, using Combine.
+ 
+ - ``PKD_Handler.originalDisplayName``: This is the display name, as stored on the server. It can be used to compare for changes, in the UI-controlled text.
+ 
+ - ``PKD_Handler.originalCredo``: This is the credo, as stored on the server. It can be used to compare for changes, in the UI-controlled text.
+ 
+ - ``PKD_Handler.isLoggedIn``: This is true, when the handler has successfully logged in. It remains true, until logout.
+ 
+ - ``PKD_Handler.lastError``: This is any error that the handler wants the calling context to know about.
+
  */
 open class PKD_Handler: NSObject, ObservableObject {
     /* ###################################################################### */
@@ -42,11 +97,9 @@ open class PKD_Handler: NSObject, ObservableObject {
      
      This is always called in the main thread.
      
-     The first argument is a simple tuple, with strings for the displayName and credo.
+     The first argument is a simple tuple, with strings for the displayName and credo, and may be nil.
      
-     The second argument is a LoginResponse, with a report on the transaction success or failure.
-     
-     Both may be nil.
+     The second argument is a ``PKD_Handler.ServerResponse``, with a report on the transaction success or failure.
      */
     public typealias ReadCallback = ((displayName: String, credo: String)?, ServerResponse) -> Void
 
@@ -874,12 +927,12 @@ public extension PKD_Handler {
     /**
      Registers the user as a new one. This also logs in the user.
      
-     > NOTE: The user cannot be logged in, and cannot have an existing account.
+     > NOTE: The user cannot be already logged in, and cannot have an existing account.
      
-     - parameter inDisplayName: A new display name. If omitted (or blank), then "New User" will be assigned.
+     - parameter inPassKeyName: A new passkey name. If omitted (or blank), then "New User" will be assigned. This must be unique (so only one "New User" will work). Once assigned, this cannot be changed.
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
      */
-    func create(displayName inDisplayName: String? = nil, completion inCompletion: @escaping ServerResponseCallback) {
+    func create(passKeyName inPassKeyName: String? = nil, completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .createUser
         guard self._isBiometricAuthAvailable else {
             DispatchQueue.main.async { self.lastError = PKD_Errors.biometricsNotAvailable }
@@ -887,7 +940,7 @@ public extension PKD_Handler {
         }
         DispatchQueue.main.async { self.lastError = .none }
         if !self.isLoggedIn {
-            self._getCreateChallenge(displayName: inDisplayName) { inCreateChallengeResponse in
+            self._getCreateChallenge(displayName: inPassKeyName) { inCreateChallengeResponse in
                 if case .success(let inValue) = inCreateChallengeResponse {
                     self._nextStepInCreate(with: inValue) { inResponse in
                         DispatchQueue.main.async {

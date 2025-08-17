@@ -29,6 +29,7 @@
 		D406C8A02E4DFB7600D7AC43 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D406C8A52E4DFDC400D7AC43 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Base; path = Base.lproj/Localizable.strings; sourceTree = "<group>"; };
 		D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_ConnectViewController.swift; sourceTree = "<group>"; };
+		D40E2F942E52671B0067B3E1 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		D42C349A2E3CF300002C325B /* PKD_Handler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_Handler.swift; sourceTree = "<group>"; };
 		D43C32662E4D3BF300F3B374 /* PassKeysDemoSwiftUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PassKeysDemoSwiftUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D43C32722E4D3C1400F3B374 /* PKD_MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_MainView.swift; sourceTree = "<group>"; };
@@ -176,6 +177,7 @@
 			isa = PBXGroup;
 			children = (
 				D499A5D42E33AE58001593B7 /* PassKeysDemo */,
+				D40E2F942E52671B0067B3E1 /* README.md */,
 			);
 			path = Sources;
 			sourceTree = "<group>";

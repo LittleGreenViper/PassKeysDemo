@@ -210,7 +210,7 @@ struct PKD_MainView: View {
                 } else {    // If we are not logged in, we show a text field, a register button, and a login button.
                     HStack(alignment: .center) {
                         Button("SLUG-REGISTER-BUTTON".localizedVariant) {
-                            self._pkdInstance.create(displayName: self._displayNameText) { _ in }
+                            self._pkdInstance.create(passKeyName: self._displayNameText) { _ in }
                         }
                         .font(Self._buttonFont)
                         .frame(width: columnWidth / 2)
