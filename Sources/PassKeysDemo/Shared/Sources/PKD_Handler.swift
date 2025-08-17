@@ -564,12 +564,21 @@ extension PKD_Handler {
             self._session.dataTask(with: url) { inData, inResponse, inError in
                 if let error = inError {
                     inCompletion(.failure(error))
-                } else if let data = inData {
-                    do {
-                        let decoder = JSONDecoder()
-                        let options = try decoder.decode(_PublicKeyCredentialCreationOptionsStruct.self, from: data)
-                        inCompletion(.success(options))
-                    } catch {
+                } else if let data = inData,
+                          let response = inResponse as? HTTPURLResponse {
+                    if 200 == response.statusCode {
+                        do {
+                            let decoder = JSONDecoder()
+                            let options = try decoder.decode(_PublicKeyCredentialCreationOptionsStruct.self, from: data)
+                            inCompletion(.success(options))
+                        } catch {
+                            self.clearUserInfo()
+                            inCompletion(.failure(PKD_Errors.communicationError(nil)))
+                        }
+                    } else if 409 == response.statusCode {
+                        self.clearUserInfo()
+                        inCompletion(.failure(PKD_Errors.alreadyRegistered))
+                    } else {
                         self.clearUserInfo()
                         inCompletion(.failure(PKD_Errors.communicationError(nil)))
                     }
@@ -879,8 +888,8 @@ public extension PKD_Handler {
         DispatchQueue.main.async { self.lastError = .none }
         if !self.isLoggedIn {
             self._getCreateChallenge(displayName: inDisplayName) { inCreateChallengeResponse in
-                if case .success(let value) = inCreateChallengeResponse {
-                    self._nextStepInCreate(with: value) { inResponse in
+                if case .success(let inValue) = inCreateChallengeResponse {
+                    self._nextStepInCreate(with: inValue) { inResponse in
                         DispatchQueue.main.async {
                             if case let .failure(inReason) = inResponse {
                                 self.lastError = PKD_Errors.communicationError(inReason)
@@ -889,6 +898,12 @@ public extension PKD_Handler {
                                 inCompletion(.success)
                             }
                         }
+                    }
+                } else if case .failure(let inError) = inCreateChallengeResponse,
+                          let error = inError as? PKD_Errors {
+                    DispatchQueue.main.async {
+                        self.lastError = error
+                        inCompletion(.failure(error))
                     }
                 } else {
                     DispatchQueue.main.async {

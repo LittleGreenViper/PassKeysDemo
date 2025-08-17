@@ -2,25 +2,13 @@
 
 # Passkeys Demo Project
 
-Server Implementation
+Client Implementation
 
 ## Overview
 
-## Basic Structure
-
-This server is implemented in [PHP](https://www.php.net), and uses a simple [MySQL](https://www.mysql.com) database. It is a basic [CRUD](https://en.wikipedia.org/wiki/Create,_read,_update_and_delete) server, allowing users to create accounts, store a small amount of information securely, then access and modify that information (also securely). The server is implemented almost entirely in [one PHP file](https://github.com/LittleGreenViper/PassKeysDemo/blob/master/Server/PKDServer.class.php).
+This client is written in [Swift](https://www.swift.org). It is a "native" client for iOS. The PassKeys implementation is provided as [a "framework-independent" library](https://github.com/LittleGreenViper/PassKeysDemo/blob/master/Sources/PassKeysDemo/Shared/Sources/PKD_Handler.swift), and targets are provided for both a [UIKit](https://developer.apple.com/documentation/uikit/) app, and a [SwiftUI](https://developer.apple.com/swiftui/) app. The client app provides a basic UI to access and modify the server information.
 
 ### Operation
-
-The data stored are two strings: A "Display Name," and a "Credo."
-
-For purposes of this demonstration, these strings are limited to 255 characters in length.
-
-There are two database tables: One is used to strore the passkey credentials, and the other stores the actual user data that is presented and modified by the UI. The user never sees most of the passkey credential information.
-
-The passkey is used in two places: Registration (creating an account), and logging in. After login, the server works in the same way that most of these types of things work.
-
-### The CRUD
 
 - **C**reate - This is how a user registers a new account. They provide a string that is used as a "tag" for the passkey that will represent the account on the server. After creating the passkey, they select that passkey, whenever they want to log in.
 
@@ -30,11 +18,13 @@ The passkey is used in two places: Registration (creating an account), and loggi
 
 - **D**elete - After the user logs in, they can delete their entire server account.
 
+> NOTE: Deleting the server account **does not** delete the passkey! The user needs to do that manually, via [the Settings App](https://support.apple.com/guide/iphone/find-settings-iph079e1fe9d/17.0/ios/17.0), or [the Passwords App](https://support.apple.com/en-us/120758).
+
 ## Requirements
 
-- The server relies on the well-established [WebAuthn PHP Library](https://github.com/lbuchs/WebAuthn), to provide authentication services.
+- The client requires [iOS](https://apple.com/ios) 17 or greater, and is designed for [Xcode](https://developer.apple.com/xcode/). It is entirely possible to use this in other development environments, but that's up to the person using the project.
 
-- The server requires a [LAMP](https://en.wikipedia.org/wiki/LAMP_\(software_bundle\)) server, with [PHP](https://www.php.net) 8 or greater, and a [MySQL](https://www.mysql.com)/[MariaDB](https://mariadb.org) database (MySQL 5.4 or greater, or equivalent MariaDB). The [SQL](https://en.wikipedia.org/wiki/SQL) is written in a very "portable" format, however, so adapting to other databases should be fairly straightforward.
+- In order to adapt the targets to your own use, you should have [an Apple Developer Account](https://developer.apple.com).
 
 ## License:
 
