@@ -375,7 +375,7 @@ open class PKD_Handler: NSObject, ObservableObject {
     /**
      If the handler encounters an error, it sets this.
      */
-    @Published public private(set) var lastError: PKD_Errors = .none
+    @Published public var lastError: PKD_Errors = .none
 }
 
 /* ###################################################################################################################################### */

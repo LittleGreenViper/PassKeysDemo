@@ -57,7 +57,80 @@ struct PKD_MainView: View {
      We track the text in the credo text field, here.
      */
     @State private var _credoText = ""
+    
+    /* ###################################################################### */
+    /**
+     This is set to true, when we hit the delete button, so that the confirmation alert is shown.
+     */
+    @State private var _showDeleteConfirm = false
+    
+    /* ###################################################################### */
+    /**
+     */
+    private func _errorMessage(for err: PKD_Handler.PKD_Errors, lastOp: PKD_Handler.UserOperation) -> String {
+        // Map last operation to a base slug
+        let opSlug: String = {
+            switch lastOp {
+            case .login:
+                return "SLUG-ERROR-0"
+                
+            case .logout:
+                return "SLUG-ERROR-1"
+                
+            case .createUser:
+                return "SLUG-ERROR-2"
+                
+            case .readUser:
+                return "SLUG-ERROR-3"
+                
+            case .updateUser:
+                return "SLUG-ERROR-4"
+                
+            case .deleteUser:
+                return "SLUG-ERROR-5"
+                
+            case .none:
+                return "SLUG-ERROR-6"
+            }
+        }()
 
+        // Map error to description
+        var detail = "SLUG-ERROR-PKDH-0".localizedVariant
+        switch err {
+        case .none:
+            detail = ""
+        case .noAvailablePassKeys:
+            detail = "SLUG-ERROR-PKDH-1".localizedVariant
+            
+        case .noUserID:
+            detail = "SLUG-ERROR-PKDH-2".localizedVariant
+            
+        case .alreadyRegistered:
+            detail = "SLUG-ERROR-PKDH-3".localizedVariant
+            
+        case .notLoggedIn:
+            detail = "SLUG-ERROR-PKDH-4".localizedVariant
+            
+        case .alreadyLoggedIn:
+            detail = "SLUG-ERROR-PKDH-5".localizedVariant
+            
+        case .communicationError(let underlying):
+            detail = "SLUG-ERROR-PKDH-6".localizedVariant
+            
+            if let u = underlying, !u.localizedDescription.isEmpty {
+                detail += ": " + u.localizedDescription
+            }
+        case .badInputParameters:
+            detail = "SLUG-ERROR-PKDH-7".localizedVariant
+            
+        case .biometricsNotAvailable:
+            detail = "SLUG-ERROR-PKDH-8".localizedVariant
+        }
+
+        let base = opSlug.localizedVariant
+        return detail.isEmpty ? base : "\(base)\n\(detail)"
+    }
+    
     /* ###################################################################### */
     /**
      */
@@ -86,12 +159,11 @@ struct PKD_MainView: View {
                             }
                         }
                     HStack(alignment: .center) {
-                        Button("SLUG-DELETE-BUTTON".localizedVariant) {
-                            self._pkdInstance.delete()
+                        Button("SLUG-DELETE-BUTTON".localizedVariant, role: .destructive) {
+                            _showDeleteConfirm = true
                         }
                         .font(Self._buttonFont)
                         .frame(width: columnWidth / 3)
-                        .foregroundStyle(.red)
                         Spacer()
                         Button("SLUG-LOGOUT-BUTTON".localizedVariant) {
                             self._pkdInstance.logout()
@@ -139,6 +211,38 @@ struct PKD_MainView: View {
             }
             .frame(width: columnWidth)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .confirmationDialog(
+                "SLUG-DELETE-CONFIRM-HEADER".localizedVariant,
+                isPresented: $_showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant, role: .destructive) {
+                    _pkdInstance.delete()
+                }
+                Button("SLUG-DELETE-CONFIRM-CANCEL-BUTTON".localizedVariant, role: .cancel) { }
+            } message: {
+                Text(String(format: "SLUG-DELETE-CONFIRM-MESSAGE-FORMAT".localizedVariant, "SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant))
+            }
+            .alert(
+                "SLUG-ERROR-ALERT-HEADER".localizedVariant,
+                isPresented: Binding(
+                    get: {
+                        if case .none = _pkdInstance.lastError {
+                            return false
+                        } else {
+                            return true
+                        }
+                    },
+                    set: { if !$0 { _pkdInstance.lastError = .none } }
+                ),
+                presenting: _pkdInstance.lastError
+            ) { _ in
+                Button("SLUG-OK-BUTTON".localizedVariant, role: .cancel) {
+                    _pkdInstance.lastError = .none
+                }
+            } message: { err in
+                Text(self._errorMessage(for: err, lastOp: _pkdInstance.lastOperation))
+            }
         }
     }
 }
