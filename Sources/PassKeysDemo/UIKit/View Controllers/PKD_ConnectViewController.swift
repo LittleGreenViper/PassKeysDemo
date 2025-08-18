@@ -29,99 +29,13 @@ import Combine  // For the subscriptions in viewDidAppear
  
  If we have not logged in, then a text field (PassKey title) is presented, and two buttons (Register and Login) are presented under it.
  
- These are the two PassKey operations. All the rest are only valid, once we have used a passkey to login (or create a new account, via the Register button).
+ These are the two PassKey operations. All the rest are only valid, once we have used a passkey to login (or to create a new account, via the Register button).
  
  If we are logged in, then two text fields (display name and credo) are presented, with three buttons under (Delete, Logout, and Update).
  
  These do not involve the passkey.
  */
 class PKD_ConnectViewController: UIViewController {
-    /* ################################################################################################################################## */
-    // MARK: Used For Fetching Registration Data
-    /* ################################################################################################################################## */
-    /**
-     This is what the server sends back, when we register,
-     */
-    private struct _PublicKeyCredentialCreationOptionsStruct: Decodable {
-        /* ############################################################################################################################## */
-        // MARK: Registration Credentials Structure
-        /* ############################################################################################################################## */
-        /**
-         This struct is used to decode the response from the initial registration.
-         */
-        struct PublicKeyStruct: Decodable {
-            /* ########################################################################################################################## */
-            // MARK: Relying Party Structure
-            /* ########################################################################################################################## */
-            /**
-             This struct is used to decode the relying party struct property.
-             */
-            struct RelyingPartyStruct: Decodable {
-                /* ########################################################## */
-                /**
-                 This is a Base64-encoded ID for the relying party.
-                 */
-                let id: String
-            }
-
-            /* ########################################################################################################################## */
-            // MARK: User Information Struct
-            /* ########################################################################################################################## */
-            /**
-             This has the ID and the display name for the user.
-             */
-            struct UserInfoStruct: Decodable {
-                /* ########################################################## */
-                /**
-                 This is a Base64URL-encoded unique ID for the user.
-                 */
-                let id: String
-
-                /* ########################################################## */
-                /**
-                 This is the user's public display name (does not need to be unique).
-                 */
-                let displayName: String
-            }
-
-            /* ############################################################## */
-            /**
-             This has a base64URL-encoded challenge string.
-             */
-            let challenge: String
-
-            /* ############################################################## */
-            /**
-             The relying party.
-             */
-            let rp: RelyingPartyStruct
-
-            /* ############################################################## */
-            /**
-             The user information, associated with this credential.
-             */
-            let user: UserInfoStruct
-        }
-        
-        /* ################################################################## */
-        /**
-         The public key, associated with this credential.
-         */
-        let publicKey: PublicKeyStruct
-        
-        /* ################################################################## */
-        /**
-         The display name associated with the user.
-         */
-        let displayName: String
-        
-        /* ################################################################## */
-        /**
-         The credo associated with the user (will aways be empty, at first).
-         */
-        let credo: String
-    }
-    
     /* ###################################################################### */
     /**
      The font used for the buttons in the screen.
@@ -183,13 +97,13 @@ class PKD_ConnectViewController: UIViewController {
 extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
-     This contains a display name.
+     This contains a display name. It reflects whatever is in the displayName text field.
      */
     private var _displayName: String? { self._displayNameTextField?.text?.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     /* ###################################################################### */
     /**
-     This contains a credo.
+     This contains a credo. It reflects whatever is in the credo text field.
      */
     private var _credo: String? { self._credoTextField?.text?.trimmingCharacters(in: .whitespacesAndNewlines) }
 }
@@ -490,7 +404,7 @@ private extension PKD_ConnectViewController {
      Whatever is in the displayName field will be used as the PassKey name.
      */
     @objc func _register() {
-        self._pkdInstance?.create(displayName: self._displayName) { [weak self] _ in self?._setUpUI() }
+        self._pkdInstance?.create(passKeyName: self._displayName) { [weak self] _ in self?._setUpUI() }
     }
     
     /* ###################################################################### */

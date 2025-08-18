@@ -81,13 +81,15 @@ import Combine                  // To make the class observable.
  
  These properties can be observed, using Combine.
  
- - ``PKD_Handler.originalDisplayName``: This is the display name, as stored on the server. It can be used to compare for changes, in the UI-controlled text.
+ - ``PKD_Handler.originalDisplayName``: This is the display name, as stored on the server. It can be used to compare for changes, in the UI-controlled text. It is updated, whenever an update is sent to the server, so it can be assumed to always reflect the server-stored value.
  
- - ``PKD_Handler.originalCredo``: This is the credo, as stored on the server. It can be used to compare for changes, in the UI-controlled text.
+ - ``PKD_Handler.originalCredo``: This is the credo, as stored on the server. It can be used to compare for changes, in the UI-controlled text. It is updated, whenever an update is sent to the server, so it can be assumed to always reflect the server-stored value.
  
- - ``PKD_Handler.isLoggedIn``: This is true, when the handler has successfully logged in. It remains true, until logout.
+ - ``PKD_Handler.isLoggedIn``: This is set to true, when the handler has successfully logged in. It remains true, until logout.
  
- - ``PKD_Handler.lastError``: This is any error that the handler wants the calling context to know about.
+ - ``PKD_Handler.lastError``: This is any error that the handler wants the calling context to know about. It is changed at the time the error is recorded by the handler, so may come before completion.
+ 
+ The observable properties, and the completion closures for the public methods, ar always changed/called in the main thread.
 
  */
 open class PKD_Handler: NSObject, ObservableObject {
@@ -186,7 +188,7 @@ open class PKD_Handler: NSObject, ObservableObject {
 
         /* ################################################################## */
         /**
-         Login a previously registered user, using the userId, and the PassKey.
+         Login a previously registered user, using the PassKey.
          */
         case login = "login"
 
@@ -198,7 +200,7 @@ open class PKD_Handler: NSObject, ObservableObject {
 
         /* ################################################################## */
         /**
-         Create a new user on the server.
+         Create a new user on the server, and set up a local PassKey.
          */
         case createUser = "create"
 
@@ -336,6 +338,7 @@ open class PKD_Handler: NSObject, ObservableObject {
          */
         let publicKey: PublicKeyStruct
     }
+    
     /* ###################################################################### */
     /**
      We maintain a consistent session, because the challenges are set to work across a session.
@@ -370,9 +373,9 @@ open class PKD_Handler: NSObject, ObservableObject {
     /**
      This is whatever anchor we are providing the authentication services for their screens.
      
-     > NOTE: This should not be nil! Bad things happen, if it is!
+     > NOTE: This should not be nil at runtime! Bad things happen, if it is!
      */
-    weak var presentationAnchor: ASPresentationAnchor?
+    var presentationAnchor: ASPresentationAnchor! = nil
     
     /* ###################################################################### */
     /**
@@ -393,7 +396,7 @@ open class PKD_Handler: NSObject, ObservableObject {
      - Parameters:
         - inRelyingParty: The ID of the relying party (must match the server)
         - inBaseURIString: The base URI for the server PKDServer.php file
-        - inUserNameString:
+        - inPresentationAnchor: The anchor to be used, when alerts are shown.
      */
     public init(relyingParty inRelyingParty: String,
                 baseURIString inBaseURIString: String,
