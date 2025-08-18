@@ -418,24 +418,28 @@ extension PKD_Handler {
      
      - parameter inCompletion: A tail completion proc. This may be called in any thread. A sucessful result contains the challenge string.
      */
-    private func _getLoginChallenge(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
+    private func _getLoginChallenge(completion inCompletion: @escaping (Result<(String, [String]), Error>) -> Void) {
         let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.login.rawValue)"
+        
         guard let url = URL(string: urlString) else { return }
+        
         self._session.dataTask(with: url) { inData, inResponse, inError in
             if let error = inError {
                 inCompletion(.failure(error))
-            } else if let data = inData {
-                if let responseString = String(data: data, encoding: .utf8),
-                   !responseString.isEmpty {
-                    if let jsonResponse = try? JSONDecoder().decode([String: String].self, from: data),
-                       let _ = jsonResponse["error"] {
-                        inCompletion(.failure(PKD_Errors.noUserID))
-                    } else {
-                        inCompletion(.success(responseString))
-                    }
-                } else {
-                    inCompletion(.failure(PKD_Errors.communicationError(nil)))
+            } else if let data = inData,
+                      !data.isEmpty,
+                      let simpleJSON = try? JSONSerialization.jsonObject(with: data, options: []),
+                      let mainDict = simpleJSON as? [String: Any] {
+                guard let allowedIDs = mainDict["allowedIDs"] as? [String]
+                else {
+                    inCompletion(.failure(PKD_Errors.noAvailablePassKeys))
+                    return
                 }
+                if let challenge = mainDict["challenge"] as? String {
+                    inCompletion(.success((challenge, allowedIDs)))
+                }
+            } else {
+                inCompletion(.failure(PKD_Errors.communicationError(nil)))
             }
         }.resume()
     }
@@ -824,24 +828,43 @@ public extension PKD_Handler {
             self._getLoginChallenge { inResponse in
                 DispatchQueue.main.async {
                     switch inResponse {
-                    case .success(let inChallenge):
-                        if let challengeData = inChallenge.base64urlDecodedData {
+                    case .success(let inResponse):
+                        // inResponse.0 is the challenge string (Base64URL-encoded).
+                        // inResponse.1 is an Array of String, with each string being an allowed credential ID (Base64-encoded).
+                        if let challengeData = inResponse.0.base64urlDecodedData {
                             let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self._relyingParty)
                             let request = provider.createCredentialAssertionRequest(challenge: challengeData)
-                            
                             let controller = ASAuthorizationController(authorizationRequests: [request])
                             controller.delegate = self
                             controller.presentationContextProvider = self
+
+                            // This part will filter out IDs that we have deleted on the server, but not on the device.
+                            let allowedCredentials: [ASAuthorizationPlatformPublicKeyCredentialDescriptor] = inResponse.1.compactMap { Data(base64Encoded: $0) }.filter { !$0.isEmpty }.map {
+                                ASAuthorizationPlatformPublicKeyCredentialDescriptor(credentialID: $0)
+                            }
+                            
+                            guard !allowedCredentials.isEmpty else {
+                                self.lastError = PKD_Errors.noAvailablePassKeys
+                                inCompletion(.failure(PKD_Errors.noAvailablePassKeys))
+                                break
+                            }
+                            
+                            request.allowedCredentials = allowedCredentials
+                            
                             controller.performRequests()
                         } else {
                             self.lastError = PKD_Errors.communicationError(nil)
                             inCompletion(.failure(PKD_Errors.communicationError(nil)))
                         }
-                        break
                         
                     case .failure(let inError):
-                        self.lastError = PKD_Errors.communicationError(inError)
-                        inCompletion(.failure(PKD_Errors.communicationError(inError)))
+                        if let error = inError as? PKD_Errors {
+                            self.lastError = error
+                            inCompletion(.failure(error))
+                        } else {
+                            self.lastError = PKD_Errors.communicationError(inError)
+                            inCompletion(.failure(PKD_Errors.communicationError(inError)))
+                        }
                     }
                 }
             }

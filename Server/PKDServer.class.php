@@ -270,13 +270,25 @@ class PKDServer {
     /**
     The first part of the login operation.
     
-    This is called with a userId, and returns the challenge string, as Base64 URL-encoded.
+    This returns the challenge string, as Base64URL-encoded, and an array of allowed credential IDs,
+    each Base64URL-encoded. 
     */
     public function loginChallenge() {
         $challenge = random_bytes(32);
         // Pass on to the next step.
         $_SESSION['loginChallenge'] = $challenge;
-        echo(base64url_encode($challenge));
+        $stmt = $this->pdoInstance->prepare('SELECT credentialId FROM webauthn_credentials');
+        $stmt->execute();
+        $allowedIDs = [];
+        
+        foreach($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (!empty($row['credentialId'])) {
+                $allowedIDs[] = $row['credentialId'];
+            }
+        }
+        
+        header('Content-Type: application/json');
+        echo json_encode(['challenge' => base64url_encode($challenge), 'allowedIDs' => $allowedIDs]);
     }
     
     /**************************************/
