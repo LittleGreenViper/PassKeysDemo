@@ -89,159 +89,10 @@ import Combine                  // To make the class observable.
  
  - ``PKD_Handler.lastError``: This is any error that the handler wants the calling context to know about. It is changed at the time the error is recorded by the handler, so may come before completion.
  
- The observable properties, and the completion closures for the public methods, ar always changed/called in the main thread.
-
+ The observable properties, and the completion closures for the public methods, are always changed/called in the main thread.
  */
 open class PKD_Handler: NSObject, ObservableObject {
-    /* ###################################################################### */
-    /**
-     The responding callback to the read method.
-     
-     This is always called in the main thread.
-     
-     The first argument is a simple tuple, with strings for the displayName and credo, and may be nil.
-     
-     The second argument is a ``PKD_Handler.ServerResponse``, with a report on the transaction success or failure.
-     */
-    public typealias ReadCallback = ((displayName: String, credo: String)?, ServerResponse) -> Void
-
-    /* ###################################################################### */
-    /**
-     This is the callback from most server operations.
-     */
-    public typealias ServerResponseCallback = (ServerResponse) -> Void
-    
-    /* ################################################################################################################################## */
-    // MARK: Responses From Login Attempts
-    /* ################################################################################################################################## */
-    /**
-     This is what is returned to the login callback.
-     */
-    public enum PKD_Errors: Error {
-        /* ################################################################## */
-        /**
-         No error.
-         */
-        case none
-        
-        /* ################################################################## */
-        /**
-         Failed, because yes, we have no PassKeys!
-         */
-        case noAvailablePassKeys
-        
-        /* ################################################################## */
-        /**
-         Failed, because we have no local userID registered.
-         */
-        case noUserID
-
-        /* ################################################################## */
-        /**
-         Failed, because already have a user, but should not.
-         */
-        case alreadyRegistered
-
-        /* ################################################################## */
-        /**
-         Failed, because not logged in, but should be logged in.
-         */
-        case notLoggedIn
-
-        /* ################################################################## */
-        /**
-         Failed, because already logged in, but should be logged out.
-         */
-        case alreadyLoggedIn
-
-        /* ################################################################## */
-        /**
-         Failed, because of a communication issue. The associated value is any system error provided.
-         */
-        case communicationError(Error?)
-
-        /* ################################################################## */
-        /**
-         Failed, because of incorrect input parameters.
-         */
-        case badInputParameters
-
-        /* ################################################################## */
-        /**
-         Failed, because the device does not have biometrics enabled.
-         */
-        case biometricsNotAvailable
-    }
-
-    /* ################################################################################################################################## */
-    // MARK: - Server Operation Enum -
-    /* ################################################################################################################################## */
-    /**
-     This enumeration defines the keys that we send to the server, to enumerate which operation we are performing.
-     */
-    enum UserOperation: String {
-        /* ################################################################## */
-        /**
-         No Op.
-         */
-        case none = ""
-
-        /* ################################################################## */
-        /**
-         Login a previously registered user, using the PassKey.
-         */
-        case login = "login"
-
-        /* ################################################################## */
-        /**
-         Log out a currently logged-in user.
-         */
-        case logout = "logout"
-
-        /* ################################################################## */
-        /**
-         Create a new user on the server, and set up a local PassKey.
-         */
-        case createUser = "create"
-
-        /* ################################################################## */
-        /**
-         Read the displayName and credo of a registered (and logged-in) user.
-         */
-        case readUser = "read"
-
-        /* ################################################################## */
-        /**
-         Change the displayName and/or credo of the registered (and logged-in) user.
-         */
-        case updateUser = "update"
-
-        /* ################################################################## */
-        /**
-         Delete a registered (and logged-in) user.
-         */
-        case deleteUser = "delete"
-    }
-    
-    /* ################################################################################################################################## */
-    // MARK: Responses From Login Attempts
-    /* ################################################################################################################################## */
-    /**
-     This is what is returned to some of the server callbacks.
-     */
-    public enum ServerResponse {
-        /* ################################################################## */
-        /**
-         There was an unrecoverable error.
-         */
-        case failure(Error)
-        
-        /* ################################################################## */
-        /**
-         No problems. Operation successful.
-         */
-        case success
-    }
+    // MARK: Private Data Types
     
     /* ################################################################################################################################## */
     // MARK: Used For Working With User Data
@@ -339,6 +190,8 @@ open class PKD_Handler: NSObject, ObservableObject {
         let publicKey: PublicKeyStruct
     }
     
+    // MARK: Private Properties
+    
     /* ###################################################################### */
     /**
      We maintain a consistent session, because the challenges are set to work across a session.
@@ -361,13 +214,13 @@ open class PKD_Handler: NSObject, ObservableObject {
     /**
      The identifier for the relying party.
      */
-    let relyingParty: String
+    private let _relyingParty: String
     
     /* ###################################################################### */
     /**
      The main URI string for our transactions.
      */
-    let baseURIString: String
+    private let _baseURIString: String
 
     /* ###################################################################### */
     /**
@@ -375,20 +228,10 @@ open class PKD_Handler: NSObject, ObservableObject {
      
      > NOTE: This should not be nil at runtime! Bad things happen, if it is!
      */
-    var presentationAnchor: ASPresentationAnchor! = nil
-    
-    /* ###################################################################### */
-    /**
-     The last operation.
-     */
-    var lastOperation = UserOperation.none
-    
-    /* ###################################################################### */
-    /**
-     The User ID string. Nil, if no string stored.
-     */
-    private var _storedUserIDString: String?
+    private var _presentationAnchor: ASPresentationAnchor! = nil
 
+    // MARK: Public Init and Properties
+    
     /* ###################################################################### */
     /**
      The basic initializer.
@@ -402,11 +245,17 @@ open class PKD_Handler: NSObject, ObservableObject {
                 baseURIString inBaseURIString: String,
                 presentationAnchor inPresentationAnchor: ASPresentationAnchor
     ) {
-        self.relyingParty = inRelyingParty
-        self.baseURIString = inBaseURIString
-        self.presentationAnchor = inPresentationAnchor
+        self._relyingParty = inRelyingParty
+        self._baseURIString = inBaseURIString
+        self._presentationAnchor = inPresentationAnchor
     }
     
+    /* ###################################################################### */
+    /**
+     The last operation.
+     */
+    public var lastOperation = UserOperation.none
+
     // MARK: Public Observable Properties
 
     /* ###################################################################### */
@@ -469,6 +318,189 @@ extension PKD_Handler {
             // No biometrics enrolled, or not available (error explains why)
             return false
         }
+    }
+}
+
+/* ###################################################################################################################################### */
+// MARK: Private Instance Methods (Called From the Operation Dispatcher)
+/* ###################################################################################################################################### */
+extension PKD_Handler {
+    /* ###################################################################### */
+    /**
+     The first part of registration.
+     
+     We call this, with a display name, and it starts the process of validating the PassKey, and sets up the session.
+     
+     - parameter inPassKeyName: The "tag" name for the new user's PassKey. This is fixed, after creation, and always displayed when the PassKey is referenced by the Authentication Services.
+     - parameter inCompletion: A tail completion proc. This may be called in any thread. A sucessful result contains a bunch of data from the server, relevant to the PassKey authentication.
+     */
+    private func _getCreateChallenge(passKeyName inPassKeyName: String, completion inCompletion: @escaping (Result<_PublicKeyCredentialCreationOptionsStruct, Error>) -> Void) {
+        let userIdString = UUID().uuidString    // We need to create a unique user ID. After this, we're done with it. We do it here, because PHP doesn't actually have a true built-in UUID generator, and we do.
+        if !userIdString.isEmpty,
+           let urlIDString = userIdString.addingPercentEncoding(withAllowedCharacters: .alphanumerics) {    // Need to use alphanumerics, because the Base64 encoding can have "+".
+            var urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)&userId=\(urlIDString)"
+            if let passKeyName = inPassKeyName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+               !passKeyName.isEmpty {
+                urlString += "&displayName=\(passKeyName)"
+            }
+            guard let url = URL(string: urlString) else { return }
+            self._session.dataTask(with: url) { inData, inResponse, inError in
+                if let error = inError {
+                    inCompletion(.failure(error))
+                } else if let data = inData,
+                          let response = inResponse as? HTTPURLResponse {
+                    if 200 == response.statusCode {
+                        do {
+                            let decoder = JSONDecoder()
+                            let options = try decoder.decode(_PublicKeyCredentialCreationOptionsStruct.self, from: data)
+                            inCompletion(.success(options))
+                        } catch {
+                            self._clearUserInfo()
+                            inCompletion(.failure(PKD_Errors.communicationError(nil)))
+                        }
+                    } else if 409 == response.statusCode {
+                        self._clearUserInfo()
+                        inCompletion(.failure(PKD_Errors.alreadyRegistered))
+                    } else {
+                        self._clearUserInfo()
+                        inCompletion(.failure(PKD_Errors.communicationError(nil)))
+                    }
+                } else {
+                    self._clearUserInfo()
+                    if let error = inError {
+                        inCompletion(.failure(error))
+                    } else {
+                        inCompletion(.failure(PKD_Errors.communicationError(nil)))
+                    }
+                    return
+                }
+            }.resume()
+        } else {
+            self._clearUserInfo()
+            inCompletion(.failure(PKD_Errors.noUserID))
+        }
+    }
+    
+    /* ###################################################################### */
+    /**
+     The second part of registration.
+     
+     Finalizes the process of validating the PassKey, and sets up the session.
+     
+     - parameter inOptions: The data supplied by the challenge.
+     - parameter inCompletion: A tail completion proc. This may be called in any thread, and is only called for an error. A successful result does nothing, because we finish in the authentication callback.
+     */
+    private func _nextStepInCreate(with inOptions: _PublicKeyCredentialCreationOptionsStruct, completion inCompletion: @escaping (Result<String, Error>) -> Void) {
+        if let challengeData = inOptions.publicKey.challenge.base64urlDecodedData,
+           let userIDData = inOptions.publicKey.user.id.base64urlDecodedData {
+            let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: inOptions.publicKey.rp.id)
+
+            let request = provider.createCredentialRegistrationRequest(
+                challenge: challengeData,
+                name: inOptions.publicKey.user.displayName,
+                userID: userIDData
+            )
+            
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            controller.performRequests()
+        } else {
+            self._clearUserInfo()
+            inCompletion(.failure(PKD_Errors.noUserID))
+        }
+    }
+    
+    /* ###################################################################### */
+    /**
+     The first part of login.
+     
+     Starts the process of validating the PassKey, and sets up the session.
+     
+     - parameter inCompletion: A tail completion proc. This may be called in any thread. A sucessful result contains the challenge string.
+     */
+    private func _getLoginChallenge(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
+        let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.login.rawValue)"
+        guard let url = URL(string: urlString) else { return }
+        self._session.dataTask(with: url) { inData, inResponse, inError in
+            if let error = inError {
+                inCompletion(.failure(error))
+            } else if let data = inData {
+                if let responseString = String(data: data, encoding: .utf8),
+                   !responseString.isEmpty {
+                    if let jsonResponse = try? JSONDecoder().decode([String: String].self, from: data),
+                       let _ = jsonResponse["error"] {
+                        inCompletion(.failure(PKD_Errors.noUserID))
+                    } else {
+                        inCompletion(.success(responseString))
+                    }
+                } else {
+                    inCompletion(.failure(PKD_Errors.communicationError(nil)))
+                }
+            }
+        }.resume()
+    }
+    
+    /* ###################################################################### */
+    /**
+     This completely removes the user data from the instance.
+     
+     > NOTE: This only works locally. It does not send anything to the server.
+     */
+    private func _clearUserInfo() {
+        self.originalCredo = ""
+        self.originalDisplayName = ""
+        self._credentialID = nil
+        self._bearerToken = nil
+    }
+}
+
+/* ###################################################################################################################################### */
+// MARK: ASAuthorizationControllerDelegate Conformance
+/* ###################################################################################################################################### */
+extension PKD_Handler: ASAuthorizationControllerDelegate {
+    /* ###################################################################### */
+    /**
+     Called when the user completes an authorization screen.
+     
+     - parameter inAuthController: The auth controller.
+     - parameter inAuthorization: The authorization generated by the controller.
+     */
+    public func authorizationController(controller inAuthController: ASAuthorizationController, didCompleteWithAuthorization inAuthorization: ASAuthorization) {
+        if let credential = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration {
+            self._credentialID = credential.credentialID.base64EncodedString()
+            let payload: [String: String] = [
+                "clientDataJSON": credential.rawClientDataJSON.base64EncodedString(),
+                "attestationObject": credential.rawAttestationObject?.base64EncodedString() ?? ""
+            ]
+            
+            self._postCreateResponse(to: "\(self._baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)", payload: payload)
+        } else if let assertion = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
+            self._credentialID = assertion.credentialID.base64EncodedString()
+            if let idString = self._credentialID,
+               !idString.isEmpty,
+               let urlIDString = idString.addingPercentEncoding(withAllowedCharacters: .alphanumerics) {    // Need to use alphanumerics, because the Base64 encoding can have "+".
+                let payload: [String: String] = [
+                    "clientDataJSON": assertion.rawClientDataJSON.base64EncodedString(),
+                    "authenticatorData": assertion.rawAuthenticatorData.base64EncodedString(),
+                    "signature": assertion.signature.base64EncodedString(),
+                    "credentialId": idString
+                ]
+                
+                self._postLoginResponse(to: "\(self._baseURIString)/index.php?operation=\(UserOperation.login.rawValue)&credentialId=\(urlIDString)", payload: payload)
+            }
+        }
+    }
+    
+    /* ###################################################################### */
+    /**
+     Called when the passKey auth fails.
+     
+     - parameter inAuthController: The auth controller.
+     - parameter inError: The authorization generated by the controller.
+     */
+    public func authorizationController(controller inAuthController: ASAuthorizationController, didCompleteWithError inError: Error) {
+        self.lastError = .login == self.lastOperation ? PKD_Errors.noAvailablePassKeys : PKD_Errors.communicationError(inError)
     }
 }
 
@@ -595,191 +627,6 @@ extension PKD_Handler {
 }
 
 /* ###################################################################################################################################### */
-// MARK: Private Instance Methods (Called From the Operation Dispatcher)
-/* ###################################################################################################################################### */
-extension PKD_Handler {
-    /* ###################################################################### */
-    /**
-     The first part of registration.
-     
-     We call this, with a display name, and it starts the process of validating the PassKey, and sets up the session.
-     
-     - parameter inDisplayName: The display name for the new user. Optional. If not supplied, the server will specify "New User."
-     - parameter inCompletion: A tail completion proc. This may be called in any thread. A sucessful result contains a bunch of data from the server, relevant to the PassKey authentication.
-     */
-    private func _getCreateChallenge(displayName inDisplayName: String? = nil, completion inCompletion: @escaping (Result<_PublicKeyCredentialCreationOptionsStruct, Error>) -> Void) {
-        let userIdString = self._createNewUserIdString()
-        if !userIdString.isEmpty,
-           let urlIDString = userIdString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
-            var urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)&userId=\(urlIDString)"
-            if let displayName = inDisplayName?.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
-               !displayName.isEmpty {
-                urlString += "&displayName=\(displayName)"
-            }
-            guard let url = URL(string: urlString) else { return }
-            self._session.dataTask(with: url) { inData, inResponse, inError in
-                if let error = inError {
-                    inCompletion(.failure(error))
-                } else if let data = inData,
-                          let response = inResponse as? HTTPURLResponse {
-                    if 200 == response.statusCode {
-                        do {
-                            let decoder = JSONDecoder()
-                            let options = try decoder.decode(_PublicKeyCredentialCreationOptionsStruct.self, from: data)
-                            inCompletion(.success(options))
-                        } catch {
-                            self.clearUserInfo()
-                            inCompletion(.failure(PKD_Errors.communicationError(nil)))
-                        }
-                    } else if 409 == response.statusCode {
-                        self.clearUserInfo()
-                        inCompletion(.failure(PKD_Errors.alreadyRegistered))
-                    } else {
-                        self.clearUserInfo()
-                        inCompletion(.failure(PKD_Errors.communicationError(nil)))
-                    }
-                } else {
-                    self.clearUserInfo()
-                    if let error = inError {
-                        inCompletion(.failure(error))
-                    } else {
-                        inCompletion(.failure(PKD_Errors.communicationError(nil)))
-                    }
-                    return
-                }
-            }.resume()
-        } else {
-            self.clearUserInfo()
-            inCompletion(.failure(PKD_Errors.noUserID))
-        }
-    }
-    
-    /* ###################################################################### */
-    /**
-     The second part of registration.
-     
-     Finalizes the process of validating the PassKey, and sets up the session.
-     
-     - parameter inOptions: The data supplied by the challenge.
-     - parameter inCompletion: A tail completion proc. This may be called in any thread, and is only called for an error. A successful result does nothing, because we finish in the authentication callback.
-     */
-    private func _nextStepInCreate(with inOptions: _PublicKeyCredentialCreationOptionsStruct, completion inCompletion: @escaping (Result<String, Error>) -> Void) {
-        if let userIdString = self._storedUserIDString,
-           !userIdString.isEmpty,
-           let challengeData = inOptions.publicKey.challenge.base64urlDecodedData,
-           let userIDData = inOptions.publicKey.user.id.base64urlDecodedData {
-            let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: inOptions.publicKey.rp.id)
-
-            let request = provider.createCredentialRegistrationRequest(
-                challenge: challengeData,
-                name: inOptions.publicKey.user.displayName,
-                userID: userIDData
-            )
-            
-            let controller = ASAuthorizationController(authorizationRequests: [request])
-            controller.delegate = self
-            controller.presentationContextProvider = self
-            controller.performRequests()
-        } else {
-            self.clearUserInfo()
-            inCompletion(.failure(PKD_Errors.noUserID))
-        }
-    }
-    
-    /* ###################################################################### */
-    /**
-     The first part of login.
-     
-     Starts the process of validating the PassKey, and sets up the session.
-     
-     - parameter inCompletion: A tail completion proc. This may be called in any thread. A sucessful result contains the challenge string.
-     */
-    private func _getLoginChallenge(completion inCompletion: @escaping (Result<String, Error>) -> Void) {
-        let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)"
-        guard let url = URL(string: urlString) else { return }
-        self._session.dataTask(with: url) { inData, inResponse, inError in
-            if let error = inError {
-                inCompletion(.failure(error))
-            } else if let data = inData {
-                if let responseString = String(data: data, encoding: .utf8),
-                   !responseString.isEmpty {
-                    if let jsonResponse = try? JSONDecoder().decode([String: String].self, from: data),
-                       let _ = jsonResponse["error"] {
-                        inCompletion(.failure(PKD_Errors.noUserID))
-                    } else {
-                        inCompletion(.success(responseString))
-                    }
-                } else {
-                    inCompletion(.failure(PKD_Errors.communicationError(nil)))
-                }
-            }
-        }.resume()
-    }
-    
-    /* ###################################################################### */
-    /**
-     Creates a new random User ID string.
-     It will not overwrite a preexisting string.
-     */
-    private func _createNewUserIdString() -> String {
-        let ret = self._storedUserIDString ?? UUID().uuidString
-        
-        self._storedUserIDString = ret
-        
-        return ret
-    }
-}
-
-/* ###################################################################################################################################### */
-// MARK: ASAuthorizationControllerDelegate Conformance
-/* ###################################################################################################################################### */
-extension PKD_Handler: ASAuthorizationControllerDelegate {
-    /* ###################################################################### */
-    /**
-     Called when the user completes an authorization screen.
-     
-     - parameter inAuthController: The auth controller.
-     - parameter inAuthorization: The authorization generated by the controller.
-     */
-    public func authorizationController(controller inAuthController: ASAuthorizationController, didCompleteWithAuthorization inAuthorization: ASAuthorization) {
-        if let credential = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration {
-            self._credentialID = credential.credentialID.base64EncodedString()
-            let payload: [String: String] = [
-                "clientDataJSON": credential.rawClientDataJSON.base64EncodedString(),
-                "attestationObject": credential.rawAttestationObject?.base64EncodedString() ?? ""
-            ]
-            
-            self._postCreateResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)", payload: payload)
-        } else if let assertion = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
-            self._credentialID = assertion.credentialID.base64EncodedString()
-            if let idString = self._credentialID,
-               !idString.isEmpty,
-               let urlIDString = idString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
-                let payload: [String: String] = [
-                    "clientDataJSON": assertion.rawClientDataJSON.base64EncodedString(),
-                    "authenticatorData": assertion.rawAuthenticatorData.base64EncodedString(),
-                    "signature": assertion.signature.base64EncodedString(),
-                    "credentialId": idString
-                ]
-                
-                self._postLoginResponse(to: "\(self.baseURIString)/index.php?operation=\(UserOperation.login.rawValue)&credentialId=\(urlIDString)", payload: payload)
-            }
-        }
-    }
-    
-    /* ###################################################################### */
-    /**
-     Called when the passKey auth fails.
-     
-     - parameter inAuthController: The auth controller.
-     - parameter inError: The authorization generated by the controller.
-     */
-    public func authorizationController(controller inAuthController: ASAuthorizationController, didCompleteWithError inError: Error) {
-        self.lastError = .login == self.lastOperation ? PKD_Errors.noAvailablePassKeys : PKD_Errors.communicationError(inError)
-    }
-}
-
-/* ###################################################################################################################################### */
 // MARK: ASAuthorizationControllerPresentationContextProviding Conformance
 /* ###################################################################################################################################### */
 extension PKD_Handler: ASAuthorizationControllerPresentationContextProviding {
@@ -790,37 +637,181 @@ extension PKD_Handler: ASAuthorizationControllerPresentationContextProviding {
      - parameter for: The auth controller (ignored).
      - returns: stored presentation anchor. We force the unwrap, because bad things should happen, if it's not valid.
      */
-    public func presentationAnchor(for: ASAuthorizationController) -> ASPresentationAnchor { self.presentationAnchor! }
+    public func presentationAnchor(for: ASAuthorizationController) -> ASPresentationAnchor { self._presentationAnchor! }
 }
 
 /* ###################################################################################################################################### */
 // MARK: External API
 /* ###################################################################################################################################### */
 public extension PKD_Handler {
-    /* ###################################################################### */
+    /* ################################################################################################################################## */
+    // MARK: Responses From Login Attempts
+    /* ################################################################################################################################## */
     /**
-     The stored User ID string. Empty, if none.
+     This is what is returned to the login callback.
      */
-    var userIDString: String { self._storedUserIDString ?? "" }
-
-    /* ###################################################################### */
-    /**
-     This completely removes the user ID from the KeyChain.
-     */
-    func clearUserInfo() {
-        self.originalCredo = ""
-        self.originalDisplayName = ""
-        self._storedUserIDString = nil
-        self._credentialID = nil
-        self._bearerToken = nil
+    enum PKD_Errors: Error {
+        /* ################################################################## */
+        /**
+         No error.
+         */
+        case none
+        
+        /* ################################################################## */
+        /**
+         Failed, because yes, we have no PassKeys!
+         */
+        case noAvailablePassKeys
+        
+        /* ################################################################## */
+        /**
+         Failed, because we have no local userID registered.
+         */
+        case noUserID
+        
+        /* ################################################################## */
+        /**
+         Failed, because already have a user, but should not.
+         */
+        case alreadyRegistered
+        
+        /* ################################################################## */
+        /**
+         Failed, because not logged in, but should be logged in.
+         */
+        case notLoggedIn
+        
+        /* ################################################################## */
+        /**
+         Failed, because already logged in, but should be logged out.
+         */
+        case alreadyLoggedIn
+        
+        /* ################################################################## */
+        /**
+         Failed, because of a communication issue. The associated value is any system error provided.
+         */
+        case communicationError(Error?)
+        
+        /* ################################################################## */
+        /**
+         Failed, because of incorrect input parameters.
+         */
+        case badInputParameters
+        
+        /* ################################################################## */
+        /**
+         Failed, because the device does not have biometrics enabled.
+         */
+        case biometricsNotAvailable
     }
     
+    /* ################################################################################################################################## */
+    // MARK: Server Operation Enum
+    /* ################################################################################################################################## */
+    /**
+     This enumeration defines the keys that we send to the server, to enumerate which operation we are performing.
+     */
+    enum UserOperation: String {
+        /* ################################################################## */
+        /**
+         No Op.
+         */
+        case none = ""
+        
+        /* ################################################################## */
+        /**
+         Login a previously registered user, using the PassKey.
+         */
+        case login = "login"
+        
+        /* ################################################################## */
+        /**
+         Log out a currently logged-in user.
+         */
+        case logout = "logout"
+        
+        /* ################################################################## */
+        /**
+         Create a new user on the server, and set up a local PassKey.
+         */
+        case createUser = "create"
+        
+        /* ################################################################## */
+        /**
+         Read the displayName and credo of a registered (and logged-in) user.
+         */
+        case readUser = "read"
+        
+        /* ################################################################## */
+        /**
+         Change the displayName and/or credo of the registered (and logged-in) user.
+         */
+        case updateUser = "update"
+        
+        /* ################################################################## */
+        /**
+         Delete a registered (and logged-in) user.
+         */
+        case deleteUser = "delete"
+    }
+    
+    /* ################################################################################################################################## */
+    // MARK: Response Data Type
+    /* ################################################################################################################################## */
+    /**
+     This is what is returned to some of the server callbacks.
+     */
+    enum ServerResponse {
+        /* ################################################################## */
+        /**
+         There was an unrecoverable error.
+         */
+        case failure(Error)
+        
+        /* ################################################################## */
+        /**
+         No problems. Operation successful.
+         */
+        case success
+    }
+    
+    /* ################################################################################################################################## */
+    // MARK: Callback/Completion Types
+    /* ################################################################################################################################## */
+    /**
+     These are typealiases for our completion callbacks.
+     */
+    /* ###################################################################### */
+    /**
+     The responding callback to the read method.
+     
+     This is always called in the main thread.
+     
+     The first argument is a simple tuple, with strings for the displayName and credo, and may be nil.
+     
+     The second argument is a ``PKD_Handler.ServerResponse``, with a report on the transaction success or failure.
+     */
+    typealias ReadCallback = ((displayName: String, credo: String)?, ServerResponse) -> Void
+    
+    /* ###################################################################### */
+    /**
+     This is the callback from most server operations.
+     */
+    typealias ServerResponseCallback = (ServerResponse) -> Void
+    
+    /* ################################################################################################################################## */
+    // MARK: Public API Methods
+    /* ################################################################################################################################## */
+    /**
+     These are the various methods that can be called to use the API.
+     */
     /* ###################################################################### */
     /**
      This logs the user in.
      
      > NOTE: The user must be logged out, or this does nothing. The user must also be previously registered.
-
+     
      - parameter inCompletion: A tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
     func login(completion inCompletion: @escaping ServerResponseCallback) {
@@ -836,7 +827,7 @@ public extension PKD_Handler {
                     switch inResponse {
                     case .success(let inChallenge):
                         if let challengeData = inChallenge.base64urlDecodedData {
-                            let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self.relyingParty)
+                            let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self._relyingParty)
                             let request = provider.createCredentialAssertionRequest(challenge: challengeData)
                             
                             let controller = ASAuthorizationController(authorizationRequests: [request])
@@ -862,7 +853,7 @@ public extension PKD_Handler {
             }
         }
     }
-
+    
     /* ###################################################################### */
     /**
      This logs the user out.
@@ -884,6 +875,7 @@ public extension PKD_Handler {
             }
             return
         }
+        
         DispatchQueue.main.async {
             self.lastError = .none
             if self.isLoggedIn {
@@ -891,7 +883,7 @@ public extension PKD_Handler {
                 if self.isLoggedIn,
                    let bearerToken = self._bearerToken,
                    !bearerToken.isEmpty {
-                    let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.logout.rawValue)"
+                    let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.logout.rawValue)"
                     guard let url = URL(string: urlString) else { return }
                     
                     var request = URLRequest(url: url)
@@ -914,7 +906,7 @@ public extension PKD_Handler {
                                 inCompletion?(.failure(PKD_Errors.communicationError(nil)))
                             }
                         }
-                   }.resume()
+                    }.resume()
                 } else {
                     self.lastError = PKD_Errors.notLoggedIn
                     inCompletion?(.failure(PKD_Errors.notLoggedIn))
@@ -925,25 +917,27 @@ public extension PKD_Handler {
             }
         }
     }
-
+    
     /* ###################################################################### */
     /**
      Registers the user as a new one. This also logs in the user.
      
      > NOTE: The user cannot be already logged in, and cannot have an existing account.
      
-     - parameter inPassKeyName: A new passkey name. If omitted (or blank), then "New User" will be assigned. This must be unique (so only one "New User" will work). Once assigned, this cannot be changed.
+     - parameter inPassKeyName: A new passkey name. This must be unique. Once assigned, this cannot be changed.
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
      */
-    func create(passKeyName inPassKeyName: String? = nil, completion inCompletion: @escaping ServerResponseCallback) {
+    func create(passKeyName inPassKeyName: String, completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .createUser
         guard self._isBiometricAuthAvailable else {
             DispatchQueue.main.async { self.lastError = PKD_Errors.biometricsNotAvailable }
             return
         }
+        
         DispatchQueue.main.async { self.lastError = .none }
+        
         if !self.isLoggedIn {
-            self._getCreateChallenge(displayName: inPassKeyName) { inCreateChallengeResponse in
+            self._getCreateChallenge(passKeyName: inPassKeyName) { inCreateChallengeResponse in
                 if case .success(let inValue) = inCreateChallengeResponse {
                     self._nextStepInCreate(with: inValue) { inResponse in
                         DispatchQueue.main.async {
@@ -975,28 +969,30 @@ public extension PKD_Handler {
             }
         }
     }
-
+    
     /* ###################################################################### */
     /**
      Reads the stored user data.
      
      > NOTE: The user needs to be logged in, and must have an existing account.
-
+     
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
-    */
+     */
     func read(completion inCompletion: @escaping ReadCallback) {
         self.lastOperation = .readUser
+        
         DispatchQueue.main.async { self.lastError = .none }
+        
         if self.isLoggedIn,
-        let bearerToken = self._bearerToken,
+           let bearerToken = self._bearerToken,
            !bearerToken.isEmpty {
-            let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.readUser.rawValue)"
+            let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.readUser.rawValue)"
             guard let url = URL(string: urlString) else { return }
-
+            
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
             request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
-
+            
             self._session.dataTask(with: request) { inData, inResponse, inError in
                 print("Response: \((inResponse as? HTTPURLResponse)?.statusCode ?? -1)")
                 DispatchQueue.main.async {
@@ -1024,27 +1020,29 @@ public extension PKD_Handler {
             }
         }
     }
-
+    
     /* ###################################################################### */
     /**
      Modifies the stored user data.
      
      > NOTE: The user needs to be logged in, and must have an existing account.
-
+     
      - parameter inDisplayName: The new displayName value.
      - parameter inCredo: The new credo value.
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
-          */
+     */
     func update(displayName inDisplayName: String, credo inCredo: String, completion inCompletion: @escaping ServerResponseCallback) {
         self.lastOperation = .updateUser
+        
         DispatchQueue.main.async { self.lastError = .none }
+        
         if self.isLoggedIn,
            let bearerToken = self._bearerToken,
            !bearerToken.isEmpty {
-            if let displayName = inDisplayName.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
+            if let displayName = inDisplayName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
                !displayName.isEmpty {
-                let credo = inCredo.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? ""
-                let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.updateUser.rawValue)&displayName=\(displayName)&credo=\(credo)"
+                let credo = inCredo.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.updateUser.rawValue)&displayName=\(displayName)&credo=\(credo)"
                 guard let url = URL(string: urlString) else { return }
                 
                 var request = URLRequest(url: url)
@@ -1066,13 +1064,13 @@ public extension PKD_Handler {
                             inCompletion(.failure(PKD_Errors.communicationError(nil)))
                         }
                     }
-               }.resume()
-           } else {
-               DispatchQueue.main.async {
-                   self.lastError = PKD_Errors.badInputParameters
-                   inCompletion(.failure(PKD_Errors.badInputParameters))
-               }
-           }
+                }.resume()
+            } else {
+                DispatchQueue.main.async {
+                    self.lastError = PKD_Errors.badInputParameters
+                    inCompletion(.failure(PKD_Errors.badInputParameters))
+                }
+            }
         } else {
             DispatchQueue.main.async {
                 self.lastError = PKD_Errors.notLoggedIn
@@ -1080,24 +1078,26 @@ public extension PKD_Handler {
             }
         }
     }
-
+    
     /* ###################################################################### */
     /**
      Removes the user record.
      
      > NOTE: The user needs to be logged in, and must have an existing account.
-
+     
      > NOTE: This does not remove the PassKey! The user needs to do that manually.
-
+     
      - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
     func delete(completion inCompletion: ServerResponseCallback? = nil) {
         self.lastOperation = .deleteUser
+        
         DispatchQueue.main.async { self.lastError = .none }
+        
         if self.isLoggedIn,
            let bearerToken = self._bearerToken,
            !bearerToken.isEmpty {
-            let urlString = "\(self.baseURIString)/index.php?operation=\(UserOperation.deleteUser.rawValue)"
+            let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.deleteUser.rawValue)"
             guard let url = URL(string: urlString) else { return }
             
             var request = URLRequest(url: url)
@@ -1117,7 +1117,7 @@ public extension PKD_Handler {
                                     self.lastError = PKD_Errors.communicationError(error)
                                     inCompletion?(.failure(PKD_Errors.communicationError(error)))
                                 } else {
-                                    self.clearUserInfo()
+                                    self._clearUserInfo()
                                     inCompletion?(.success)
                                 }
                             }
@@ -1127,7 +1127,7 @@ public extension PKD_Handler {
                         inCompletion?(.failure(PKD_Errors.communicationError(nil)))
                     }
                 }
-           }.resume()
+            }.resume()
         } else {
             DispatchQueue.main.async {
                 self.lastError = PKD_Errors.notLoggedIn

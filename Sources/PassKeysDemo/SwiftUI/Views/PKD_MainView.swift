@@ -44,44 +44,13 @@ struct PKD_MainView: View {
     
     /* ###################################################################### */
     /**
-     This is our observable ``PKD_Handler`` instance.
-     */
-    @StateObject private var _pkdInstance = PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString,
-                                                        baseURIString: Bundle.main.defaultBaseURIString,
-                                                        presentationAnchor: UIApplication.shared
-                                                                                            .connectedScenes
-                                                                                            .compactMap { $0 as? UIWindowScene }
-                                                                                            .flatMap { $0.windows }
-                                                                                            .first { $0.isKeyWindow } ?? UIWindow()
-    )
-
-    /* ###################################################################### */
-    /**
-     We track the text in the display name text field, here.
-     */
-    @State private var _displayNameText = ""
-
-    /* ###################################################################### */
-    /**
-     We track the text in the credo text field, here.
-     */
-    @State private var _credoText = ""
-    
-    /* ###################################################################### */
-    /**
-     This is set to true, when we hit the delete button, so that the confirmation alert is shown.
-     */
-    @State private var _showDeleteConfirm = false
-    
-    /* ###################################################################### */
-    /**
      This generates the error body message, based on the state of the ``PKD_Handler`` instance.
      
      - parameter inError: The error being displayed.
      - parameter inLastOperation: The last operation performed by the handler.
      - returns: A string, with the localized error message.
      */
-    private func _errorMessage(for inError: PKD_Handler.PKD_Errors, lastOp inLastOperation: PKD_Handler.UserOperation) -> String {
+    static private func _errorMessage(for inError: PKD_Handler.PKD_Errors, lastOp inLastOperation: PKD_Handler.UserOperation) -> String {
         // Map the last operation to a base slug
         let opSlug: String = {
             switch inLastOperation {
@@ -147,38 +116,78 @@ struct PKD_MainView: View {
         
         return detail.isEmpty ? opSlug : "\(opSlug)\n\(detail)"
     }
+
+    /* ###################################################################### */
+    /**
+     This is our observable ``PKD_Handler`` instance.
+     */
+    @StateObject private var _pkdInstance = PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString,
+                                                        baseURIString: Bundle.main.defaultBaseURIString,
+                                                        presentationAnchor: UIApplication.shared
+                                                                                            .connectedScenes
+                                                                                            .compactMap { $0 as? UIWindowScene }
+                                                                                            .flatMap { $0.windows }
+                                                                                            .first { $0.isKeyWindow } ?? UIWindow()
+    )
+
+    /* ###################################################################### */
+    /**
+     We track the text in the display name text field, here.
+     */
+    @State private var _displayNameText = ""
+
+    /* ###################################################################### */
+    /**
+     We track the text in the credo text field, here.
+     */
+    @State private var _credoText = ""
+    
+    /* ###################################################################### */
+    /**
+     This is set to true, when we hit the delete button, so that the confirmation alert is shown.
+     */
+    @State private var _showDeleteConfirm = false
     
     /* ###################################################################### */
     /**
      All the action happens in this View.
+     
+     If we are not logged in, we show a single text field, and below that, a register button, and a login button.
+
+     If we are logged in, we read the data from the server, and show it in two text boxes.
+     There are three buttons, below the text boxes, and the update button is enabled, if there has been a change in the text boxes.
      */
     var body: some View {
         GeometryReader { inProxy in
-            let columnWidth = inProxy.size.width * 0.6
+            let columnWidth = inProxy.size.width * 0.6  // 60% width.
             let spacing = CGFloat(30)
             
             VStack(spacing: spacing) {
+                // We display a displayName (passkeyName, for logged out) text field for both conditions.
+                // If we are logged in, we fill with the display name. If logged out, it is empty by default.
                 TextField("SLUG-\(self._pkdInstance.isLoggedIn ? "DISPLAY" : "PASSKEY")-NAME-PLACEHOLDER".localizedVariant, text: self.$_displayNameText)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.regular)
-                    .onChange(of: _displayNameText) {
-                        if _displayNameText.count > 255 {
-                            _displayNameText = String(_displayNameText.prefix(255))
+                    .onChange(of: self._displayNameText) {
+                        if self._displayNameText.count > 255 {
+                            self._displayNameText = String(self._displayNameText.prefix(255))
                         }
                     }
-                // If we are logged in, we read the data from the server, and show it in two text boxes. There are three buttons, below the text boxes, and the update button is enabled, if there has been a change in the text boxes.
+
                 if self._pkdInstance.isLoggedIn {
+                    // We show a credo field, when logged in.
                     TextField("SLUG-CREDO-PLACEHOLDER".localizedVariant, text: self.$_credoText)
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.regular)
-                        .onChange(of: _credoText) {
-                            if _credoText.count > 255 {
-                                _credoText = String(_credoText.prefix(255))
+                        .onChange(of: self._credoText) {
+                            if self._credoText.count > 255 {
+                                self._credoText = String(self._credoText.prefix(255))
                             }
                         }
+                    // Three buttons, below that.
                     HStack(alignment: .center) {
                         Button("SLUG-DELETE-BUTTON".localizedVariant, role: .destructive) {
-                            _showDeleteConfirm = true
+                            self._showDeleteConfirm = true
                         }
                         .font(Self._buttonFont)
                         .frame(width: columnWidth / 3)
@@ -207,7 +216,8 @@ struct PKD_MainView: View {
                             self._credoText = inData?.credo ?? ""
                         }
                     }
-                } else {    // If we are not logged in, we show a text field, a register button, and a login button.
+                } else {
+                    // If we are not logged in, we just show two buttons, under the single text field.
                     HStack(alignment: .center) {
                         Button("SLUG-REGISTER-BUTTON".localizedVariant) {
                             self._pkdInstance.create(passKeyName: self._displayNameText) { _ in }
@@ -220,6 +230,7 @@ struct PKD_MainView: View {
                         }
                         .frame(width: columnWidth / 2)
                         .font(Self._buttonFont)
+                        .disabled(!self._displayNameText.isEmpty)
                     }
                     .onAppear {
                         self._displayNameText = ""
@@ -228,15 +239,15 @@ struct PKD_MainView: View {
                 }
             }
             .frame(width: columnWidth)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)   // Makes sure we are completely centered.
             // This is the "are you sure?" confirmation dialog, if the user selects the Delete button.
             .confirmationDialog(
                 "SLUG-DELETE-CONFIRM-HEADER".localizedVariant,
-                isPresented: $_showDeleteConfirm,
+                isPresented: self.$_showDeleteConfirm,
                 titleVisibility: .visible
             ) {
                 Button("SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant, role: .destructive) {
-                    _pkdInstance.delete()
+                    self._pkdInstance.delete()
                 }
                 Button("SLUG-DELETE-CONFIRM-CANCEL-BUTTON".localizedVariant, role: .cancel) { }
             } message: {
@@ -247,21 +258,21 @@ struct PKD_MainView: View {
                 "SLUG-ERROR-ALERT-HEADER".localizedVariant,
                 isPresented: Binding(
                     get: {
-                        if case .none = _pkdInstance.lastError {
+                        if case .none = self._pkdInstance.lastError {
                             return false
                         } else {
                             return true
                         }
                     },
-                    set: { if !$0 { _pkdInstance.lastError = .none } }
+                    set: { if !$0 { self._pkdInstance.lastError = .none } }
                 ),
-                presenting: _pkdInstance.lastError
+                presenting: self._pkdInstance.lastError
             ) { _ in
                 Button("SLUG-OK-BUTTON".localizedVariant, role: .cancel) {
-                    _pkdInstance.lastError = .none
+                    self._pkdInstance.lastError = .none
                 }
             } message: { err in
-                Text(self._errorMessage(for: err, lastOp: _pkdInstance.lastOperation))
+                Text(Self._errorMessage(for: err, lastOp: self._pkdInstance.lastOperation))
             }
         }
     }

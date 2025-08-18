@@ -80,6 +80,12 @@ class PKD_ConnectViewController: UIViewController {
 
     /* ###################################################################### */
     /**
+     The button for logging in (so it can be enabled or disabled).
+     */
+    private weak var _loginButton: UIButton?
+
+    /* ###################################################################### */
+    /**
      The button for registering (so it can be enabled or disabled).
      */
     private weak var _registerButton: UIButton?
@@ -269,6 +275,7 @@ private extension PKD_ConnectViewController {
             config.attributedTitle = AttributedString("SLUG-LOGIN-BUTTON".localizedVariant, attributes: AttributeContainer([.font: Self._buttonFont]))
             loginButton.configuration = config
             loginButton.addTarget(self, action: #selector(_login), for: .touchUpInside)
+            self._loginButton = loginButton
             
             let buttonStack = UIStackView(arrangedSubviews: [registerButton, loginButton])
             buttonStack.axis = .horizontal
@@ -370,6 +377,7 @@ private extension PKD_ConnectViewController {
             let isEnabled = isLoggedIn && !displayName.isEmpty && hasTextChanged
             self._updateButton?.isEnabled = isEnabled
             self._registerButton?.isEnabled = !displayName.isEmpty
+            self._loginButton?.isEnabled = displayName.isEmpty
         }
     }
 }
@@ -404,7 +412,10 @@ private extension PKD_ConnectViewController {
      Whatever is in the displayName field will be used as the PassKey name.
      */
     @objc func _register() {
-        self._pkdInstance?.create(passKeyName: self._displayName) { [weak self] _ in self?._setUpUI() }
+        guard let passKeyName = self._displayName,
+              !passKeyName.isEmpty
+        else { return }
+        self._pkdInstance?.create(passKeyName: passKeyName) { [weak self] _ in self?._setUpUI() }
     }
     
     /* ###################################################################### */

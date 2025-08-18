@@ -288,26 +288,21 @@ class PKDServer {
     It returns the bearerToken for the login.
     */
     public function loginCompletion() {
-        $userId = $this->getArgs->userId;
+        $userId = "";
         $credentialId = $this->getArgs->credentialId;
-        if (empty($credentialId) && empty($userId)) {
+        if (empty($credentialId)) {
             http_response_code(400);
             echo '&#128169;';   // Oh, poo.
             exit;
         }
         
         $row = [];
-        if (!empty($userId)) {
-            $stmt = $this->pdoInstance->prepare('SELECT credentialId, displayName, signCount, publicKey FROM webauthn_credentials WHERE userId = ?');
-            $stmt->execute([$userId]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $credentialId = $row['credentialId'];
-        } elseif (!empty($credentialId)) {
-            $stmt = $this->pdoInstance->prepare('SELECT userId, displayName, signCount, publicKey FROM webauthn_credentials WHERE credentialId = ?');
-            $stmt->execute([$credentialId]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $userId = $row['userId'];
-        } else {
+        $stmt = $this->pdoInstance->prepare('SELECT userId, displayName, signCount, publicKey FROM webauthn_credentials WHERE credentialId = ?');
+        $stmt->execute([$credentialId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $userId = $row['userId'];
+            
+        if (empty($userId)) {
             http_response_code(404);
             header('Content-Type: application/json');
             echo json_encode(['error' => 'User not found']);
@@ -373,7 +368,8 @@ class PKDServer {
     This is called with a userId (and optionally, a display name), and returns the public key struct, as JSON.
     */
     public function createChallenge() {
-        $userId = $this->getArgs->userId;
+        $userId = $this->getArgs->userId;   // The user ID needs, to be unique in this server.
+        // After this, the client can forget the user ID. It will no longer be used in exchanges.
         $displayName = $this->getArgs->displayName;
         if (empty($displayName)) {
             $displayName = "New User";
