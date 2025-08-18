@@ -335,9 +335,8 @@ extension PKD_Handler {
      - parameter inCompletion: A tail completion proc. This may be called in any thread. A sucessful result contains a bunch of data from the server, relevant to the PassKey authentication.
      */
     private func _getCreateChallenge(passKeyName inPassKeyName: String, completion inCompletion: @escaping (Result<_PublicKeyCredentialCreationOptionsStruct, Error>) -> Void) {
-        let userIdString = UUID().uuidString    // We need to create a unique user ID. After this, we're done with it. We do it here, because PHP doesn't actually have a true built-in UUID generator, and we do.
-        if !userIdString.isEmpty,
-           let urlIDString = userIdString.addingPercentEncoding(withAllowedCharacters: .alphanumerics) {    // Need to use alphanumerics, because the Base64 encoding can have "+".
+        // We need to create a unique user ID. After this, we're done with it. We do it here, because PHP doesn't actually have a true built-in UUID generator, and we do.
+        if let urlIDString = UUID().uuidString.addingPercentEncoding(withAllowedCharacters: .alphanumerics) {    // Need to use alphanumerics, because the Base64 encoding can have "+".
             var urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)&userId=\(urlIDString)"
             if let passKeyName = inPassKeyName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
                !passKeyName.isEmpty {
