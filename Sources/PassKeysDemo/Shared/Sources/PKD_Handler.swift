@@ -91,7 +91,7 @@ import Combine                  // To make the class observable.
  
  The observable properties, and the completion closures for the public methods, are always changed/called in the main thread.
  */
-open class PKD_Handler: NSObject, ObservableObject {
+public class PKD_Handler: NSObject, ObservableObject {
     // MARK: Private Data Types
     
     /* ################################################################################################################################## */
@@ -416,9 +416,9 @@ extension PKD_Handler {
      
      Starts the process of validating the PassKey, and sets up the session.
      
-     - parameter inCompletion: A tail completion proc. This may be called in any thread. A sucessful result contains the challenge string.
+     - parameter inCompletion: A tail completion proc. This may be called in any thread. A sucessful result contains the challenge string, as well as any allowed credential IDs..
      */
-    private func _getLoginChallenge(completion inCompletion: @escaping (Result<(String, [String]), Error>) -> Void) {
+    private func _getLoginChallenge(completion inCompletion: @escaping (Result<(challenge: String, allowedIDs: [String]), Error>) -> Void) {
         let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.login.rawValue)"
         
         guard let url = URL(string: urlString) else { return }
@@ -829,17 +829,17 @@ public extension PKD_Handler {
                 DispatchQueue.main.async {
                     switch inResponse {
                     case .success(let inResponse):
-                        // inResponse.0 is the challenge string (Base64URL-encoded).
-                        // inResponse.1 is an Array of String, with each string being an allowed credential ID (Base64-encoded).
-                        if let challengeData = inResponse.0.base64urlDecodedData {
+                        // inResponse.challenge is the challenge string (Base64URL-encoded).
+                        // inResponse.allowedIDs is an Array of String, with each string being an allowed credential ID (Base64-encoded).
+                        if let challengeData = inResponse.challenge.base64urlDecodedData {
                             let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self._relyingParty)
                             let request = provider.createCredentialAssertionRequest(challenge: challengeData)
                             let controller = ASAuthorizationController(authorizationRequests: [request])
                             controller.delegate = self
                             controller.presentationContextProvider = self
 
-                            // This part will filter out IDs that we have deleted on the server, but not on the device.
-                            let allowedCredentials: [ASAuthorizationPlatformPublicKeyCredentialDescriptor] = inResponse.1.compactMap { Data(base64Encoded: $0) }.filter { !$0.isEmpty }.map {
+                            // This part will filter out IDs that we have deleted on the server, but not on the device. It makes sure that we only present PassKeys that exist on the server.
+                            let allowedCredentials: [ASAuthorizationPlatformPublicKeyCredentialDescriptor] = inResponse.allowedIDs.compactMap { Data(base64Encoded: $0) }.filter { !$0.isEmpty }.map {
                                 ASAuthorizationPlatformPublicKeyCredentialDescriptor(credentialID: $0)
                             }
                             
@@ -996,7 +996,7 @@ public extension PKD_Handler {
     /**
      Reads the stored user data.
      
-     > NOTE: The user needs to be logged in, and must have an existing account.
+     > NOTE: The user needs to be logged in.
      
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
      */
@@ -1047,7 +1047,7 @@ public extension PKD_Handler {
     /**
      Modifies the stored user data.
      
-     > NOTE: The user needs to be logged in, and must have an existing account.
+     > NOTE: The user needs to be logged in.
      
      - parameter inDisplayName: The new displayName value.
      - parameter inCredo: The new credo value.
@@ -1105,7 +1105,7 @@ public extension PKD_Handler {
     /**
      Removes the user record.
      
-     > NOTE: The user needs to be logged in, and must have an existing account.
+     > NOTE: The user needs to be logged in.
      
      > NOTE: This does not remove the PassKey! The user needs to do that manually.
      
