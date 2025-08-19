@@ -1,4 +1,4 @@
-![Icon](./Icon.png)
+![Icon](img/Icon.png)
 
 # Passkeys Demo Project
 
@@ -48,6 +48,28 @@ The passkey is used in two places: Registration (creating an account), and loggi
 - **D**elete - After the user logs in, they can delete their entire server account.
 
 > NOTE: Deleting the server account **does not** delete the passkey! The user needs to do that manually, via [the Settings App](https://support.apple.com/guide/iphone/find-settings-iph079e1fe9d/17.0/ios/17.0), or [the Passwords App](https://support.apple.com/en-us/120758).
+
+## The App
+
+The client app is a very simple, one-view [iOS](https://apple.com/ios) app. It is implemented using both [UIKit](https://developer.apple.com/documentation/uikit/), and [SwiftUI](https://developer.apple.com/swiftui/), The user interface is exactly the same, between them, and they have the same [bundle ID](https://developer.apple.com/documentation/appstoreconnectapi/bundle-ids) (which means there can only be one, installed, at a time), so that each can access the same PassKeys.
+
+Each variant of the app is presented as an [Xcode target](https://developer.apple.com/library/archive/featuredarticles/XcodeConcepts/Concept-Targets.html). The app will work as effectively in the simulator, as it does, on-device. There is no need to log into your Apple account, but doing so, will allow you to share the PassKeys across different devices. You must have biometrics (Touch ID or Face ID) enabled.
+
+### The Main Display
+
+Upon startup, the app has not logged in, and you are presented with the Register/Login display (Fig. 1).
+
+At this point, you can register a new account, by typing something into the text box (Fig. 2). This will be the "tag" for the new PassKey.
+
+| The Initial (Logged-Out) Display | Entering A New PassKey Name |
+| :-: | :-: |
+|![Logged-Out Screen](img/00-Logged-Out.png)|![Entering a New PassKey Name](img/01-Enter-Register.png)|
+| Figure 1 | Figure 2 |
+
+| Confirming A New PassKey | Authenticating With Biometrics |
+| :-: | :-: |
+|![Confirming A New PassKey](img/02-Confirm-PassKey-Create.png)|![PassKey Biometrics](img/03-PassKey-Create-Biometric.png)|
+| Figure 3 | Figure 4 |
 
 ## Requirements
 
