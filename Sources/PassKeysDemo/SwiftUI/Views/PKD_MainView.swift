@@ -241,10 +241,9 @@ struct PKD_MainView: View {
             .frame(width: columnWidth)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)   // Makes sure we are completely centered.
             // This is the "are you sure?" confirmation dialog, if the user selects the Delete button.
-            .confirmationDialog(
+            .alert(
                 "SLUG-DELETE-CONFIRM-HEADER".localizedVariant,
                 isPresented: self.$_showDeleteConfirm,
-                titleVisibility: .visible
             ) {
                 Button("SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant, role: .destructive) {
                     self._pkdInstance.delete()
