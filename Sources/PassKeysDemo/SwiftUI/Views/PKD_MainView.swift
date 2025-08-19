@@ -160,13 +160,14 @@ struct PKD_MainView: View {
     var body: some View {
         GeometryReader { inProxy in
             let columnWidth = inProxy.size.width * 0.6  // 60% width.
-            let spacing = CGFloat(30)
+            let spacing = CGFloat(24)   // This makes it look almost exactly like the UIKit version.
             
             VStack(spacing: spacing) {
                 // We display a displayName (passkeyName, for logged out) text field for both conditions.
                 // If we are logged in, we fill with the display name. If logged out, it is empty by default.
                 TextField("SLUG-\(self._pkdInstance.isLoggedIn ? "DISPLAY" : "PASSKEY")-NAME-PLACEHOLDER".localizedVariant, text: self.$_displayNameText)
                     .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.automatic)
                     .controlSize(.regular)
                     .onChange(of: self._displayNameText) {
                         if self._displayNameText.count > 255 {
@@ -178,26 +179,28 @@ struct PKD_MainView: View {
                     // We show a credo field, when logged in.
                     TextField("SLUG-CREDO-PLACEHOLDER".localizedVariant, text: self.$_credoText)
                         .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.automatic)
                         .controlSize(.regular)
                         .onChange(of: self._credoText) {
                             if self._credoText.count > 255 {
                                 self._credoText = String(self._credoText.prefix(255))
                             }
                         }
+                    
                     // Three buttons, below that.
                     HStack(alignment: .center) {
-                        Button("SLUG-DELETE-BUTTON".localizedVariant, role: .destructive) {
-                            self._showDeleteConfirm = true
-                        }
+                        Button("SLUG-DELETE-BUTTON".localizedVariant, role: .destructive) { self._showDeleteConfirm = true }
                         .font(Self._buttonFont)
                         .frame(width: columnWidth / 3)
+                        
                         Spacer()
-                        Button("SLUG-LOGOUT-BUTTON".localizedVariant) {
-                            self._pkdInstance.logout()
-                        }
+                        
+                        Button("SLUG-LOGOUT-BUTTON".localizedVariant) { self._pkdInstance.logout() }
                         .font(Self._buttonFont)
                         .frame(width: columnWidth / 3)
+                        
                         Spacer()
+                        
                         Button("SLUG-UPDATE-BUTTON".localizedVariant) {
                             if !self._displayNameText.isEmpty {
                                 self._pkdInstance.update(displayName: self._displayNameText, credo: self._credoText) { _ in
@@ -219,15 +222,12 @@ struct PKD_MainView: View {
                 } else {
                     // If we are not logged in, we just show two buttons, under the single text field.
                     HStack(alignment: .center) {
-                        Button("SLUG-REGISTER-BUTTON".localizedVariant) {
-                            self._pkdInstance.create(passKeyName: self._displayNameText) { _ in }
-                        }
+                        Button("SLUG-REGISTER-BUTTON".localizedVariant) { self._pkdInstance.create(passKeyName: self._displayNameText) { _ in } }
                         .font(Self._buttonFont)
                         .frame(width: columnWidth / 2)
                         .disabled(self._displayNameText.isEmpty)
-                        Button("SLUG-LOGIN-BUTTON".localizedVariant) {
-                            self._pkdInstance.login { _ in }
-                        }
+                        
+                        Button("SLUG-LOGIN-BUTTON".localizedVariant) { self._pkdInstance.login { _ in } }
                         .frame(width: columnWidth / 2)
                         .font(Self._buttonFont)
                         .disabled(!self._displayNameText.isEmpty)
@@ -245,9 +245,7 @@ struct PKD_MainView: View {
                 "SLUG-DELETE-CONFIRM-HEADER".localizedVariant,
                 isPresented: self.$_showDeleteConfirm,
             ) {
-                Button("SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant, role: .destructive) {
-                    self._pkdInstance.delete()
-                }
+                Button("SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant, role: .destructive) { self._pkdInstance.delete() }
                 Button("SLUG-DELETE-CONFIRM-CANCEL-BUTTON".localizedVariant, role: .cancel) { }
             } message: {
                 Text(String(format: "SLUG-DELETE-CONFIRM-MESSAGE-FORMAT".localizedVariant, "SLUG-DELETE-CONFIRM-OK-BUTTON".localizedVariant))
@@ -267,9 +265,7 @@ struct PKD_MainView: View {
                 ),
                 presenting: self._pkdInstance.lastError
             ) { _ in
-                Button("SLUG-OK-BUTTON".localizedVariant, role: .cancel) {
-                    self._pkdInstance.lastError = .none
-                }
+                Button("SLUG-OK-BUTTON".localizedVariant, role: .cancel) { self._pkdInstance.lastError = .none }
             } message: { err in
                 Text(Self._errorMessage(for: err, lastOp: self._pkdInstance.lastOperation))
             }

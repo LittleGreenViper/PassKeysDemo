@@ -27,13 +27,29 @@ import Combine                  // To make the class observable.
 // MARK: - PassKeys Interaction Handling Class -
 /* ###################################################################################################################################### */
 /**
- This class abstracts the communication infrastructure with the server, and acts as a model for the user interface.
+ ## Overview
  
- It can be integrated into either a UIKit app, or a SwiftUI one.
+ This class is a framework-independent API, that abstracts the communication with the server, acting as an app model for the UI, which can be either UIKit, or SwiftUI.
  
- This is a Combine `ObservableObject`, and can be observed for changes.
+ It is a Combine `ObservableObject`, and can be observed for changes.
  
- ## FUNCTIONALITY:
+ ## Data
+ 
+ The data in this model consists of two mutable properties:
+ 
+ - A "Display Name": This is a string (up to 255 characters in length) that is used to "name" the current user. It cannot be blank, and is initialized with the PassKey tag.
+ 
+ - A "Credo": This is a string (up to 255 characters in length) that is some arbitrary text.
+ 
+ There is also an "immutable" property that is set at the time the user registers: This is a PassKey "tag," that is displayed to tell the user which PassKey they are looking at.
+ It cannot be changed, after registration, and is used as the initial value of the "Display Name."
+ 
+ ## Behavior
+ 
+ The app model is designed to allow the user to register a new account (create), and then access their account data (read). They can also modify their account data (update),
+ or remove it from the server (delete). No one but the user can view the data, and the user must log in or register, using PassKeys.
+
+ ## Functionality
  
  This uses a shared `URLSession` to interact with the server component of this demonstration app.
  
@@ -53,7 +69,7 @@ import Combine                  // To make the class observable.
  
  For login, it is an array, with a challenge string, and a list of allowed credential IDs.
  
- ## USAGE:
+ ## API Usage
  
  Use the methods exposed as public, at the end of this file:
  
@@ -95,10 +111,10 @@ public class PKD_Handler: NSObject, ObservableObject {
     // MARK: Private Data Types
     
     /* ################################################################################################################################## */
-    // MARK: Used For Working With User Data
+    // MARK: Used For Accessing User Data From the Server
     /* ################################################################################################################################## */
     /**
-     This has the data sent back, upon successful login or editing.
+     This has the data sent back, upon successful create.
      */
     private struct _UserDataStruct: Decodable {
         /* ################################################################## */
@@ -118,14 +134,14 @@ public class PKD_Handler: NSObject, ObservableObject {
     // MARK: Used For Fetching Registration Data
     /* ################################################################################################################################## */
     /**
-     This is what the server sends back, when we register,
+     This is what the server sends back, when we initially ask it for a create challenge.
      */
     private struct _PublicKeyCredentialCreationOptionsStruct: Decodable {
         /* ############################################################################################################################## */
         // MARK: Registration Credentials Structure
         /* ############################################################################################################################## */
         /**
-         This struct is used to decode the response from the initial registration.
+         This struct is used to decode the public key portion of the response from the initial challenge request.
          */
         struct PublicKeyStruct: Decodable {
             /* ########################################################################################################################## */
@@ -137,7 +153,7 @@ public class PKD_Handler: NSObject, ObservableObject {
             struct RelyingPartyStruct: Decodable {
                 /* ########################################################## */
                 /**
-                 This is used to specify the relying party, for the PassKey. It needs to match the one on the server.
+                 This is used to specify the relying party for the PassKey. When we send it back, it needs to match this one.
                  */
                 let id: String
             }
@@ -153,7 +169,7 @@ public class PKD_Handler: NSObject, ObservableObject {
                 /**
                  This is a Base64URL-encoded unique ID for the user.
                  
-                 IDs are invisible to the user,a nd we generate a UUID for the ID.
+                 IDs are invisible to the API client, and we basically have nothing to do with them, after creation.
                  */
                 let id: String
                 
@@ -194,7 +210,7 @@ public class PKD_Handler: NSObject, ObservableObject {
     
     /* ###################################################################### */
     /**
-     We maintain a consistent session, because the challenges are set to work across a session.
+     We maintain a consistent session, because the challenges and bearer token work across a session.
      */
     private var _cachedSession: URLSession?
 
@@ -203,12 +219,6 @@ public class PKD_Handler: NSObject, ObservableObject {
      If we are currently logged in, this contains the bearer token. Nil, if not logged in.
      */
     private var _bearerToken: String?
-
-    /* ###################################################################### */
-    /**
-     If we are currently logged in, this contains the credential ID. Nil, if not logged in.
-     */
-    private var _credentialID: String?
 
     /* ###################################################################### */
     /**
@@ -453,13 +463,12 @@ extension PKD_Handler {
     private func _clearUserInfo() {
         self.originalCredo = ""
         self.originalDisplayName = ""
-        self._credentialID = nil
         self._bearerToken = nil
     }
 }
 
 /* ###################################################################################################################################### */
-// MARK: ASAuthorizationControllerDelegate Conformance
+// MARK: Internal ASAuthorizationControllerDelegate Conformance
 /* ###################################################################################################################################### */
 extension PKD_Handler: ASAuthorizationControllerDelegate {
     /* ###################################################################### */
@@ -471,7 +480,6 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
      */
     public func authorizationController(controller inAuthController: ASAuthorizationController, didCompleteWithAuthorization inAuthorization: ASAuthorization) {
         if let credential = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration {
-            self._credentialID = credential.credentialID.base64EncodedString()
             let payload: [String: String] = [
                 "clientDataJSON": credential.rawClientDataJSON.base64EncodedString(),
                 "attestationObject": credential.rawAttestationObject?.base64EncodedString() ?? ""
@@ -479,15 +487,15 @@ extension PKD_Handler: ASAuthorizationControllerDelegate {
             
             self._postCreateResponse(to: "\(self._baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)", payload: payload)
         } else if let assertion = inAuthorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
-            self._credentialID = assertion.credentialID.base64EncodedString()
-            if let idString = self._credentialID,
-               !idString.isEmpty,
+            let idString = assertion.credentialID.base64EncodedString() // We encode the credential ID as regular Base64
+            if !idString.isEmpty,
                let urlIDString = idString.addingPercentEncoding(withAllowedCharacters: .alphanumerics) {    // Need to use alphanumerics, because the Base64 encoding can have "+".
+                // This contains the data that we'll need to pass to WebAuthn, on the server. It will be sent via POST.
                 let payload: [String: String] = [
-                    "clientDataJSON": assertion.rawClientDataJSON.base64EncodedString(),
-                    "authenticatorData": assertion.rawAuthenticatorData.base64EncodedString(),
-                    "signature": assertion.signature.base64EncodedString(),
-                    "credentialId": idString
+                    "clientDataJSON": assertion.rawClientDataJSON.base64EncodedString(),        // The client data JSON. This is the basic information about the client.
+                    "authenticatorData": assertion.rawAuthenticatorData.base64EncodedString(),  // This is authentication/credential information (also JSON)
+                    "signature": assertion.signature.base64EncodedString(),                     // This is the signature hash for the above data. It uses the internal private key that corresponds with the public one on the server.
+                    "credentialId": idString                                                    // This is how we find which credential to match, on the server.
                 ]
                 
                 self._postLoginResponse(to: "\(self._baseURIString)/index.php?operation=\(UserOperation.login.rawValue)&credentialId=\(urlIDString)", payload: payload)
@@ -530,38 +538,27 @@ extension PKD_Handler {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
         DispatchQueue.main.async {
+            self._bearerToken = nil
             self.lastError = .none
             self._session.dataTask(with: request) { inData, inResponse, inError in
                 guard let response = inResponse as? HTTPURLResponse else { return }
-                if let data = inData {
-                    var displayName = ""
-                    var credo = ""
-                    if 200 == response.statusCode,
-                       let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
-                       let token = dict["bearerToken"],
-                       !token.isEmpty {
-                        self._bearerToken = token
-                        let decoder = JSONDecoder()
-                        if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
-                            displayName = userData.displayName
-                            credo = userData.credo
-                            DispatchQueue.main.async {
-                                self.originalDisplayName = displayName
-                                self.originalCredo = credo
+                DispatchQueue.main.async {
+                    if let data = inData {
+                        if 200 == response.statusCode,
+                           let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
+                           let token = dict["bearerToken"],
+                           !token.isEmpty {
+                            let decoder = JSONDecoder()
+                            if let userData = try? decoder.decode(_UserDataStruct.self, from: data) {
+                                self._bearerToken = token   // We log in, after creating.
+                                self.originalDisplayName = userData.displayName
+                                self.originalCredo = userData.credo
                                 self.isLoggedIn = true
-                            }
-                        } else {
-                            self._credentialID = nil
-                            self._bearerToken = nil
-                            DispatchQueue.main.async {
+                            } else {
                                 self.lastError = PKD_Errors.communicationError(nil)
                                 self.isLoggedIn = false
                             }
-                        }
-                    } else {
-                        self._credentialID = nil
-                        self._bearerToken = nil
-                        DispatchQueue.main.async {
+                        } else {
                             self.lastError = PKD_Errors.communicationError(nil)
                             self.isLoggedIn = false
                         }
@@ -591,35 +588,25 @@ extension PKD_Handler {
         request.setValue("\(responseData.count)", forHTTPHeaderField: "Content-Length")
         
         DispatchQueue.main.async {
+            self._bearerToken = nil
             self.lastError = .none
             self._session.dataTask(with: request) { inData, inResponse, inError in
                 guard let response = inResponse as? HTTPURLResponse else { return }
-                print(response.statusCode)
-                if let data = inData {
-                    if 200 == response.statusCode,
-                       let token = String(data: data, encoding: .utf8),
-                       !token.isEmpty {
-                        self._bearerToken = token
-                        DispatchQueue.main.async { self.isLoggedIn = true }
-                    } else if 404 == response.statusCode {
-                        self._credentialID = nil
-                        self._bearerToken = nil
-                        DispatchQueue.main.async {
+                DispatchQueue.main.async {
+                    if let data = inData {
+                        if 200 == response.statusCode,
+                           let token = String(data: data, encoding: .utf8),
+                           !token.isEmpty {
+                            self._bearerToken = token
+                            DispatchQueue.main.async { self.isLoggedIn = true }
+                        } else if 404 == response.statusCode {
                             self.lastError = PKD_Errors.noUserID
                             self.isLoggedIn = false
-                        }
-                    } else {
-                        self._credentialID = nil
-                        self._bearerToken = nil
-                        DispatchQueue.main.async {
+                        } else {
                             self.lastError = PKD_Errors.communicationError(nil)
                             self.isLoggedIn = false
                         }
-                    }
-                } else {
-                    self._credentialID = nil
-                    self._bearerToken = nil
-                    DispatchQueue.main.async {
+                    } else {
                         self.lastError = PKD_Errors.communicationError(nil)
                         self.isLoggedIn = false
                     }
@@ -630,7 +617,7 @@ extension PKD_Handler {
 }
 
 /* ###################################################################################################################################### */
-// MARK: ASAuthorizationControllerPresentationContextProviding Conformance
+// MARK: Internal ASAuthorizationControllerPresentationContextProviding Conformance
 /* ###################################################################################################################################### */
 extension PKD_Handler: ASAuthorizationControllerPresentationContextProviding {
     /* ###################################################################### */
@@ -793,7 +780,7 @@ public extension PKD_Handler {
      
      The first argument is a simple tuple, with strings for the displayName and credo, and may be nil.
      
-     The second argument is a ``PKD_Handler.ServerResponse``, with a report on the transaction success or failure.
+     The second argument is a ``ServerResponse``, with a report on the transaction success or failure.
      */
     typealias ReadCallback = ((displayName: String, credo: String)?, ServerResponse) -> Void
     
@@ -811,65 +798,65 @@ public extension PKD_Handler {
      */
     /* ###################################################################### */
     /**
-     This logs the user in.
+     This logs the user in. This is a PassKey operation.
      
      > NOTE: The user must be logged out, or this does nothing. The user must also be previously registered.
      
-     - parameter inCompletion: A tail completion callback, with a single LoginResponse argument. Always called on the main thread.
+     - parameter inCompletion: A tail completion callback, with a single ``ServerResponse`` argument. Always called on the main thread.
      */
     func login(completion inCompletion: @escaping ServerResponseCallback) {
-        self.lastOperation = .login
-        guard self._isBiometricAuthAvailable else {
-            DispatchQueue.main.async { self.lastError = PKD_Errors.biometricsNotAvailable }
-            return
-        }
-        DispatchQueue.main.async { self.lastError = .none }
-        if !self.isLoggedIn {
-            self._getLoginChallenge { inResponse in
-                DispatchQueue.main.async {
-                    switch inResponse {
-                    case .success(let inResponse):
-                        // inResponse.challenge is the challenge string (Base64URL-encoded).
-                        // inResponse.allowedIDs is an Array of String, with each string being an allowed credential ID (Base64-encoded).
-                        if let challengeData = inResponse.challenge.base64urlDecodedData {
-                            let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self._relyingParty)
-                            let request = provider.createCredentialAssertionRequest(challenge: challengeData)
-                            let controller = ASAuthorizationController(authorizationRequests: [request])
-                            controller.delegate = self
-                            controller.presentationContextProvider = self
-
-                            // This part will filter out IDs that we have deleted on the server, but not on the device. It makes sure that we only present PassKeys that exist on the server.
-                            let allowedCredentials: [ASAuthorizationPlatformPublicKeyCredentialDescriptor] = inResponse.allowedIDs.compactMap { Data(base64Encoded: $0) }.filter { !$0.isEmpty }.map {
-                                ASAuthorizationPlatformPublicKeyCredentialDescriptor(credentialID: $0)
+        DispatchQueue.main.async {
+            self.lastOperation = .login
+            guard self._isBiometricAuthAvailable else {
+                self.lastError = PKD_Errors.biometricsNotAvailable
+                return
+            }
+            self.lastError = .none
+            if !self.isLoggedIn {
+                self._getLoginChallenge { inResponse in
+                    DispatchQueue.main.async {
+                        switch inResponse {
+                        case .success(let inResponse):
+                            // inResponse.challenge is the challenge string (Base64URL-encoded).
+                            // inResponse.allowedIDs is an Array of String, with each string being an allowed credential ID (Base64-encoded).
+                            if let challengeData = inResponse.challenge.base64urlDecodedData {
+                                let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self._relyingParty)
+                                let request = provider.createCredentialAssertionRequest(challenge: challengeData)
+                                let controller = ASAuthorizationController(authorizationRequests: [request])
+                                controller.delegate = self
+                                controller.presentationContextProvider = self
+                                
+                                // This part will filter out IDs that we have deleted on the server, but not on the device. It makes sure that we only present PassKeys that exist on the server.
+                                let allowedCredentials: [ASAuthorizationPlatformPublicKeyCredentialDescriptor] = inResponse.allowedIDs.compactMap { Data(base64Encoded: $0) }.filter { !$0.isEmpty }.map {
+                                    ASAuthorizationPlatformPublicKeyCredentialDescriptor(credentialID: $0)
+                                }
+                                
+                                guard !allowedCredentials.isEmpty else {
+                                    self.lastError = PKD_Errors.noAvailablePassKeys
+                                    inCompletion(.failure(PKD_Errors.noAvailablePassKeys))
+                                    break
+                                }
+                                
+                                request.allowedCredentials = allowedCredentials
+                                
+                                controller.performRequests()
+                            } else {
+                                self.lastError = PKD_Errors.communicationError(nil)
+                                inCompletion(.failure(PKD_Errors.communicationError(nil)))
                             }
                             
-                            guard !allowedCredentials.isEmpty else {
-                                self.lastError = PKD_Errors.noAvailablePassKeys
-                                inCompletion(.failure(PKD_Errors.noAvailablePassKeys))
-                                break
+                        case .failure(let inError):
+                            if let error = inError as? PKD_Errors {
+                                self.lastError = error
+                                inCompletion(.failure(error))
+                            } else {
+                                self.lastError = PKD_Errors.communicationError(inError)
+                                inCompletion(.failure(PKD_Errors.communicationError(inError)))
                             }
-                            
-                            request.allowedCredentials = allowedCredentials
-                            
-                            controller.performRequests()
-                        } else {
-                            self.lastError = PKD_Errors.communicationError(nil)
-                            inCompletion(.failure(PKD_Errors.communicationError(nil)))
-                        }
-                        
-                    case .failure(let inError):
-                        if let error = inError as? PKD_Errors {
-                            self.lastError = error
-                            inCompletion(.failure(error))
-                        } else {
-                            self.lastError = PKD_Errors.communicationError(inError)
-                            inCompletion(.failure(PKD_Errors.communicationError(inError)))
                         }
                     }
                 }
-            }
-        } else {
-            DispatchQueue.main.async {
+            } else {
                 self.lastError = PKD_Errors.alreadyLoggedIn
                 inCompletion(.failure(PKD_Errors.alreadyLoggedIn))
             }
@@ -886,19 +873,17 @@ public extension PKD_Handler {
      - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
     func logout(isLocalOnly inLocalOnly: Bool = false, completion inCompletion: ServerResponseCallback? = nil) {
-        self.lastOperation = .logout
-        guard !inLocalOnly else {
-            self._bearerToken = nil
-            self._cachedSession = nil
-            DispatchQueue.main.async {
+        DispatchQueue.main.async {
+            self.lastOperation = .logout
+            guard !inLocalOnly else {
+                self._bearerToken = nil
+                self._cachedSession = nil
                 self.lastError = .none
                 self.isLoggedIn = false
                 inCompletion?(.success)
+                return
             }
-            return
-        }
         
-        DispatchQueue.main.async {
             self.lastError = .none
             if self.isLoggedIn {
                 self.lastOperation = .logout
@@ -942,7 +927,7 @@ public extension PKD_Handler {
     
     /* ###################################################################### */
     /**
-     Registers the user as a new one. This also logs in the user.
+     Registers the user as a new one. This also logs in the user. This is a PassKey operation.
      
      > NOTE: The user cannot be already logged in, and cannot have an existing account.
      
@@ -950,42 +935,40 @@ public extension PKD_Handler {
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
      */
     func create(passKeyName inPassKeyName: String, completion inCompletion: @escaping ServerResponseCallback) {
-        self.lastOperation = .createUser
-        guard self._isBiometricAuthAvailable else {
-            DispatchQueue.main.async { self.lastError = PKD_Errors.biometricsNotAvailable }
-            return
-        }
-        
-        DispatchQueue.main.async { self.lastError = .none }
-        
-        if !self.isLoggedIn {
-            self._getCreateChallenge(passKeyName: inPassKeyName) { inCreateChallengeResponse in
-                if case .success(let inValue) = inCreateChallengeResponse {
-                    self._nextStepInCreate(with: inValue) { inResponse in
-                        DispatchQueue.main.async {
-                            if case let .failure(inReason) = inResponse {
-                                self.lastError = PKD_Errors.communicationError(inReason)
-                                inCompletion(.failure(PKD_Errors.communicationError(inReason)))
-                            } else {
-                                inCompletion(.success)
+        DispatchQueue.main.async {
+            self.lastOperation = .createUser
+            guard self._isBiometricAuthAvailable else {
+                self.lastError = PKD_Errors.biometricsNotAvailable
+                return
+            }
+            
+            self.lastError = .none
+            
+            if !self.isLoggedIn {
+                self._getCreateChallenge(passKeyName: inPassKeyName) { inCreateChallengeResponse in
+                    DispatchQueue.main.async {
+                        if case .success(let inValue) = inCreateChallengeResponse {
+                            self._nextStepInCreate(with: inValue) { inResponse in
+                                DispatchQueue.main.async {
+                                    if case let .failure(inReason) = inResponse {
+                                        self.lastError = PKD_Errors.communicationError(inReason)
+                                        inCompletion(.failure(PKD_Errors.communicationError(inReason)))
+                                    } else {
+                                        inCompletion(.success)
+                                    }
+                                }
                             }
+                        } else if case .failure(let inError) = inCreateChallengeResponse,
+                                  let error = inError as? PKD_Errors {
+                            self.lastError = error
+                            inCompletion(.failure(error))
+                        } else {
+                            self.lastError = PKD_Errors.communicationError(nil)
+                            inCompletion(.failure(PKD_Errors.communicationError(nil)))
                         }
                     }
-                } else if case .failure(let inError) = inCreateChallengeResponse,
-                          let error = inError as? PKD_Errors {
-                    DispatchQueue.main.async {
-                        self.lastError = error
-                        inCompletion(.failure(error))
-                    }
-                } else {
-                    DispatchQueue.main.async {
-                        self.lastError = PKD_Errors.communicationError(nil)
-                        inCompletion(.failure(PKD_Errors.communicationError(nil)))
-                    }
                 }
-            }
-        } else {
-            DispatchQueue.main.async {
+            } else {
                 self.lastError = PKD_Errors.alreadyLoggedIn
                 inCompletion(.failure(PKD_Errors.alreadyLoggedIn))
             }
@@ -1001,42 +984,40 @@ public extension PKD_Handler {
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
      */
     func read(completion inCompletion: @escaping ReadCallback) {
-        self.lastOperation = .readUser
-        
-        DispatchQueue.main.async { self.lastError = .none }
-        
-        if self.isLoggedIn,
-           let bearerToken = self._bearerToken,
-           !bearerToken.isEmpty {
-            let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.readUser.rawValue)"
-            guard let url = URL(string: urlString) else { return }
+        DispatchQueue.main.async {
+            self.lastOperation = .readUser
+            self.lastError = .none
             
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
-            
-            self._session.dataTask(with: request) { inData, inResponse, inError in
-                print("Response: \((inResponse as? HTTPURLResponse)?.statusCode ?? -1)")
-                DispatchQueue.main.async {
-                    if let error = inError {
-                        inCompletion(nil, .failure(error))
-                    } else if let response = inResponse as? HTTPURLResponse,
-                              200 == response.statusCode,
-                              let data = inData, !data.isEmpty,
-                              let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
-                              let displayName = dict["displayName"],
-                              let credo = dict["credo"] {
-                        self.originalDisplayName = displayName
-                        self.originalCredo = credo
-                        inCompletion((displayName, credo), .success)
-                    } else {
-                        self.lastError = PKD_Errors.communicationError(nil)
-                        inCompletion(nil, .failure(PKD_Errors.communicationError(nil)))
+            if self.isLoggedIn,
+               let bearerToken = self._bearerToken,
+               !bearerToken.isEmpty {
+                let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.readUser.rawValue)"
+                guard let url = URL(string: urlString) else { return }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "GET"
+                request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+                
+                self._session.dataTask(with: request) { inData, inResponse, inError in
+                    DispatchQueue.main.async {
+                        if let error = inError {
+                            inCompletion(nil, .failure(error))
+                        } else if let response = inResponse as? HTTPURLResponse,
+                                  200 == response.statusCode,
+                                  let data = inData, !data.isEmpty,
+                                  let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
+                                  let displayName = dict["displayName"],
+                                  let credo = dict["credo"] {
+                            self.originalDisplayName = displayName
+                            self.originalCredo = credo
+                            inCompletion((displayName, credo), .success)
+                        } else {
+                            self.lastError = PKD_Errors.communicationError(nil)
+                            inCompletion(nil, .failure(PKD_Errors.communicationError(nil)))
+                        }
                     }
-                }
-            }.resume()
-        } else {
-            DispatchQueue.main.async {
+                }.resume()
+            } else {
                 self.lastError = PKD_Errors.notLoggedIn
                 inCompletion(nil, .failure(PKD_Errors.notLoggedIn))
             }
@@ -1054,47 +1035,44 @@ public extension PKD_Handler {
      - parameter inCompletion: A tail completion callback. Always called on the main thread.
      */
     func update(displayName inDisplayName: String, credo inCredo: String, completion inCompletion: @escaping ServerResponseCallback) {
-        self.lastOperation = .updateUser
-        
-        DispatchQueue.main.async { self.lastError = .none }
-        
-        if self.isLoggedIn,
-           let bearerToken = self._bearerToken,
-           !bearerToken.isEmpty {
-            if let displayName = inDisplayName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-               !displayName.isEmpty {
-                let credo = inCredo.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.updateUser.rawValue)&displayName=\(displayName)&credo=\(credo)"
-                guard let url = URL(string: urlString) else { return }
-                
-                var request = URLRequest(url: url)
-                request.httpMethod = "GET"
-                request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
-                
-                self._session.dataTask(with: request) { _, inResponse, inError in
-                    DispatchQueue.main.async {
-                        if let error = inError {
-                            self.lastError = PKD_Errors.communicationError(error)
-                            inCompletion(.failure(PKD_Errors.communicationError(error)))
-                        } else if let response = inResponse as? HTTPURLResponse,
-                                  200 == response.statusCode {
-                            self.originalDisplayName = displayName
-                            self.originalCredo = credo
-                            inCompletion(.success)
-                        } else {
-                            self.lastError = PKD_Errors.communicationError(nil)
-                            inCompletion(.failure(PKD_Errors.communicationError(nil)))
+        DispatchQueue.main.async {
+            self.lastOperation = .updateUser
+            self.lastError = .none
+            
+            if self.isLoggedIn,
+               let bearerToken = self._bearerToken,
+               !bearerToken.isEmpty {
+                if let displayName = inDisplayName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+                   !displayName.isEmpty {
+                    let credo = inCredo.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                    let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.updateUser.rawValue)&displayName=\(displayName)&credo=\(credo)"
+                    guard let url = URL(string: urlString) else { return }
+                    
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "GET"
+                    request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+                    
+                    self._session.dataTask(with: request) { _, inResponse, inError in
+                        DispatchQueue.main.async {
+                            if let error = inError {
+                                self.lastError = PKD_Errors.communicationError(error)
+                                inCompletion(.failure(PKD_Errors.communicationError(error)))
+                            } else if let response = inResponse as? HTTPURLResponse,
+                                      200 == response.statusCode {
+                                self.originalDisplayName = displayName
+                                self.originalCredo = credo
+                                inCompletion(.success)
+                            } else {
+                                self.lastError = PKD_Errors.communicationError(nil)
+                                inCompletion(.failure(PKD_Errors.communicationError(nil)))
+                            }
                         }
-                    }
-                }.resume()
-            } else {
-                DispatchQueue.main.async {
+                    }.resume()
+                } else {
                     self.lastError = PKD_Errors.badInputParameters
                     inCompletion(.failure(PKD_Errors.badInputParameters))
                 }
-            }
-        } else {
-            DispatchQueue.main.async {
+            } else {
                 self.lastError = PKD_Errors.notLoggedIn
                 inCompletion(.failure(PKD_Errors.notLoggedIn))
             }
@@ -1112,46 +1090,45 @@ public extension PKD_Handler {
      - parameter inCompletion: This is an optional tail completion callback, with a single LoginResponse argument. Always called on the main thread.
      */
     func delete(completion inCompletion: ServerResponseCallback? = nil) {
-        self.lastOperation = .deleteUser
-        
-        DispatchQueue.main.async { self.lastError = .none }
-        
-        if self.isLoggedIn,
-           let bearerToken = self._bearerToken,
-           !bearerToken.isEmpty {
-            let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.deleteUser.rawValue)"
-            guard let url = URL(string: urlString) else { return }
+        DispatchQueue.main.async {
+            self.lastOperation = .deleteUser
+            self.lastError = .none
             
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
-            
-            self._session.dataTask(with: request) { _, inResponse, inError in
-                DispatchQueue.main.async {
-                    if let error = inError {
-                        self.lastError = PKD_Errors.communicationError(error)
-                        inCompletion?(.failure(PKD_Errors.communicationError(error)))
-                    } else if let response = inResponse as? HTTPURLResponse,
-                              200 == response.statusCode {
-                        self.logout(isLocalOnly: true) { inResult in
-                            DispatchQueue.main.async {
-                                if case let .failure(error) = inResult {
-                                    self.lastError = PKD_Errors.communicationError(error)
-                                    inCompletion?(.failure(PKD_Errors.communicationError(error)))
-                                } else {
-                                    self._clearUserInfo()
-                                    inCompletion?(.success)
+            if self.isLoggedIn,
+               let bearerToken = self._bearerToken,
+               !bearerToken.isEmpty {
+                let urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.deleteUser.rawValue)"
+                guard let url = URL(string: urlString) else { return }
+                
+                var request = URLRequest(url: url)
+                request.httpMethod = "GET"
+                request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+                
+                self._session.dataTask(with: request) { _, inResponse, inError in
+                    DispatchQueue.main.async {
+                        if let error = inError {
+                            self.lastError = PKD_Errors.communicationError(error)
+                            inCompletion?(.failure(PKD_Errors.communicationError(error)))
+                        } else if let response = inResponse as? HTTPURLResponse,
+                                  200 == response.statusCode {
+                            self.logout(isLocalOnly: true) { inResult in
+                                DispatchQueue.main.async {
+                                    if case let .failure(error) = inResult {
+                                        self.lastError = PKD_Errors.communicationError(error)
+                                        inCompletion?(.failure(PKD_Errors.communicationError(error)))
+                                    } else {
+                                        self._clearUserInfo()
+                                        inCompletion?(.success)
+                                    }
                                 }
                             }
+                        } else {
+                            self.lastError = PKD_Errors.communicationError(nil)
+                            inCompletion?(.failure(PKD_Errors.communicationError(nil)))
                         }
-                    } else {
-                        self.lastError = PKD_Errors.communicationError(nil)
-                        inCompletion?(.failure(PKD_Errors.communicationError(nil)))
                     }
-                }
-            }.resume()
-        } else {
-            DispatchQueue.main.async {
+                }.resume()
+            } else {
                 self.lastError = PKD_Errors.notLoggedIn
                 inCompletion?(.failure(PKD_Errors.notLoggedIn))
             }
