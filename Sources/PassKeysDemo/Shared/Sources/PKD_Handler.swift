@@ -31,11 +31,11 @@ import Combine                  // To make the class observable.
  
  It can be integrated into either a UIKit app, or a SwiftUI one.
  
- This is a Combine ObservableObject, and can be observed for changes.
+ This is a Combine `ObservableObject`, and can be observed for changes.
  
  ## FUNCTIONALITY:
  
- This uses a shared `URLSession` (stored locally in ``PKD_Handler._cachedSession``) to interact with the server component of this demonstration app.
+ This uses a shared `URLSession` to interact with the server component of this demonstration app.
  
  In order to access PassKeys, it uses an `AuthenticationServices` `ASAuthorizationController` Instance, to create a new PassKey (Create),
  or it instantiates an `ASAuthorizationPlatformPublicKeyCredentialProvider` instance, to access existing PassKeys (Login).
@@ -49,9 +49,9 @@ import Combine                  // To make the class observable.
  The client then uses `AuthenticationServices` to integrate this challenge into a signed credential payload, that is returned to the server.
  The server then validates the signed credential, and also verifies that the challenge is the same one that it just sent.
  
- In the case of Create, the server challenge is somewhat involved, as it returns some other data to be used by the client.
+ In the case of Create, the server challenge is somewhat involved, as it returns a JSON object, with some data to be used by the client.
  
- For login, it is just a simple number.
+ For login, it is an array, with a challenge string, and a list of allowed credential IDs.
  
  ## USAGE:
  
@@ -61,33 +61,33 @@ import Combine                  // To make the class observable.
  
  These operations will involve PassKeys, and use `AuthenticationServices` to access them.
  
- - ``PKD_Handler.create()``: This expects a name for the passKey. It must be unique for the server. Once set, it cannot be changed, and will be displayed as the PassKey name.
+ - ``create(passKeyName:completion:)``: This expects a name for the passKey. It must be unique for the server. Once set, it cannot be changed, and will be displayed as the PassKey name.
  
- - ``PKD_Handler.login()``: This uses the `AuthenticationServices` to present a PassKey selection screen to the user. If there is only one passkey, it will be named, otherwise, a list is presented. The user then executes a biometric authentication, and the login begins. A successful login operation returns a bearer token, to be returned, in subsequent operations, via the authentication header.
+ - ``login(completion:)``: This uses the `AuthenticationServices` to present a PassKey selection screen to the user. If there is only one passkey, it will be named, otherwise, a list is presented. The user then executes a biometric authentication, and the login begins. A successful login operation returns a bearer token, to be returned, in subsequent operations, via the authentication header.
  
  ### Post-Login Operations:
  
  These operations require a successful login, and that the URL session be retained (the app is not quit).
  
- - ``PKD_Handler.logout()``: This logs the user out, deletes the local credentials, and closes the session. It will usually contact the server, to ensure that the bearer token is removed, but can also be local-only.
+ - ``logout(isLocalOnly:completion:)``: This logs the user out, deletes the local credentials, and closes the session. It will usually contact the server, to ensure that the bearer token is removed, but can also be local-only.
  
- - ``PKD_Handler.read()``: This reads the user data from the data table, and returns it to the calling context.
+ - ``read(completion:)``: This reads the user data from the data table, and returns it to the calling context.
  
- - ``PKD_Handler.update()``: This changes the user data.
+ - ``update(displayName:credo:completion:)``: This changes the user data.
  
- - ``PKD_Handler.delete()``: This deletes the user data from the server, and also performs a logout.
+ - ``delete(completion:)``: This deletes the user data from the server, and also performs a logout.
  
  ### Published Observable Properties:
  
  These properties can be observed, using Combine.
  
- - ``PKD_Handler.originalDisplayName``: This is the display name, as stored on the server. It can be used to compare for changes, in the UI-controlled text. It is updated, whenever an update is sent to the server, so it can be assumed to always reflect the server-stored value.
+ - ``originalDisplayName``: This is the display name, as stored on the server. It can be used to compare for changes, in the UI-controlled text. It is updated, whenever an update is sent to the server, so it can be assumed to always reflect the server-stored value.
  
- - ``PKD_Handler.originalCredo``: This is the credo, as stored on the server. It can be used to compare for changes, in the UI-controlled text. It is updated, whenever an update is sent to the server, so it can be assumed to always reflect the server-stored value.
+ - ``originalCredo``: This is the credo, as stored on the server. It can be used to compare for changes, in the UI-controlled text. It is updated, whenever an update is sent to the server, so it can be assumed to always reflect the server-stored value.
  
- - ``PKD_Handler.isLoggedIn``: This is set to true, when the handler has successfully logged in. It remains true, until logout.
+ - ``isLoggedIn``: This is set to true, when the handler has successfully logged in. It remains true, until logout.
  
- - ``PKD_Handler.lastError``: This is any error that the handler wants the calling context to know about. It is changed at the time the error is recorded by the handler, so may come before completion.
+ - ``lastError``: This is any error that the handler wants the calling context to know about. It is changed at the time the error is recorded by the handler, so may come before completion.
  
  The observable properties, and the completion closures for the public methods, are always changed/called in the main thread.
  */

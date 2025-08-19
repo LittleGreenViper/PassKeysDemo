@@ -18,11 +18,13 @@
 		D43C327A2E4D3CCE00F3B374 /* PKD_Handler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42C349A2E3CF300002C325B /* PKD_Handler.swift */; };
 		D43C327B2E4D3CD500F3B374 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C52E33AD1A001593B7 /* LaunchScreen.storyboard */; };
 		D44C206A2E35502C000C8BD0 /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
+		D45B59512E53DC32001488E1 /* PassKeysDemoUIKit.docc in Sources */ = {isa = PBXBuildFile; fileRef = D45B594F2E53DC32001488E1 /* PassKeysDemoUIKit.docc */; };
 		D499A5CB2E33AD1A001593B7 /* PKD_AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C12E33AD1A001593B7 /* PKD_AppDelegate.swift */; };
 		D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C82E33AD1A001593B7 /* PKD_SceneDelegate.swift */; };
 		D499A5CE2E33AD1A001593B7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C22E33AD1A001593B7 /* Assets.xcassets */; };
 		D499A5D02E33AD1A001593B7 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C52E33AD1A001593B7 /* LaunchScreen.storyboard */; };
 		D499A5D12E33AD1A001593B7 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C72E33AD1A001593B7 /* Main.storyboard */; };
+		D4EE42462E54045A002EB566 /* PassKeysDemoSwiftUI.docc in Sources */ = {isa = PBXBuildFile; fileRef = D4EE42452E54045A002EB566 /* PassKeysDemoSwiftUI.docc */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +37,7 @@
 		D43C32722E4D3C1400F3B374 /* PKD_MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_MainView.swift; sourceTree = "<group>"; };
 		D43C32732E4D3C1400F3B374 /* PKD_SwiftUIApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_SwiftUIApp.swift; sourceTree = "<group>"; };
 		D44C20692E355029000C8BD0 /* PKD_Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_Extensions.swift; sourceTree = "<group>"; };
+		D45B594F2E53DC32001488E1 /* PassKeysDemoUIKit.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = PassKeysDemoUIKit.docc; sourceTree = "<group>"; };
 		D48C3B7E2E50C1D10055BAB1 /* PassKeysDemo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PassKeysDemo.entitlements; sourceTree = "<group>"; };
 		D48C3B7F2E50C1EA0055BAB1 /* PassKeysDemo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PassKeysDemo.entitlements; sourceTree = "<group>"; };
 		D499A5A82E33ACF4001593B7 /* PassKeysDemoUIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PassKeysDemoUIKit.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -50,6 +53,7 @@
 		D4C8B7E52E4D39140018C9DD /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = SOURCE_ROOT; };
 		D4C8B7E62E4D39140018C9DD /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = SOURCE_ROOT; };
 		D4C8B7E72E4D39140018C9DD /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = SOURCE_ROOT; };
+		D4EE42452E54045A002EB566 /* PassKeysDemoSwiftUI.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = PassKeysDemoSwiftUI.docc; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +124,7 @@
 				D406C8A12E4DFBF900D7AC43 /* App */,
 				D406C8A22E4DFC0000D7AC43 /* Views */,
 				D406C89F2E4DFB5B00D7AC43 /* Meta */,
+				D4EE42452E54045A002EB566 /* PassKeysDemoSwiftUI.docc */,
 			);
 			path = SwiftUI;
 			sourceTree = "<group>";
@@ -189,6 +194,7 @@
 				D49D0F6B2E3578A100D7EAE8 /* View Controllers */,
 				D499A5D32E33AE20001593B7 /* Resources */,
 				D499A5D22E33AD1F001593B7 /* Meta */,
+				D45B594F2E53DC32001488E1 /* PassKeysDemoUIKit.docc */,
 			);
 			path = UIKit;
 			sourceTree = "<group>";
@@ -340,6 +346,7 @@
 			files = (
 				D43C32752E4D3C1400F3B374 /* PKD_MainView.swift in Sources */,
 				D43C32792E4D3CCE00F3B374 /* PKD_Extensions.swift in Sources */,
+				D4EE42462E54045A002EB566 /* PassKeysDemoSwiftUI.docc in Sources */,
 				D43C327A2E4D3CCE00F3B374 /* PKD_Handler.swift in Sources */,
 				D43C32762E4D3C1400F3B374 /* PKD_SwiftUIApp.swift in Sources */,
 			);
@@ -351,6 +358,7 @@
 			files = (
 				D499A5CB2E33AD1A001593B7 /* PKD_AppDelegate.swift in Sources */,
 				D44C206A2E35502C000C8BD0 /* PKD_Extensions.swift in Sources */,
+				D45B59512E53DC32001488E1 /* PassKeysDemoUIKit.docc in Sources */,
 				D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */,
 				D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */,
 				D42C349B2E3CF300002C325B /* PKD_Handler.swift in Sources */,
