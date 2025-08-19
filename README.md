@@ -57,6 +57,8 @@ Each variant of the app is presented as an [Xcode target](https://developer.appl
 
 ### The Main Display
 
+#### Create
+
 Upon startup, the app has not logged in, and you are presented with the Register/Login display (Fig. 1).
 
 At this point, you can register a new account, by typing something into the text box (Fig. 2). This will be the "tag" for the new PassKey.
@@ -66,10 +68,54 @@ At this point, you can register a new account, by typing something into the text
 |![Logged-Out Screen](img/00-Logged-Out.png)|![Entering a New PassKey Name](img/01-Enter-Register.png)|
 | Figure 1 | Figure 2 |
 
-| Confirming A New PassKey | Authenticating With Biometrics |
+When we started to type something into the text box, the Login button became disabled, and the Register button enabled. Once you have entered the new PassKey name, select the Register button, and you will be presented with the PassKey confirmation screen (Fig. 3). If you select "Continue," the biometrics authentication screen will display (Fig. 4).
+
+| Confirming A New PassKey | Authenticating With Biometrics | Initial Login Screen |
+| :-: | :-: | :-: |
+|![Confirming A New PassKey](img/02-Confirm-PassKey-Create.png)|![PassKey Biometrics](img/03-PassKey-Create-Biometric.png)|![Initial Screen](img/04-Logged-In-Blank-Credo.png)|
+| Figure 3 | Figure 4 | Figure 5 |
+
+#### Read
+
+After creating the new account, the app logs in the user, reads the user data, and presents the initial logged-in screen (Fig. 5). Note that the Display Name is the same as the one selected for the PassKey tag. This can be changed (but it cannot be blank).
+
+An additional text box (Credo) is now shown (and is blank, at first), and the buttons change to Delete, Logout, and Update. Initially, the Update button is disabled.
+
+#### Logging In
+
+Once we have created one or more accounts, we can then use the PassKey[s] to log in. In the initial screen, if you select the Login Button, you will be presented with the PassKey Login Selection Screen (Fig. 6).
+
+| Confirming A Single Login | Biometrics Authentication | After Login |
+| :-: | :-: | :-: |
+|![Confirming A New PassKey](img/13-Single_PassKey-Login-Confirm.png)|![Logged-Out Screen](img/14-Login-Biometrics.png)|![Logged-Out Screen](img/15-Successful-Login.png)|
+| Figure 6 | Figure 7 | Figure 8 |
+
+If you have registered multiple PassKeys, then the selection screen will have a list (Fig. 9). Select a PassKey, then proceed.
+
+| Multiple Login Selection |
+| :-: |
+|![Multiple PassKeys](img/06-Multi-Login-PassKeys.png)|
+| Figure 9 |
+
+#### Update
+
+You can change the name, or enter text into the Credo text box (Fig. 10). As soon as we start to modify the text, the Update button becomes enabled (Fig, 11). Selecting this button will immediately send the changes to the server, and the Update button becomes disabled, once more (Fig. 12).
+
+| Initial Logged-In Screen | Entering A New Credo | Update Complete |
+| :-: | :-: | :-: |
+|![Initial Screen](img/04-Logged-In-Blank-Credo.png)|![Entering Text](img/08-Enter-Update.png)|![Update Complete](img/09-Update-Complete.png)|
+| Figure 10 | Figure 11 | Figure 12 |
+
+#### Delete
+
+If you Select Delete, you will be asked for confirmation (Fig. 13). If you confirm, the account is deleted from the server, and you are returned to the logged-out screen (Fig. 14).
+
+| Confirming A Delete | After Delete |
 | :-: | :-: |
-|![Confirming A New PassKey](img/02-Confirm-PassKey-Create.png)|![PassKey Biometrics](img/03-PassKey-Create-Biometric.png)|
-| Figure 3 | Figure 4 |
+|![Confirming A New PassKey](img/05-Delete-Confirm.png)|![Logged-Out Screen](img/00-Logged-Out.png)|
+| Figure 13 | Figure 14 |
+
+> NOTE: The deletion removes the account from the server, and the PassKey will no longer be presented for login, but it will still exist in your Passwords Store. You will need to go in, afterwards, and delete the PassKey manually.
 
 ## Requirements
 
