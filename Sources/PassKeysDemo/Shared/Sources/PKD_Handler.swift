@@ -1006,8 +1006,8 @@ public extension PKD_Handler {
                                   200 == response.statusCode,
                                   let data = inData, !data.isEmpty,
                                   let dict = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: String],
-                                  let displayName = dict["displayName"],
-                                  let credo = dict["credo"] {
+                                  let displayName = dict["displayName"]?.removingPercentEncoding,
+                                  let credo = dict["credo"]?.removingPercentEncoding {
                             self.originalDisplayName = displayName
                             self.originalCredo = credo
                             inCompletion((displayName, credo), .success)
@@ -1059,8 +1059,8 @@ public extension PKD_Handler {
                                 inCompletion(.failure(PKD_Errors.communicationError(error)))
                             } else if let response = inResponse as? HTTPURLResponse,
                                       200 == response.statusCode {
-                                self.originalDisplayName = displayName
-                                self.originalCredo = credo
+                                self.originalDisplayName = inDisplayName
+                                self.originalCredo = inCredo
                                 inCompletion(.success)
                             } else {
                                 self.lastError = PKD_Errors.communicationError(nil)
