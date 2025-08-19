@@ -29,7 +29,7 @@ import Combine                  // To make the class observable.
 /**
  ## Overview
  
- This class is a framework-independent API, that abstracts the communication with the server, acting as an app model for the UI, which can be either UIKit, or SwiftUI.
+ This class is a framework-independent API, abstracting server communication, and acting as an app model for the UI, which can be either UIKit, or SwiftUI.
  
  It is a Combine `ObservableObject`, and can be observed for changes.
  
@@ -288,7 +288,7 @@ public class PKD_Handler: NSObject, ObservableObject {
     
     /* ###################################################################### */
     /**
-     If the handler encounters an error, it sets this.
+     If the handler encounters an error, it sets this. We let external set happen, because it can be used to dismiss an alert.
      */
     @Published public var lastError: PKD_Errors = .none
 }
@@ -346,7 +346,7 @@ extension PKD_Handler {
      */
     private func _getCreateChallenge(passKeyName inPassKeyName: String, completion inCompletion: @escaping (Result<_PublicKeyCredentialCreationOptionsStruct, Error>) -> Void) {
         // We need to create a unique user ID. After this, we're done with it. We do it here, because PHP doesn't actually have a true built-in UUID generator, and we do.
-        if let urlIDString = UUID().uuidString.addingPercentEncoding(withAllowedCharacters: .alphanumerics) {    // Need to use alphanumerics, because the Base64 encoding can have "+".
+        if let urlIDString = UUID().uuidString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
             var urlString = "\(self._baseURIString)/index.php?operation=\(UserOperation.createUser.rawValue)&userId=\(urlIDString)"
             if let passKeyName = inPassKeyName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
                !passKeyName.isEmpty {

@@ -40,13 +40,13 @@ class PKD_ConnectViewController: UIViewController {
     /**
      The font used for the buttons in the screen.
      */
-    static private let _buttonFont = UIFont.systemFont(ofSize: 16, weight: .bold)
+    private static let _buttonFont = UIFont.systemFont(ofSize: 16, weight: .bold)
     
     /* ###################################################################### */
     /**
      The insets for the button titles.
      */
-    static private let _buttonInsets = NSDirectionalEdgeInsets(top: 8, leading: 4, bottom: 8, trailing: 4)
+    private static let _buttonInsets = NSDirectionalEdgeInsets(top: 8, leading: 4, bottom: 8, trailing: 4)
     
     /* ###################################################################### */
     /**
@@ -80,15 +80,15 @@ class PKD_ConnectViewController: UIViewController {
 
     /* ###################################################################### */
     /**
-     The button for logging in (so it can be enabled or disabled).
-     */
-    private weak var _loginButton: UIButton?
-
-    /* ###################################################################### */
-    /**
      The button for registering (so it can be enabled or disabled).
      */
     private weak var _registerButton: UIButton?
+
+    /* ###################################################################### */
+    /**
+     The button for logging in (so it can be enabled or disabled).
+     */
+    private weak var _loginButton: UIButton?
 
     /* ###################################################################### */
     /**
@@ -124,25 +124,27 @@ extension PKD_ConnectViewController {
      */
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        guard let window = self.view.window else { return }
+        guard let window = self.view?.window else { return }
         
-        if nil == self._pkdInstance {
-            self._pkdInstance = PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString, baseURIString: Bundle.main.defaultBaseURIString, presentationAnchor: window)
+        self._pkdInstance = self._pkdInstance ?? {
+            let pkdInstance = PKD_Handler(relyingParty: Bundle.main.defaultRelyingPartyString, baseURIString: Bundle.main.defaultBaseURIString, presentationAnchor: window)
 
-            // Combine Subscriptions
+            // MARK: Combine Subscriptions
             
             // This listens for changes to the login state.
-            self._pkdInstance?.$isLoggedIn
+            pkdInstance.$isLoggedIn
                 .receive(on: RunLoop.main)
                 .sink { [weak self] _ in self?._setUpUI() }
                 .store(in: &self._loginBag)
             
             // This reacts to errors.
-            self._pkdInstance?.$lastError
+            pkdInstance.$lastError
                 .receive(on: RunLoop.main)
                 .sink { [weak self] _ in self?._handleError() }
                 .store(in: &self._errorBag)
-        }
+            
+            return pkdInstance
+        }()
         
         self._setUpUI()
     }
@@ -249,9 +251,11 @@ private extension PKD_ConnectViewController {
     func _setUpUI() {
         guard let view = self.view else { return }
         
+        let spacing = CGFloat(20)   // Vertical spacing for the stacks.
+        
         view.subviews.forEach { $0.removeFromSuperview() }
         
-        // If we are not logged in, we show a text field, a register button, and a login button.
+        // If we are not logged in, we show a text field, a register button, and a login button. If there is no text in the text field, the login button is enabled. If there is text, the register button is enabled.
         if !(self._pkdInstance?.isLoggedIn ?? false) {
             let displayNameEditField = UITextField()
             displayNameEditField.text = ""
@@ -279,12 +283,11 @@ private extension PKD_ConnectViewController {
             
             let buttonStack = UIStackView(arrangedSubviews: [registerButton, loginButton])
             buttonStack.axis = .horizontal
-            buttonStack.spacing = 20
             buttonStack.translatesAutoresizingMaskIntoConstraints = false
             
             let stack = UIStackView(arrangedSubviews: [displayNameEditField, buttonStack])
             stack.axis = .vertical
-            stack.spacing = 20
+            stack.spacing = spacing
             stack.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(stack)
 
@@ -336,11 +339,10 @@ private extension PKD_ConnectViewController {
 
             let buttonStack = UIStackView(arrangedSubviews: [deleteButton, logoutButton, updateButton])
             buttonStack.axis = .horizontal
-            buttonStack.spacing = 20
 
             let stack = UIStackView(arrangedSubviews: [displayNameEditField, credoEditField, buttonStack])
             stack.axis = .vertical
-            stack.spacing = 20
+            stack.spacing = spacing
             stack.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(stack)
             
@@ -368,6 +370,7 @@ private extension PKD_ConnectViewController {
     /* ###################################################################### */
     /**
      This looks for a dirty value, and enables the update button, if we have had a change.
+     For logged-out screens, it will handle enabling and disabling the two buttons.
      */
     func _calculateUpdateButtonEnabledState() {
         DispatchQueue.main.async {
@@ -375,7 +378,9 @@ private extension PKD_ConnectViewController {
             let displayName = self._displayName ?? ""
             let isLoggedIn = self._pkdInstance?.isLoggedIn ?? false
             let isEnabled = isLoggedIn && !displayName.isEmpty && hasTextChanged
+            // Logged-in screen
             self._updateButton?.isEnabled = isEnabled
+            // Logged-out screen
             self._registerButton?.isEnabled = !displayName.isEmpty
             self._loginButton?.isEnabled = displayName.isEmpty
         }
@@ -390,9 +395,9 @@ private extension PKD_ConnectViewController {
     /**
      Called whenever the text in one of our edit fields changes.
      
-     We just use this to manage the enablement of the update button.
+     We just use this to manage the enablement of the buttons, and limit the length of the string to 255 characters.
      
-     - parameter inTextField: The text field that changed. We also look for more than 255 characters, and truncate, if so.
+     - parameter inTextField: The text field that changed.
      */
     @objc func _textFieldChanged(_ inTextField: UITextField) {
         let oldText = inTextField.text ?? ""
@@ -409,7 +414,7 @@ private extension PKD_ConnectViewController {
     /**
      Called to begin the process of registration.
      
-     Whatever is in the displayName field will be used as the PassKey name.
+     Whatever is in the displayName field will be used as the PassKey tag.
      */
     @objc func _register() {
         guard let passKeyName = self._displayName,
@@ -420,7 +425,7 @@ private extension PKD_ConnectViewController {
     
     /* ###################################################################### */
     /**
-     Logs in the saved user (stored in the keychain).
+     Starts a login, which will ask the user to select a PassKey.
      */
     @objc func _login() {
         self._pkdInstance?.login { [weak self] _ in self?._setUpUI() }

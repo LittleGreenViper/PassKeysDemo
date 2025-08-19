@@ -160,8 +160,7 @@ struct PKD_MainView: View {
     var body: some View {
         GeometryReader { inProxy in
             let columnWidth = inProxy.size.width * 0.6  // 60% width.
-            let spacing = CGFloat(24)   // This makes it look almost exactly like the UIKit version.
-            
+            let spacing = CGFloat(24)   // This makes it look almost exactly like the UIKit version. Need a bit more padding.
             VStack(spacing: spacing) {
                 // We display a displayName (passkeyName, for logged out) text field for both conditions.
                 // If we are logged in, we fill with the display name. If logged out, it is empty by default.
