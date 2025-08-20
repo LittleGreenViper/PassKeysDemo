@@ -163,13 +163,15 @@ enum Operation: String {
     case deleteUser = 'delete';
 }
 
-// MARK: - Main Class
+// MARK: - MAIN CLASS -
 
 /******************************************/
 /**
 This class is the main server implementation. Everything happens in the constructor.
 */
 class PKDServer {
+    // MARK: Class Properties
+    
     /**************************************/
     /**
     This contains an object, with any arguments sent via GET (as object properties).
@@ -194,7 +196,49 @@ class PKDServer {
     */
     var $_pdoInstance;
     
-    // MARK: - PassKey Operations -
+    // MARK: Private Utility Methods
+    
+    /**************************************/
+    /**
+    This acts like a "guard" clause.
+    
+    This should be called before performing any logged-in operations.
+    
+    It will validate the bearer token, and will terminate the script with a 400 error, if the token fails.
+    
+    @returns: The token.
+    */
+    private function _vetLogin() {
+        $originalToken = $_SESSION['bearerToken'];
+        $headers = getallheaders();
+        
+        if (!empty($originalToken) && isset($headers['Authorization'])) {
+            $authHeader = $headers['Authorization'];
+        
+            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                $token = $matches[1];
+                if (!empty($token) && ($originalToken == $token)) {
+                    return $originalToken;
+                } else {
+                    http_response_code(401);
+                    header('Content-Type: application/json');
+                    echo json_encode(['error' => 'Authorization Mismatch']);
+                }
+            } else {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Invalid Authorization header']);
+            }
+        } else {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Missing Authorization']);
+        }
+      
+        exit;
+    }
+    
+    // MARK: Private PassKey Operation Methods
     
     /**************************************/
     /**
@@ -411,7 +455,7 @@ class PKDServer {
         }
     }
     
-    // MARK: - Post-Login Operations -
+    // MARK: Private Post-Login Operation Methods
     
     /**************************************/
     /**
@@ -420,61 +464,36 @@ class PKDServer {
     Responds with the displayName and credo for the current user, as JSON.
     */
     Private function _handleRead() {
-        $originalToken = $_SESSION['bearerToken'];
-        $headers = getallheaders();
+        $originalToken = $this->_vetLogin();
         
-        if (!empty($originalToken) && isset($headers['Authorization'])) {
-            $authHeader = $headers['Authorization'];
+        $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
+        $stmt->execute([$originalToken]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
-            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-                $token = $matches[1];
-                if (!empty($token) && ($originalToken == $token)) {
-                    $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
-                    $stmt->execute([$originalToken]);
-                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    if (!empty($row) && !empty($row['userId'])) {
-                        $userId = $row['userId'];
-                        $stmt = $this->_pdoInstance->prepare('SELECT displayName, credo FROM passkeys_demo_users WHERE userId = ?');
-                        $stmt->execute([$userId]);
-                        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                        
-                        if (!empty($row) && !empty($row['displayName'])) {
-                            $displayName = $row['displayName'];
-                            $credo = $row['credo'];
-                            if (empty($credo)) {
-                                $credo = '';
-                            }
-                            header('Content-Type: application/json');
-                            echo json_encode(['displayName' => $displayName, 'credo' => $credo]);
-                        } else {
-                            http_response_code(500);
-                            header('Content-Type: application/json');
-                            echo json_encode(['error' => 'Database Sync Issues']);
-                            exit;
-                        }
-                    } else {
-                        http_response_code(401);
-                        header('Content-Type: application/json');
-                        echo json_encode(['error' => 'User Not Found']);
-                        exit;
-                    }
-                } else {
-                    http_response_code(401);
-                    header('Content-Type: application/json');
-                    echo json_encode(['error' => 'Authorization Mismatch']);
-                    exit;
+        if (!empty($row) && !empty($row['userId'])) {
+            $userId = $row['userId'];
+            $stmt = $this->_pdoInstance->prepare('SELECT displayName, credo FROM passkeys_demo_users WHERE userId = ?');
+            $stmt->execute([$userId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!empty($row) && !empty($row['displayName'])) {
+                $displayName = $row['displayName'];
+                $credo = $row['credo'];
+                if (empty($credo)) {
+                    $credo = '';
                 }
-            } else {
-                http_response_code(401);
                 header('Content-Type: application/json');
-                echo json_encode(['error' => 'Invalid Authorization header']);
+                echo json_encode(['displayName' => $displayName, 'credo' => $credo]);
+            } else {
+                http_response_code(500);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Database Sync Issues']);
                 exit;
             }
         } else {
             http_response_code(401);
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'Missing Authorization']);
+            echo json_encode(['error' => 'User Not Found']);
             exit;
         }
     }
@@ -486,50 +505,25 @@ class PKDServer {
     Responds with the displayName and credo for the current user, as JSON.
     */
     private function _handleUpdate() {
-        $originalToken = $_SESSION['bearerToken'];
-        $headers = getallheaders();
+        $originalToken = $this->_vetLogin();
         
-        if (!empty($originalToken) && isset($headers['Authorization'])) {
-            $authHeader = $headers['Authorization'];
+        $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
+        $stmt->execute([$originalToken]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
-            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-                $token = $matches[1];
-                if (!empty($token) && ($originalToken == $token)) {
-                    $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
-                    $stmt->execute([$originalToken]);
-                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    if (!empty($row) && !empty($row['userId'])) {
-                        $userId = $row['userId'];
-                        $displayName = $this->_getArgs->displayName;
-                        $credo = $this->_getArgs->credo;
-                        
-                        $stmt = $this->_pdoInstance->prepare('UPDATE webauthn_credentials SET displayName = ? WHERE userId = ?');
-                        $stmt->execute([$displayName, $userId]);
-                        $stmt = $this->_pdoInstance->prepare('UPDATE passkeys_demo_users SET displayName = ?, credo = ? WHERE userId = ?');
-                        $stmt->execute([$displayName, $credo, $userId]);
-                    } else {
-                        http_response_code(401);
-                        header('Content-Type: application/json');
-                        echo json_encode(['error' => 'User Not Found']);
-                        exit;
-                    }
-                } else {
-                    http_response_code(401);
-                    header('Content-Type: application/json');
-                    echo json_encode(['error' => 'Authorization Mismatch']);
-                    exit;
-                }
-            } else {
-                http_response_code(401);
-                header('Content-Type: application/json');
-                echo json_encode(['error' => 'Invalid Authorization header']);
-                exit;
-            }
+        if (!empty($row) && !empty($row['userId'])) {
+            $userId = $row['userId'];
+            $displayName = $this->_getArgs->displayName;
+            $credo = $this->_getArgs->credo;
+            
+            $stmt = $this->_pdoInstance->prepare('UPDATE webauthn_credentials SET displayName = ? WHERE userId = ?');
+            $stmt->execute([$displayName, $userId]);
+            $stmt = $this->_pdoInstance->prepare('UPDATE passkeys_demo_users SET displayName = ?, credo = ? WHERE userId = ?');
+            $stmt->execute([$displayName, $credo, $userId]);
         } else {
             http_response_code(401);
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'Missing Authorization']);
+            echo json_encode(['error' => 'User Not Found']);
             exit;
         }
     }
@@ -539,32 +533,11 @@ class PKDServer {
     Performs a full logout (removes the bearer token from the DB, and sets the session to empty).
      */
     private function _handleLogout() {
-        $originalToken = $_SESSION['bearerToken'];
-        $headers = getallheaders();
+        $originalToken = $this->_vetLogin();
         
-        if (!empty($originalToken) && isset($headers['Authorization'])) {
-            $authHeader = $headers['Authorization'];
-        
-            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-                $token = $matches[1];
-                if (!empty($token) && ($originalToken == $token)) {
-                        $stmt = $this->_pdoInstance->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE bearerToken = ?');
-                        $stmt->execute([$token]);
-                        $_SESSION = [];
-                } else {
-                    http_response_code(403);
-                    header('Content-Type: application/json');
-                    echo json_encode(['error' => 'Authorization Failure']);
-                }
-            } else {
-                http_response_code(403);
-                header('Content-Type: application/json');
-                echo json_encode(['error' => 'Authorization Failure']);
-            }
-        } else {
-            http_response_code(400);
-            echo '&#128169;';   // Oh, poo.
-        }
+        $stmt = $this->_pdoInstance->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE bearerToken = ?');
+        $stmt->execute([$originalToken]);
+        $_SESSION = [];
     }
     
     /***********************/
@@ -572,57 +545,36 @@ class PKDServer {
     This deletes the logged-in user from both tables. It also forces a logout.
      */
     private function _handleDelete() {
-        $originalToken = $_SESSION['bearerToken'];
-        $headers = getallheaders();
+        $originalToken = $this->_vetLogin();
+
+        $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
+        $stmt->execute([$originalToken]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if (!empty($originalToken) && isset($headers['Authorization'])) {
-            $authHeader = $headers['Authorization'];
-        
-            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-                $token = $matches[1];
-                if (!empty($token) && ($originalToken == $token)) {
-                    $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
-                    $stmt->execute([$token]);
-                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    if (!empty($row) && isset($row['userId']) && !empty($row['userId'])) {
-                        try {   // We wrap in a transaction, so we won't have only one table row deleted,
-                                // if there's an error.
-                            $this->_pdoInstance->beginTransaction();
-                                $stmt = $this->_pdoInstance->prepare('DELETE FROM webauthn_credentials WHERE userId = ?');
-                                $stmt->execute([$row['userId']]);
-                                $stmt = $this->_pdoInstance->prepare('DELETE FROM passkeys_demo_users WHERE userId = ?');
-                                $stmt->execute([$row['userId']]);
-                            $this->_pdoInstance->commit();
-                            $_SESSION = [];
-                        } catch (Exception $e) {
-                            $this->_pdoInstance->rollBack();
-                            http_response_code(500);
-                            header('Content-Type: application/json');
-                            echo json_encode(['error' => 'Delete Operation Failure']);
-                        }
-                    } else {
-                        http_response_code(404);
-                        header('Content-Type: application/json');
-                        echo json_encode(['error' => 'User Not Found']);
-                    }
-                } else {
-                    http_response_code(403);
-                    header('Content-Type: application/json');
-                    echo json_encode(['error' => 'Authorization Failure']);
-                }
-            } else {
-                http_response_code(403);
+        if (!empty($row) && isset($row['userId']) && !empty($row['userId'])) {
+            try {   // We wrap in a transaction, so we won't have only one table row deleted,
+                    // if there's an error.
+                $this->_pdoInstance->beginTransaction();
+                    $stmt = $this->_pdoInstance->prepare('DELETE FROM webauthn_credentials WHERE userId = ?');
+                    $stmt->execute([$row['userId']]);
+                    $stmt = $this->_pdoInstance->prepare('DELETE FROM passkeys_demo_users WHERE userId = ?');
+                    $stmt->execute([$row['userId']]);
+                $this->_pdoInstance->commit();
+                $_SESSION = [];
+            } catch (Exception $e) {
+                $this->_pdoInstance->rollBack();
+                http_response_code(500);
                 header('Content-Type: application/json');
-                echo json_encode(['error' => 'Authorization Failure']);
+                echo json_encode(['error' => 'Delete Operation Failure']);
             }
         } else {
-            http_response_code(400);
-            echo '&#128169;';   // Oh, poo.
+            http_response_code(404);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'User Not Found']);
         }
     }
     
-    // MARK: - PUBLIC API -
+    // MARK: Public API
     
     /**************************************/
     /**
