@@ -10,11 +10,11 @@ Server Implementation
 
 This server is implemented in [PHP](https://www.php.net), and uses a simple [MySQL](https://www.mysql.com) database. It is a basic [CRUD](https://en.wikipedia.org/wiki/Create,_read,_update_and_delete) server, allowing users to create accounts, store a small amount of information securely, then access and modify that information (also securely).
 
-The server is implemented almost entirely in [one PHP file](https://github.com/LittleGreenViper/PassKeysDemo/blob/master/Server/PKDServer.class.php).
+The server is implemented almost entirely in [one PHP file](./PKDServer.class.php).
 
 ## Implementation
 
-In order to use the server, you need to set up [a LAMP server](https://en.wikipedia.org/wiki/LAMP_\(software_bundle\)), and initialize a new database, with the contents of the Meta/MySQLStructure.sql file. This creates two tables. You also need to set up a database user, and assign it to the new database, with all standard permissions (no need for admin ones, like GRANT).
+In order to use the server, you need to set up [a LAMP server](https://en.wikipedia.org/wiki/LAMP_\(software_bundle\)), and initialize a new database, with the contents of the [`Meta/MySQLStructure.sql`](./Meta/MySQLStructure.sql) file. This creates two tables. You also need to set up a database user, and assign it to the new database, with all standard permissions (no need for admin ones, like GRANT).
 
 You then need to set up a configuration file. This is accomplished by editing the Meta/Config.php file with the values necessary to access the server, and then placing that in another directory (we suggest one that is outside the HTTP directory path, so it can't be scanned). Edit the index.php file, so that its require line brings in the edited Config.php file.
 
