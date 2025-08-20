@@ -53,7 +53,6 @@ We implement an instance of lbuchs/WebAuthn, and use that for PassKey authentica
 an instance of PDO, for secure database interaction.
 */
 require 'vendor/autoload.php';  // This is the WebAuthn library.
-require_once "./Config.php";    // This is the server-specific configuration.
 
 // We will be using a shared HTTP session.
 session_start();

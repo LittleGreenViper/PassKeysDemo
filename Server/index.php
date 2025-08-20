@@ -26,4 +26,5 @@
 */
 
 require_once "./PKDServer.class.php";
+require_once "./Config.php";    // This is the server-specific configuration.
 new PKDServer();
