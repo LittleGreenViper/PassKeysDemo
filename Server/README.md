@@ -32,7 +32,7 @@ That will bring in the [WebAuthn PHP Library](https://github.com/lbuchs/WebAuthn
 
 The basic PHP server should now be ready.
 
-However, we also need to set up [the `apple-app-site-association` file](https://developer.apple.com/documentation/xcode/supporting-associated-domains) ([here, in the `Meta` subfolder](./Meta/apple-app-site-association)), This goes into the invisible `.well-known` directory, at the HTTP root of your server. This will be necessary, so the app can use PassKeys to interact with your server.
+However, we also need to set up [the `apple-app-site-association` file](https://developer.apple.com/documentation/xcode/supporting-associated-domains) ([here, in the `Meta` subfolder](./Meta/apple-app-site-association)), This goes into the invisible `.well-known` directory, at the HTTP root of your server. This will be necessary, so the app can use PassKeys to interact with your server. You will also need to change the app bundle ID to match your bundle (the sample is the one used for my sample app).
 
 When you are done, the server should look something like this (from my own example server, Yours will have different names):
 
@@ -44,9 +44,11 @@ In my setup, `pkd.littlegreenviper.com` is the HTTP root. Note the `pkd` directo
     require_once "../pkd/Config.php";
     new PKDServer();
 
-The `acme-challenge` directory is used by the server's SSL implementation. Ignore it.
+The `acme-challenge` directory is used by the server's SSL implementation. Your server may or may not have it. Ignore it, and leave it alone, if it's there.
 
-The .htaccess file is not always necessary, but I found that I had to ensure that the `apple-app-site-association` file had to be specifically coerced into presenting as JSON, so it looks like this:
+The `composer.lock` file is an artifact of the composer update. Leave it there.
+
+The .htaccess file is not always necessary, but I found that I had to ensure that the `apple-app-site-association` file had to be explicitly coerced into presenting as JSON, so it looks like this:
 
     <IfModule mod_headers.c>
       <Files "apple-app-site-association">
@@ -58,7 +60,7 @@ The .htaccess file is not always necessary, but I found that I had to ensure tha
         Header set Content-Type "application/json"
       </FilesMatch>
     </IfModule>
-    
+
 It's likely that your implementation should work fine, without it.
 
 ### Operation
