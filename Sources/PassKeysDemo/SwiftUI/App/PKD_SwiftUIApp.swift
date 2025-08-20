@@ -30,6 +30,7 @@ import SwiftUI
 struct PKD_SwiftUIApp: App {
     /* ###################################################################### */
     /**
+     This just sets up the single main view.
      */
     var body: some Scene { WindowGroup { PKD_MainView() } }
 }
