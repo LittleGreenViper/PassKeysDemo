@@ -32,7 +32,7 @@ That will bring in the [WebAuthn PHP Library](https://github.com/lbuchs/WebAuthn
 
 The basic PHP server should now be ready.
 
-However, we also need to set up [the `apple-app-site-association` file](https://developer.apple.com/documentation/xcode/supporting-associated-domains) ([here, in the `Meta`](./Meta/apple-app-site-association) subfolder), This goes into the invisible `.well-known` directory, at the HTTP root of your server. This will be necessary, so the app can use PassKeys to interact with your server.
+However, we also need to set up [the `apple-app-site-association` file](https://developer.apple.com/documentation/xcode/supporting-associated-domains) ([here, in the `Meta` subfolder](./Meta/apple-app-site-association)), This goes into the invisible `.well-known` directory, at the HTTP root of your server. This will be necessary, so the app can use PassKeys to interact with your server.
 
 When you are done, the server should look something like this (from my own example server, Yours will have different names):
 
