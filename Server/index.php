@@ -23,8 +23,12 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 /**
+This is the "starting point" for the PassKeys Demo server component. It's really simple. It just acceses the configuration, and instantiates our server class.
+
+The class works by instantiation. Nothing else is required.
 */
 
 require_once "./PKDServer.class.php";
-require_once "./Config.php";    // This is the server-specific configuration.
+require_once "./Config.php";    // This is the server-specific configuration. Change this to point to the file you set up.
+
 new PKDServer();

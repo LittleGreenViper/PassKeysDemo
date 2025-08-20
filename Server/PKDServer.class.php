@@ -54,11 +54,11 @@ an instance of PDO, for secure database interaction.
 */
 require 'vendor/autoload.php';  // This is the WebAuthn library.
 
-// We will be using a shared HTTP session.
-session_start();
-
 // We rely on the WebAuthn library.
 use lbuchs\WebAuthn\WebAuthn;
+
+// We will be using a shared HTTP session.
+session_start();
 
 // MARK: - Global Utility Functions
 

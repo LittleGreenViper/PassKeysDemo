@@ -32,6 +32,14 @@
 		D406C8A52E4DFDC400D7AC43 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Base; path = Base.lproj/Localizable.strings; sourceTree = "<group>"; };
 		D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_ConnectViewController.swift; sourceTree = "<group>"; };
 		D40E2F942E52671B0067B3E1 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		D41FD7412E564072003DACBC /* apple-app-site-association */ = {isa = PBXFileReference; lastKnownFileType = text; path = "apple-app-site-association"; sourceTree = "<group>"; };
+		D41FD7422E564072003DACBC /* Config.php */ = {isa = PBXFileReference; lastKnownFileType = text.script.php; path = Config.php; sourceTree = "<group>"; };
+		D41FD7432E564072003DACBC /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		D41FD7442E564072003DACBC /* MySQLStructure.sql */ = {isa = PBXFileReference; lastKnownFileType = text; path = MySQLStructure.sql; sourceTree = "<group>"; };
+		D41FD7462E564072003DACBC /* composer.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = composer.json; sourceTree = "<group>"; };
+		D41FD7472E564072003DACBC /* index.php */ = {isa = PBXFileReference; lastKnownFileType = text.script.php; path = index.php; sourceTree = "<group>"; };
+		D41FD7482E564072003DACBC /* PKDServer.class.php */ = {isa = PBXFileReference; lastKnownFileType = text.script.php; path = PKDServer.class.php; sourceTree = "<group>"; };
+		D41FD7492E564072003DACBC /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		D42C349A2E3CF300002C325B /* PKD_Handler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_Handler.swift; sourceTree = "<group>"; };
 		D43C32662E4D3BF300F3B374 /* PassKeysDemoSwiftUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PassKeysDemoSwiftUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D43C32722E4D3C1400F3B374 /* PKD_MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKD_MainView.swift; sourceTree = "<group>"; };
@@ -118,6 +126,29 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		D41FD7452E564072003DACBC /* Meta */ = {
+			isa = PBXGroup;
+			children = (
+				D41FD7412E564072003DACBC /* apple-app-site-association */,
+				D41FD7422E564072003DACBC /* Config.php */,
+				D41FD7442E564072003DACBC /* MySQLStructure.sql */,
+				D41FD7432E564072003DACBC /* Icon.png */,
+			);
+			path = Meta;
+			sourceTree = "<group>";
+		};
+		D41FD74A2E564072003DACBC /* Server */ = {
+			isa = PBXGroup;
+			children = (
+				D41FD7452E564072003DACBC /* Meta */,
+				D41FD7462E564072003DACBC /* composer.json */,
+				D41FD7472E564072003DACBC /* index.php */,
+				D41FD7482E564072003DACBC /* PKDServer.class.php */,
+				D41FD7492E564072003DACBC /* README.md */,
+			);
+			path = Server;
+			sourceTree = "<group>";
+		};
 		D43C32742E4D3C1400F3B374 /* SwiftUI */ = {
 			isa = PBXGroup;
 			children = (
@@ -158,6 +189,7 @@
 			isa = PBXGroup;
 			children = (
 				D499A5C02E33ACFD001593B7 /* Sources */,
+				D41FD74A2E564072003DACBC /* Server */,
 				D4C8B7E72E4D39140018C9DD /* README.md */,
 				D4C8B7E12E4D39140018C9DD /* CHANGELOG.md */,
 				D4C8B7E22E4D39140018C9DD /* CODEOWNERS */,

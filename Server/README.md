@@ -8,7 +8,58 @@ Server Implementation
 
 ## Basic Structure
 
-This server is implemented in [PHP](https://www.php.net), and uses a simple [MySQL](https://www.mysql.com) database. It is a basic [CRUD](https://en.wikipedia.org/wiki/Create,_read,_update_and_delete) server, allowing users to create accounts, store a small amount of information securely, then access and modify that information (also securely). The server is implemented almost entirely in [one PHP file](https://github.com/LittleGreenViper/PassKeysDemo/blob/master/Server/PKDServer.class.php).
+This server is implemented in [PHP](https://www.php.net), and uses a simple [MySQL](https://www.mysql.com) database. It is a basic [CRUD](https://en.wikipedia.org/wiki/Create,_read,_update_and_delete) server, allowing users to create accounts, store a small amount of information securely, then access and modify that information (also securely).
+
+The server is implemented almost entirely in [one PHP file](https://github.com/LittleGreenViper/PassKeysDemo/blob/master/Server/PKDServer.class.php).
+
+## Implementation
+
+In order to use the server, you need to set up [a LAMP server](https://en.wikipedia.org/wiki/LAMP_\(software_bundle\)), and initialize a new database, with the contents of the Meta/MySQLStructure.sql file. This creates two tables. You also need to set up a database user, and assign it to the new database, with all standard permissions (no need for admin ones, like GRANT).
+
+You then need to set up a configuration file. This is accomplished by editing the Meta/Config.php file with the values necessary to access the server, and then placing that in another directory (we suggest one that is outside the HTTP directory path, so it can't be scanned). Edit the index.php file, so that its require line brings in the edited Config.php file.
+
+Copy all these files (not in Meta) to your server, into the HTTP path.
+
+    composer.json
+    index.php
+    PKDServer.class.php
+
+Once you have the server code set up, use SSH or the Console, to navigate to the server directory, and enter:
+
+    $> composer update
+
+That will bring in the [WebAuthn PHP Library](https://github.com/lbuchs/WebAuthn), and create a directory called "vendor." Ignore that directory. The script knows what to do with it.
+
+The basic PHP server should now be ready.
+
+However, we also need to set up [the `apple-app-site-association` file](https://developer.apple.com/documentation/xcode/supporting-associated-domains) (in the Meta subfolder), This goes into the invisible `.well-known` directory, at the HTTP root of your server. This will be necessary, so the app can use PassKeys to interact with your server.
+
+When you are done, the server should look something like this (from my own example server, Yours will have different names):
+
+![Server Setup](Meta/ServerConfig.png)
+
+In my setup, `pkd.littlegreenviper.com` is the HTTP root. Note the `pkd` directory, outside that root. It contains the `Config.php` file, and the `index.php` file looks like this:
+
+    require_once "./PKDServer.class.php";
+    require_once "../pkd/Config.php";
+    new PKDServer();
+
+The `acme-challenge` directory is used by the server's SSL implementation. Ignore it.
+
+The .htaccess file is not always necessary, but I found that I had to ensure that the `apple-app-site-association` file had to be specifically coerced into presenting as JSON, so it looks like this:
+
+    <IfModule mod_headers.c>
+      <Files "apple-app-site-association">
+        ForceType application/json
+        Header set Content-Type "application/json"
+      </Files>
+      <FilesMatch "^apple-app-site-association$">
+        ForceType application/json
+        Header set Content-Type "application/json"
+      </FilesMatch>
+    </IfModule>
+    
+It's likely that your implementation should work fine, without it.
 
 ### Operation
 
