@@ -28,7 +28,7 @@ Once you have the server code set up, use SSH or the Console, to navigate to the
 
     $> composer update
 
-That will bring in the [WebAuthn PHP Library](https://github.com/lbuchs/WebAuthn), and create a directory called "vendor." Ignore that directory. The script knows what to do with it.
+That will bring in the [WebAuthn PHP Library](https://github.com/lbuchs/WebAuthn), and create a directory called `vendor`. Ignore that directory. The script knows what to do with it.
 
 The basic PHP server should now be ready.
 
