@@ -271,7 +271,7 @@ class PKDServer {
     The first part of the login operation.
     
     This returns the challenge string, as Base64URL-encoded, and an array of allowed credential IDs,
-    each Base64URL-encoded. 
+    each Base64-encoded. 
     */
     public function loginChallenge() {
         $challenge = random_bytes(32);
