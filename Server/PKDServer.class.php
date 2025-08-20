@@ -174,95 +174,25 @@ class PKDServer {
     /**
     This contains an object, with any arguments sent via GET (as object properties).
     */
-    var $getArgs;
+    var $_getArgs;
 
     /**************************************/
     /**
     This contains an associative array, with any arguments sent via POST (We only have JSON sent by POST).
     */
-    var $postArgs;
+    var $_postArgs;
 
     /**************************************/
     /**
     This is an initialized instance of lbuchs/WebAuthn that we'll be using for checking credentials.
     */
-    var $webAuthnInstance;
+    var $_webAuthnInstance;
 
     /**************************************/
     /**
     This is an initialized instance of PDO, that we'll be using to interact with the database.
     */
-    var $pdoInstance;
-    
-    /**************************************/
-    /**
-    Main constructor.
-    
-    All the action happens here. Just construct the class, to make it work.
-    */
-    public function __construct() {
-        // Since any POST arguments are simply JSON, we access them this way.
-        $rawPostData = file_get_contents("php://input");
-        
-        // This is the configuration for our PDO property.
-        // Config is supplied in the Config.php file, referenced above.
-        $pdoHostDBConfig = Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name;
-
-        // Set up our instance properties.
-        $this->getArgs = (object)$_GET;
-        $this->postArgs = json_decode($rawPostData, true);
-        $this->pdoInstance = new PDO($pdoHostDBConfig, Config::$g_db_login, Config::$g_db_password);
-        $this->webAuthnInstance = new WebAuthn(Config::$g_relying_party_name, Config::$g_relying_party_uri);
-
-        // We dispatch, according to the operation GET argument value.
-        switch(Operation::from($this->getArgs->operation)) {
-            // This is a two-part operation.
-            // The first call generates a challenge string, that is signed and submitted in the second call.
-            // It also stashes the GET values for the userID and displayName, in the session variable.
-            case Operation::login:
-                if (empty($this->postArgs)) {
-                    $this->loginChallenge();
-                } else {
-                    $this->loginCompletion();
-                }
-                break;
-                
-            // This is a two-part operation.
-            // The first call generates a challenge string, that is signed and submitted in the second call.
-            case Operation::createUser:
-                if (empty($this->postArgs)) {
-                    $this->createChallenge();
-                } else {
-                    $this->createCompletion();
-                }
-                break;
-                
-            // This simply reads the user table, and returns the values, therein.
-            case Operation::readUser:
-                $this->handleRead();
-                break;
-            
-            // This updates the user table, with the values provided in the GET arguments.
-            case Operation::updateUser:
-                $this->handleUpdate();
-                break;
-            
-            // This simply logs up out, and removes the bearer token from the database.
-            case Operation::logout:
-                $this->handleLogout();
-                break;
-            
-            // This completely deletes the currently logged-in user from the database.
-            case Operation::deleteUser:
-                $this->handleDelete();
-                break;
-            
-            // We send back a poo emoji, if an illegal operation was prescribed.
-            default:
-                http_response_code(400);
-                echo '&#128169;';   // Oh, poo.
-        }
-    }
+    var $_pdoInstance;
     
     // MARK: - PassKey Operations -
     
@@ -273,11 +203,11 @@ class PKDServer {
     This returns the challenge string, as Base64URL-encoded, and an array of allowed credential IDs,
     each Base64-encoded. 
     */
-    public function loginChallenge() {
+    private function _loginChallenge() {
         $challenge = random_bytes(32);
         // Pass on to the next step.
         $_SESSION['loginChallenge'] = $challenge;
-        $stmt = $this->pdoInstance->prepare('SELECT credentialId FROM webauthn_credentials');
+        $stmt = $this->_pdoInstance->prepare('SELECT credentialId FROM webauthn_credentials');
         $stmt->execute();
         $allowedIDs = [];
         
@@ -299,9 +229,9 @@ class PKDServer {
     
     It returns the bearerToken for the login.
     */
-    public function loginCompletion() {
+    private function _loginCompletion() {
         $userId = "";
-        $credentialId = $this->getArgs->credentialId;
+        $credentialId = $this->_getArgs->credentialId;
         if (empty($credentialId)) {
             http_response_code(400);
             echo '&#128169;';   // Oh, poo.
@@ -309,7 +239,7 @@ class PKDServer {
         }
         
         $row = [];
-        $stmt = $this->pdoInstance->prepare('SELECT userId, displayName, signCount, publicKey FROM webauthn_credentials WHERE credentialId = ?');
+        $stmt = $this->_pdoInstance->prepare('SELECT userId, displayName, signCount, publicKey FROM webauthn_credentials WHERE credentialId = ?');
         $stmt->execute([$credentialId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         $userId = $row['userId'];
@@ -322,11 +252,11 @@ class PKDServer {
         }
         
         // This is a signed record, with various user data.
-        $clientDataJSON = base64_decode($this->postArgs['clientDataJSON']);
+        $clientDataJSON = base64_decode($this->_postArgs['clientDataJSON']);
         // A record, with any authenticator (YubiKey, etc. Not used for our demo). 
-        $authenticatorData = base64_decode($this->postArgs['authenticatorData']);
+        $authenticatorData = base64_decode($this->_postArgs['authenticatorData']);
         // The signature for the record, against the public key.
-        $signature = base64_decode($this->postArgs['signature']); 
+        $signature = base64_decode($this->_postArgs['signature']); 
         // The public key for the passkey.
         $publicKey = $row['publicKey'];
         // The challenge that was returned to the client, for signing.
@@ -337,7 +267,7 @@ class PKDServer {
         // If there was no signed client data record, with a matching challenge, then game over, man.
         if (!empty($publicKey) && !empty($credentialId) && !empty($userId)) {
             try {
-                $success = $this->webAuthnInstance->processGet(
+                $success = $this->_webAuthnInstance->processGet(
                     $clientDataJSON,
                     $authenticatorData,
                     $signature,
@@ -351,15 +281,15 @@ class PKDServer {
                 $bearerToken = base64url_encode(random_bytes(32));  
                 
                 // Increment the sign count and store the new bearer token.
-                $newSignCount = intval($this->webAuthnInstance->getSignatureCounter());
-                $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET signCount = ?, bearerToken = ? WHERE credentialId = ?');
+                $newSignCount = intval($this->_webAuthnInstance->getSignatureCounter());
+                $stmt = $this->_pdoInstance->prepare('UPDATE webauthn_credentials SET signCount = ?, bearerToken = ? WHERE credentialId = ?');
                 $stmt->execute([$newSignCount, $bearerToken, $credentialId]);
                 
                 $_SESSION['bearerToken'] = $bearerToken;    // Pass it on, in the session.
                 echo($bearerToken);
             } catch (Exception $e) {
                 // Try to clear the token, if we end up here.
-                $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE credentialId = ?');
+                $stmt = $this->_pdoInstance->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE credentialId = ?');
                 $stmt->execute([$credentialId]);
                 
                 http_response_code(401);
@@ -379,25 +309,25 @@ class PKDServer {
     
     This is called with a userId (and optionally, a display name), and returns the public key struct, as JSON.
     */
-    public function createChallenge() {
-        $userId = $this->getArgs->userId;   // The user ID needs, to be unique in this server.
+    private function _createChallenge() {
+        $userId = $this->_getArgs->userId;   // The user ID needs, to be unique in this server.
         // After this, the client can forget the user ID. It will no longer be used in exchanges.
-        $displayName = $this->getArgs->displayName;
+        $displayName = $this->_getArgs->displayName;
         if (empty($displayName)) {
             $displayName = "New User";
         }
         
-        $stmt = $this->pdoInstance->prepare('SELECT credentialId FROM webauthn_credentials WHERE userId = ?');
+        $stmt = $this->_pdoInstance->prepare('SELECT credentialId FROM webauthn_credentials WHERE userId = ?');
         $stmt->execute([$userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!empty($userId) && empty($row)) {
             // We will use the function to create a registration object,
             // which will need to be presented in a subsequent call.
-            $args = $this->webAuthnInstance->getCreateArgs($userId, $userId, $displayName);
+            $args = $this->_webAuthnInstance->getCreateArgs($userId, $userId, $displayName);
             
             // We encode the challenge data as a Base64 URL-encoded string.
-            $binaryString = $this->webAuthnInstance->getChallenge()->getBinaryString();
+            $binaryString = $this->_webAuthnInstance->getChallenge()->getBinaryString();
             $base64urlChallenge = base64url_encode($binaryString);
             // We do the same for the binary unique user ID.
             // NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
@@ -432,22 +362,22 @@ class PKDServer {
     
     It responds with the displayName, credo, and bearerToken for the new user and login, as JSON.
     */
-    public function createCompletion() {
+    private function _createCompletion() {
         // Create a new token, as this is a new login.
         // NOTE: This needs to be Base64URL encoded, not just Base64 encoded.
         $bearerToken = base64url_encode(random_bytes(32));
         $userId = $_SESSION['createUserID'];
         $displayName = $_SESSION['createDisplayName'];
-        $clientDataJSON = base64_decode($this->postArgs['clientDataJSON']);
-        $attestationObject = base64_decode($this->postArgs['attestationObject']);
+        $clientDataJSON = base64_decode($this->_postArgs['clientDataJSON']);
+        $attestationObject = base64_decode($this->_postArgs['attestationObject']);
         $challenge = base64url_decode($_SESSION['createChallenge']);  // NOTE: Base64URL encoded.
         
         if (!empty($clientDataJSON) && !empty($attestationObject)) {
             try {
                 // This is where the data to be stored for the subsequent logins is generated.
-                $data = $this->webAuthnInstance->processCreate( $clientDataJSON,
-                                                                $attestationObject,
-                                                                $challenge);
+                $data = $this->_webAuthnInstance->processCreate(    $clientDataJSON,
+                                                                    $attestationObject,
+                                                                    $challenge);
                 
                 // We will be storing all this into the database.
                 $params = [
@@ -460,10 +390,10 @@ class PKDServer {
                 ];
                 
                 // Create a new credential record.
-                $stmt = $this->pdoInstance->prepare('INSERT INTO webauthn_credentials (userId, credentialId, displayName, signCount, bearerToken, publicKey) VALUES (?, ?, ?, ?, ?, ?)');
+                $stmt = $this->_pdoInstance->prepare('INSERT INTO webauthn_credentials (userId, credentialId, displayName, signCount, bearerToken, publicKey) VALUES (?, ?, ?, ?, ?, ?)');
                 $stmt->execute($params);
                 // Create a new user data record.
-                $stmt = $this->pdoInstance->prepare('INSERT INTO passkeys_demo_users (userId, displayName, credo) VALUES (?, ?, ?)');
+                $stmt = $this->_pdoInstance->prepare('INSERT INTO passkeys_demo_users (userId, displayName, credo) VALUES (?, ?, ?)');
                 $stmt->execute([$userId, $displayName, ""]);
                 // Send these on to the next step.
                 $_SESSION['bearerToken'] = $bearerToken;
@@ -489,7 +419,7 @@ class PKDServer {
     
     Responds with the displayName and credo for the current user, as JSON.
     */
-    public function handleRead() {
+    Private function _handleRead() {
         $originalToken = $_SESSION['bearerToken'];
         $headers = getallheaders();
         
@@ -499,13 +429,13 @@ class PKDServer {
             if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
                 $token = $matches[1];
                 if (!empty($token) && ($originalToken == $token)) {
-                    $stmt = $this->pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
+                    $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
                     $stmt->execute([$originalToken]);
                     $row = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if (!empty($row) && !empty($row['userId'])) {
                         $userId = $row['userId'];
-                        $stmt = $this->pdoInstance->prepare('SELECT displayName, credo FROM passkeys_demo_users WHERE userId = ?');
+                        $stmt = $this->_pdoInstance->prepare('SELECT displayName, credo FROM passkeys_demo_users WHERE userId = ?');
                         $stmt->execute([$userId]);
                         $row = $stmt->fetch(PDO::FETCH_ASSOC);
                         
@@ -555,7 +485,7 @@ class PKDServer {
     
     Responds with the displayName and credo for the current user, as JSON.
     */
-    public function handleUpdate() {
+    private function _handleUpdate() {
         $originalToken = $_SESSION['bearerToken'];
         $headers = getallheaders();
         
@@ -565,18 +495,18 @@ class PKDServer {
             if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
                 $token = $matches[1];
                 if (!empty($token) && ($originalToken == $token)) {
-                    $stmt = $this->pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
+                    $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
                     $stmt->execute([$originalToken]);
                     $row = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if (!empty($row) && !empty($row['userId'])) {
                         $userId = $row['userId'];
-                        $displayName = $this->getArgs->displayName;
-                        $credo = $this->getArgs->credo;
+                        $displayName = $this->_getArgs->displayName;
+                        $credo = $this->_getArgs->credo;
                         
-                        $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET displayName = ? WHERE userId = ?');
+                        $stmt = $this->_pdoInstance->prepare('UPDATE webauthn_credentials SET displayName = ? WHERE userId = ?');
                         $stmt->execute([$displayName, $userId]);
-                        $stmt = $this->pdoInstance->prepare('UPDATE passkeys_demo_users SET displayName = ?, credo = ? WHERE userId = ?');
+                        $stmt = $this->_pdoInstance->prepare('UPDATE passkeys_demo_users SET displayName = ?, credo = ? WHERE userId = ?');
                         $stmt->execute([$displayName, $credo, $userId]);
                     } else {
                         http_response_code(401);
@@ -608,7 +538,7 @@ class PKDServer {
     /**
     Performs a full logout (removes the bearer token from the DB, and sets the session to empty).
      */
-    function handleLogout() {
+    private function _handleLogout() {
         $originalToken = $_SESSION['bearerToken'];
         $headers = getallheaders();
         
@@ -618,7 +548,7 @@ class PKDServer {
             if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
                 $token = $matches[1];
                 if (!empty($token) && ($originalToken == $token)) {
-                        $stmt = $this->pdoInstance->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE bearerToken = ?');
+                        $stmt = $this->_pdoInstance->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE bearerToken = ?');
                         $stmt->execute([$token]);
                         $_SESSION = [];
                 } else {
@@ -641,7 +571,7 @@ class PKDServer {
     /**
     This deletes the logged-in user from both tables. It also forces a logout.
      */
-    function handleDelete() {
+    private function _handleDelete() {
         $originalToken = $_SESSION['bearerToken'];
         $headers = getallheaders();
         
@@ -651,22 +581,22 @@ class PKDServer {
             if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
                 $token = $matches[1];
                 if (!empty($token) && ($originalToken == $token)) {
-                    $stmt = $this->pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
+                    $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
                     $stmt->execute([$token]);
                     $row = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if (!empty($row) && isset($row['userId']) && !empty($row['userId'])) {
                         try {   // We wrap in a transaction, so we won't have only one table row deleted,
                                 // if there's an error.
-                            $this->pdoInstance->beginTransaction();
-                                $stmt = $this->pdoInstance->prepare('DELETE FROM webauthn_credentials WHERE userId = ?');
+                            $this->_pdoInstance->beginTransaction();
+                                $stmt = $this->_pdoInstance->prepare('DELETE FROM webauthn_credentials WHERE userId = ?');
                                 $stmt->execute([$row['userId']]);
-                                $stmt = $this->pdoInstance->prepare('DELETE FROM passkeys_demo_users WHERE userId = ?');
+                                $stmt = $this->_pdoInstance->prepare('DELETE FROM passkeys_demo_users WHERE userId = ?');
                                 $stmt->execute([$row['userId']]);
-                            $this->pdoInstance->commit();
+                            $this->_pdoInstance->commit();
                             $_SESSION = [];
                         } catch (Exception $e) {
-                            $this->pdoInstance->rollBack();
+                            $this->_pdoInstance->rollBack();
                             http_response_code(500);
                             header('Content-Type: application/json');
                             echo json_encode(['error' => 'Delete Operation Failure']);
@@ -689,6 +619,78 @@ class PKDServer {
         } else {
             http_response_code(400);
             echo '&#128169;';   // Oh, poo.
+        }
+    }
+    
+    // MARK: - PUBLIC API -
+    
+    /**************************************/
+    /**
+    Main constructor.
+    
+    All the action happens here. Just construct the class, to make it work.
+    */
+    public function __construct() {
+        // Since any POST arguments are simply JSON, we access them this way.
+        $rawPostData = file_get_contents("php://input");
+        
+        // This is the configuration for our PDO property.
+        // Config is supplied in the Config.php file, referenced above.
+        $pdoHostDBConfig = Config::$g_db_type.':host='.Config::$g_db_host.';dbname='.Config::$g_db_name;
+
+        // Set up our instance properties.
+        $this->_getArgs = (object)$_GET;
+        $this->_postArgs = json_decode($rawPostData, true);
+        $this->_pdoInstance = new PDO($pdoHostDBConfig, Config::$g_db_login, Config::$g_db_password);
+        $this->_webAuthnInstance = new WebAuthn(Config::$g_relying_party_name, Config::$g_relying_party_uri);
+
+        // We dispatch, according to the operation GET argument value.
+        switch(Operation::from($this->_getArgs->operation)) {
+            // This is a two-part operation.
+            // The first call generates a challenge string, that is signed and submitted in the second call.
+            // It also stashes the GET values for the userID and displayName, in the session variable.
+            case Operation::login:
+                if (empty($this->_postArgs)) {
+                    $this->_loginChallenge();
+                } else {
+                    $this->_loginCompletion();
+                }
+                break;
+                
+            // This is a two-part operation.
+            // The first call generates a challenge string, that is signed and submitted in the second call.
+            case Operation::createUser:
+                if (empty($this->_postArgs)) {
+                    $this->_createChallenge();
+                } else {
+                    $this->_createCompletion();
+                }
+                break;
+                
+            // This simply reads the user table, and returns the values, therein.
+            case Operation::readUser:
+                $this->_handleRead();
+                break;
+            
+            // This updates the user table, with the values provided in the GET arguments.
+            case Operation::updateUser:
+                $this->_handleUpdate();
+                break;
+            
+            // This simply logs up out, and removes the bearer token from the database.
+            case Operation::logout:
+                $this->_handleLogout();
+                break;
+            
+            // This completely deletes the currently logged-in user from the database.
+            case Operation::deleteUser:
+                $this->_handleDelete();
+                break;
+            
+            // We send back a poo emoji, if an illegal operation was prescribed.
+            default:
+                http_response_code(400);
+                echo '&#128169;';   // Oh, poo.
         }
     }
 }
