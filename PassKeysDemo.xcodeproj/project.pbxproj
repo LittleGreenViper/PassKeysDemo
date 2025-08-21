@@ -10,20 +10,20 @@
 		D406C8A62E4DFDC400D7AC43 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D406C8A42E4DFDC400D7AC43 /* Localizable.strings */; };
 		D406C8A72E4DFDC400D7AC43 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D406C8A42E4DFDC400D7AC43 /* Localizable.strings */; };
 		D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40941452E34FBED001431EB /* PKD_ConnectViewController.swift */; };
-		D42C349B2E3CF300002C325B /* PKD_Handler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42C349A2E3CF300002C325B /* PKD_Handler.swift */; };
 		D43C32752E4D3C1400F3B374 /* PKD_MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D43C32722E4D3C1400F3B374 /* PKD_MainView.swift */; };
 		D43C32762E4D3C1400F3B374 /* PKD_SwiftUIApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D43C32732E4D3C1400F3B374 /* PKD_SwiftUIApp.swift */; };
 		D43C32782E4D3C2B00F3B374 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C22E33AD1A001593B7 /* Assets.xcassets */; };
-		D43C32792E4D3CCE00F3B374 /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
-		D43C327A2E4D3CCE00F3B374 /* PKD_Handler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42C349A2E3CF300002C325B /* PKD_Handler.swift */; };
 		D43C327B2E4D3CD500F3B374 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C52E33AD1A001593B7 /* LaunchScreen.storyboard */; };
-		D44C206A2E35502C000C8BD0 /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
 		D45B59512E53DC32001488E1 /* PassKeysDemoUIKit.docc in Sources */ = {isa = PBXBuildFile; fileRef = D45B594F2E53DC32001488E1 /* PassKeysDemoUIKit.docc */; };
 		D499A5CB2E33AD1A001593B7 /* PKD_AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C12E33AD1A001593B7 /* PKD_AppDelegate.swift */; };
 		D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D499A5C82E33AD1A001593B7 /* PKD_SceneDelegate.swift */; };
 		D499A5CE2E33AD1A001593B7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C22E33AD1A001593B7 /* Assets.xcassets */; };
 		D499A5D02E33AD1A001593B7 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C52E33AD1A001593B7 /* LaunchScreen.storyboard */; };
 		D499A5D12E33AD1A001593B7 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C72E33AD1A001593B7 /* Main.storyboard */; };
+		D4AEA5CB2E57BAE70093A50A /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
+		D4AEA5CC2E57BAE70093A50A /* PKD_Handler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42C349A2E3CF300002C325B /* PKD_Handler.swift */; };
+		D4AEA5CD2E57BAE70093A50A /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
+		D4AEA5CE2E57BAE70093A50A /* PKD_Handler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42C349A2E3CF300002C325B /* PKD_Handler.swift */; };
 		D4EE42462E54045A002EB566 /* PassKeysDemoSwiftUI.docc in Sources */ = {isa = PBXBuildFile; fileRef = D4EE42452E54045A002EB566 /* PassKeysDemoSwiftUI.docc */; };
 /* End PBXBuildFile section */
 
@@ -117,13 +117,13 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		D406C8A92E4DFDE600D7AC43 /* Sources */ = {
+		D406C8A92E4DFDE600D7AC43 /* PKD_Handler */ = {
 			isa = PBXGroup;
 			children = (
 				D42C349A2E3CF300002C325B /* PKD_Handler.swift */,
 				D44C20692E355029000C8BD0 /* PKD_Extensions.swift */,
 			);
-			path = Sources;
+			path = PKD_Handler;
 			sourceTree = "<group>";
 		};
 		D41FD7452E564072003DACBC /* Meta */ = {
@@ -160,13 +160,6 @@
 			path = SwiftUI;
 			sourceTree = "<group>";
 		};
-		D43C327C2E4D3D3800F3B374 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		D441D8C82E33B0C80073A1D4 /* App */ = {
 			isa = PBXGroup;
 			children = (
@@ -179,7 +172,7 @@
 		D44C206B2E3550F8000C8BD0 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
-				D406C8A92E4DFDE600D7AC43 /* Sources */,
+				D406C8A92E4DFDE600D7AC43 /* PKD_Handler */,
 				D406C8A82E4DFDDC00D7AC43 /* Resources */,
 			);
 			path = Shared;
@@ -196,7 +189,6 @@
 				D4C8B7E52E4D39140018C9DD /* LICENSE */,
 				D4C8B7E32E4D39140018C9DD /* Icon.png */,
 				D4C8B7E62E4D39140018C9DD /* PrivacyInfo.xcprivacy */,
-				D43C327C2E4D3D3800F3B374 /* Frameworks */,
 				D499A5A92E33ACF4001593B7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -251,9 +243,9 @@
 		D499A5D42E33AE58001593B7 /* PassKeysDemo */ = {
 			isa = PBXGroup;
 			children = (
-				D44C206B2E3550F8000C8BD0 /* Shared */,
 				D43C32742E4D3C1400F3B374 /* SwiftUI */,
 				D499A5CA2E33AD1A001593B7 /* UIKit */,
+				D44C206B2E3550F8000C8BD0 /* Shared */,
 			);
 			path = PassKeysDemo;
 			sourceTree = "<group>";
@@ -377,9 +369,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				D43C32752E4D3C1400F3B374 /* PKD_MainView.swift in Sources */,
-				D43C32792E4D3CCE00F3B374 /* PKD_Extensions.swift in Sources */,
+				D4AEA5CD2E57BAE70093A50A /* PKD_Extensions.swift in Sources */,
+				D4AEA5CE2E57BAE70093A50A /* PKD_Handler.swift in Sources */,
 				D4EE42462E54045A002EB566 /* PassKeysDemoSwiftUI.docc in Sources */,
-				D43C327A2E4D3CCE00F3B374 /* PKD_Handler.swift in Sources */,
 				D43C32762E4D3C1400F3B374 /* PKD_SwiftUIApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -389,11 +381,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				D499A5CB2E33AD1A001593B7 /* PKD_AppDelegate.swift in Sources */,
-				D44C206A2E35502C000C8BD0 /* PKD_Extensions.swift in Sources */,
 				D45B59512E53DC32001488E1 /* PassKeysDemoUIKit.docc in Sources */,
 				D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */,
 				D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */,
-				D42C349B2E3CF300002C325B /* PKD_Handler.swift in Sources */,
+				D4AEA5CB2E57BAE70093A50A /* PKD_Extensions.swift in Sources */,
+				D4AEA5CC2E57BAE70093A50A /* PKD_Handler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -453,6 +445,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.littlegreenviper.PassKeysDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUN_DOCUMENTATION_COMPILER = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -485,6 +478,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.littlegreenviper.PassKeysDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUN_DOCUMENTATION_COMPILER = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -516,6 +510,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.littlegreenviper.PassKeysDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUN_DOCUMENTATION_COMPILER = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -547,6 +542,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.littlegreenviper.PassKeysDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUN_DOCUMENTATION_COMPILER = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

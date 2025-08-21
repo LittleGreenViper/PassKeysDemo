@@ -37,21 +37,22 @@ extension PKD_AppDelegate: UIApplicationDelegate {
     /**
      Called when the app has finished setting up for launch, and is asking permission to go.
      
-     - parameter: The application object (ignored)
+     - parameter inApplication: The application object (ignored)
      - parameter didFinishLaunchingWithOptions: The launch options (also ignored)
      - returns: True (always)
      */
-    func application(_: UIApplication, didFinishLaunchingWithOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool { true }
+    func application(_ inApplication: UIApplication, didFinishLaunchingWithOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool { true }
 
     /* ###################################################################### */
     /**
      Called when the app launches. Hands the wheel to the SceneKit app delegate.
      
-     - parameter: The application object (ignored)
+     - parameter inApplication: The application object (ignored)
      - parameter inConnSession: The connecting session
+     - parameter options: The connection options (also ignored)
      - returns: The default scene configuration, attached to the session role.
      */
-    func application(_: UIApplication, configurationForConnecting inConnSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+    func application(_ inApplication: UIApplication, configurationForConnecting inConnSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         UISceneConfiguration(name: "Default Configuration", sessionRole: inConnSession.role)
     }
 }
