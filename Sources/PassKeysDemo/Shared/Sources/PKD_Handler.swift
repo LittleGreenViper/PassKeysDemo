@@ -27,6 +27,8 @@ import Combine                  // To make the class observable.
 // MARK: - PassKeys Interaction Handling Class -
 /* ###################################################################################################################################### */
 /**
+ A Framework-Independendent API for Accessing the PKD Server.
+ 
  ## Overview
  
  This class is a framework-independent API, abstracting server communication, and acting as an app model for the UI, which can be either UIKit, or SwiftUI.
