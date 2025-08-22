@@ -66,7 +66,7 @@ session_start();
 /**
     Converts a binary value to a Base64 URL string.
     @param string $data The data (can be binary) to be converted to Base64URL
-    @return the data provided, as a Base64URL-encoded string.
+    @returns: the data provided, as a Base64URL-encoded string.
  */
 function base64url_encode(string $data): string {
     return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
@@ -76,7 +76,7 @@ function base64url_encode(string $data): string {
 /**
     Converts a Base64URL string back to its original form.
     @param string $data The Base64URL-encoded string to be converted to its original data.
-    @return the Base64URL-encoded string provided, as the original (possibly binary) data. FALSE, if the conversion fails.
+    @returns: the Base64URL-encoded string provided, as the original (possibly binary) data. FALSE, if the conversion fails.
  */
 function base64url_decode(string $data): string|false {
     return base64_decode(str_pad(strtr($data, '-_', '+/'), strlen($data) % 4, '=', STR_PAD_RIGHT));
@@ -243,8 +243,8 @@ class PKDServer {
     /**
     The first part of the login operation.
     
-    This returns the challenge string, as Base64URL-encoded, and an array of allowed credential IDs,
-    each Base64-encoded. 
+    @returns: the challenge string, as Base64URL-encoded, and an array of allowed credential IDs,
+    each Base64-encoded.
     */
     private function _loginChallenge() {
         $challenge = random_bytes(32);
@@ -270,7 +270,7 @@ class PKDServer {
     
     This requires JSON structures in the POST, with the credentials from the app.
     
-    It returns the bearerToken for the login.
+    @returns: the bearerToken for the login.
     */
     private function _loginCompletion() {
         $userId = "";
@@ -350,7 +350,8 @@ class PKDServer {
     /**
     The first part of the create operation.
     
-    This is called with a userId (and optionally, a display name), and returns the public key struct, as JSON.
+    This is called with a userId (and optionally, a display name).
+    @returns: the public key struct, as JSON.
     */
     private function _createChallenge() {
         $userId = $this->_getArgs->userId;   // The user ID needs, to be unique in this server.
@@ -403,7 +404,7 @@ class PKDServer {
     It ensures that the PassKey is valid, and matches the challenge we sent up, then creates
     a record in each of the database tables.
     
-    It responds with the displayName, credo, and bearerToken for the new user and login, as JSON.
+    @returns: the displayName, credo, and bearerToken for the new user and login, as JSON.
     */
     private function _createCompletion() {
         // Create a new token, as this is a new login.
@@ -460,13 +461,13 @@ class PKDServer {
     /**
     Simply reads the data for the currently logged-in user, and returns it as JSON.
     
-    Responds with the displayName and credo for the current user, as JSON.
+    @returns: the displayName and credo for the current user, as JSON.
     */
     Private function _handleRead() {
-        $originalToken = $this->_vetLogin();
+        $bearerToken = $this->_vetLogin();
         
         $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
-        $stmt->execute([$originalToken]);
+        $stmt->execute([$bearerToken]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!empty($row) && !empty($row['userId'])) {
@@ -501,13 +502,13 @@ class PKDServer {
     /**
     Updates the user data for the currently logged-in user. Uses GET arguments for displayName and credo.
     
-    Responds with the displayName and credo for the current user, as JSON.
+    @returns: the displayName and credo for the current user, as JSON.
     */
     private function _handleUpdate() {
-        $originalToken = $this->_vetLogin();
+        $bearerToken = $this->_vetLogin();
         
         $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
-        $stmt->execute([$originalToken]);
+        $stmt->execute([$bearerToken]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!empty($row) && !empty($row['userId'])) {
@@ -532,10 +533,10 @@ class PKDServer {
     Performs a full logout (removes the bearer token from the DB, and sets the session to empty).
      */
     private function _handleLogout() {
-        $originalToken = $this->_vetLogin();
+        $bearerToken = $this->_vetLogin();
         
         $stmt = $this->_pdoInstance->prepare('UPDATE webauthn_credentials SET bearerToken = NULL WHERE bearerToken = ?');
-        $stmt->execute([$originalToken]);
+        $stmt->execute([$bearerToken]);
         $_SESSION = [];
     }
     
@@ -544,10 +545,10 @@ class PKDServer {
     This deletes the logged-in user from both tables. It also forces a logout.
      */
     private function _handleDelete() {
-        $originalToken = $this->_vetLogin();
+        $bearerToken = $this->_vetLogin();
 
         $stmt = $this->_pdoInstance->prepare('SELECT userId FROM webauthn_credentials WHERE bearerToken = ?');
-        $stmt->execute([$originalToken]);
+        $stmt->execute([$bearerToken]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!empty($row) && isset($row['userId']) && !empty($row['userId'])) {
