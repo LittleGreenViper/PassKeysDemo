@@ -15,7 +15,9 @@ This just illustrates a basic login to a simple [CRUD](https://en.wikipedia.org/
 
 [Passkeys](https://developer.apple.com/passkeys/) require explicit server storage of credential keys, as opposed to [Sign in with Apple](https://developer.apple.com/sign-in-with-apple/), which can store credentials on the client.
 
-[This is the GitHub repository for this project](https://github.com/LittleGreenViper/PassKeysDemo)
+[This is the GitHub repository for this project.](https://github.com/LittleGreenViper/PassKeysDemo)
+
+[This repository is designed to accompany this series of posts on PassKey implementation in iOS.](https://littlegreenviper.com/series/passkeys/)
 
 ## Basic Structure
 
