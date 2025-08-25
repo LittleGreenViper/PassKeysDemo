@@ -49,19 +49,4 @@ public extension StringProtocol {
      - returns: the localized string (main bundle) for this string.
      */
     var localizedVariant: String { NSLocalizedString(self as? String ?? "", comment: "") }
-    
-    /* ###################################################################### */
-    /**
-     This treats the string as Base64 URL-encoded, and returns a Data instance that represents the encoded contents.
-     */
-    var base64urlDecodedData: Data? {
-        var base64 = self
-            .replacingOccurrences(of: "-", with: "+")
-            .replacingOccurrences(of: "_", with: "/")
-        let paddingLength = 4 - (base64.count % 4)
-        if paddingLength < 4 {
-            base64 += String(repeating: "=", count: paddingLength)
-        }
-        return Data(base64Encoded: base64)
-    }
 }

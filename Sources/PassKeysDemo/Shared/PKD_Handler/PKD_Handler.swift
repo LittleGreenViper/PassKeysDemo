@@ -24,6 +24,31 @@ import LocalAuthentication      // To test whether or not biometrics are enabled
 import Combine                  // To make the class observable.
 
 /* ###################################################################################################################################### */
+// MARK: - String Extension -
+/* ###################################################################################################################################### */
+fileprivate extension StringProtocol {
+    /* ###################################################################### */
+    /**
+     This treats the string as Base64 URL-encoded, and returns a Data instance that represents the encoded contents.
+     */
+    var _base64urlDecodedData: Data? {
+        var ret = String(self)
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+
+        // Compute required padding using bit ops (0, 1, or 2 '=')
+        switch ret.count & 3 {
+        case 0: break               // already padded
+        case 2: ret.append("==")    // two short
+        case 3: ret.append("=")     // one short
+        default: return nil         // impossible for valid Base64/Base64URL (remainder 1)
+        }
+
+        return Data(base64Encoded: ret)
+    }
+}
+
+/* ###################################################################################################################################### */
 // MARK: - PassKeys Interaction Handling Class -
 /* ###################################################################################################################################### */
 /**
@@ -402,8 +427,8 @@ extension PKD_Handler {
      - parameter inCompletion: A tail completion proc. This may be called in any thread, and is only called for an error. A successful result does nothing, because we finish in the authentication callback.
      */
     private func _nextStepInCreate(with inOptions: _PublicKeyCredentialCreationOptionsStruct, completion inCompletion: @escaping (Result<String, Error>) -> Void) {
-        if let challengeData = inOptions.publicKey.challenge.base64urlDecodedData,
-           let userIDData = inOptions.publicKey.user.id.base64urlDecodedData {
+        if let challengeData = inOptions.publicKey.challenge._base64urlDecodedData,
+           let userIDData = inOptions.publicKey.user.id._base64urlDecodedData {
             let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: inOptions.publicKey.rp.id)
 
             let request = provider.createCredentialRegistrationRequest(
@@ -821,7 +846,7 @@ public extension PKD_Handler {
                         case .success(let inResponse):
                             // inResponse.challenge is the challenge string (Base64URL-encoded).
                             // inResponse.allowedIDs is an Array of String, with each string being an allowed credential ID (Base64-encoded).
-                            if let challengeData = inResponse.challenge.base64urlDecodedData {
+                            if let challengeData = inResponse.challenge._base64urlDecodedData {
                                 let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: self._relyingParty)
                                 let request = provider.createCredentialAssertionRequest(challenge: challengeData)
                                 let controller = ASAuthorizationController(authorizationRequests: [request])

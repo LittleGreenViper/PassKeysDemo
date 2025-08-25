@@ -20,7 +20,7 @@
 		D499A5CE2E33AD1A001593B7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C22E33AD1A001593B7 /* Assets.xcassets */; };
 		D499A5D02E33AD1A001593B7 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C52E33AD1A001593B7 /* LaunchScreen.storyboard */; };
 		D499A5D12E33AD1A001593B7 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D499A5C72E33AD1A001593B7 /* Main.storyboard */; };
-		D4AEA5CB2E57BAE70093A50A /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
+		D4A29E4F2E5CFCC4006BD005 /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
 		D4AEA5CC2E57BAE70093A50A /* PKD_Handler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42C349A2E3CF300002C325B /* PKD_Handler.swift */; };
 		D4AEA5CD2E57BAE70093A50A /* PKD_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44C20692E355029000C8BD0 /* PKD_Extensions.swift */; };
 		D4AEA5CE2E57BAE70093A50A /* PKD_Handler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42C349A2E3CF300002C325B /* PKD_Handler.swift */; };
@@ -121,7 +121,6 @@
 			isa = PBXGroup;
 			children = (
 				D42C349A2E3CF300002C325B /* PKD_Handler.swift */,
-				D44C20692E355029000C8BD0 /* PKD_Extensions.swift */,
 			);
 			path = PKD_Handler;
 			sourceTree = "<group>";
@@ -172,6 +171,7 @@
 		D44C206B2E3550F8000C8BD0 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				D44C20692E355029000C8BD0 /* PKD_Extensions.swift */,
 				D406C8A92E4DFDE600D7AC43 /* PKD_Handler */,
 				D406C8A82E4DFDDC00D7AC43 /* Resources */,
 			);
@@ -383,8 +383,8 @@
 				D499A5CB2E33AD1A001593B7 /* PKD_AppDelegate.swift in Sources */,
 				D45B59512E53DC32001488E1 /* PassKeysDemoUIKit.docc in Sources */,
 				D40941462E34FBED001431EB /* PKD_ConnectViewController.swift in Sources */,
+				D4A29E4F2E5CFCC4006BD005 /* PKD_Extensions.swift in Sources */,
 				D499A5CC2E33AD1A001593B7 /* PKD_SceneDelegate.swift in Sources */,
-				D4AEA5CB2E57BAE70093A50A /* PKD_Extensions.swift in Sources */,
 				D4AEA5CC2E57BAE70093A50A /* PKD_Handler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
