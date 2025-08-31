@@ -625,7 +625,7 @@ extension PKD_Handler {
                            let token = String(data: data, encoding: .utf8),
                            !token.isEmpty {
                             self._bearerToken = token
-                            DispatchQueue.main.async { self.isLoggedIn = true }
+                            self.isLoggedIn = true
                         } else if 404 == response.statusCode {
                             self.lastError = PKD_Errors.noUserID
                             self.isLoggedIn = false
